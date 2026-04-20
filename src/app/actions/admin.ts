@@ -11,15 +11,14 @@ import { randomBytes } from "crypto";
 export async function updateSettings(formData: FormData) {
   const orgName = formData.get("orgName") as string;
   const logoUrl = formData.get("logoUrl") as string;
-
   const settings = await prisma.settings.findFirst();
 
   if (settings) {
     await prisma.settings.update({
       where: { id: settings.id },
       data: { 
-        organizationName: orgName, // Ajustado de 'orgName' a 'organizationName'
-        organizationLogo: logoUrl  // Ajustado de 'logoUrl' a 'organizationLogo'
+        organizationName: orgName,
+        organizationLogo: logoUrl 
       }
     });
   } else {
@@ -133,7 +132,7 @@ export async function deleteKnowledgeBase(id: string) {
 }
 
 // ==========================================
-// 5. ACCIONES DE DOCUMENTOS
+// 5. ACCIONES DE DOCUMENTOS (Simplificadas sin 'status')
 // ==========================================
 export async function uploadFileDocument(formData: FormData) {
   const file = formData.get("file") as File;
@@ -148,21 +147,20 @@ export async function uploadFileDocument(formData: FormData) {
 
   const buffer = Buffer.from(await file.arrayBuffer());
   
-  // AQUÍ ESTABA EL ERROR: Cambiamos 'name' por 'filename'
+  // Creamos el registro del documento
   const doc = await prisma.document.create({
     data: { 
-      filename: file.name, // Ajustado a 'filename'
+      filename: file.name, 
       type, 
-      knowledgeBaseId, 
-      status: "PROCESSING" 
+      knowledgeBaseId 
     },
   });
 
   try {
+    // Procesamos el archivo (esto crea los fragmentos en la DB)
     await processFile(buffer, file.name, type, knowledgeBaseId, doc.id);
-    await prisma.document.update({ where: { id: doc.id }, data: { status: "COMPLETED" } });
   } catch (error) {
-    await prisma.document.update({ where: { id: doc.id }, data: { status: "FAILED" } });
+    console.error("Error procesando archivo:", error);
   }
   revalidatePath(`/admin/knowledge/${knowledgeBaseId}`);
 }
@@ -174,18 +172,16 @@ export async function addUrlDocument(formData: FormData) {
 
   const doc = await prisma.document.create({
     data: { 
-      filename: url, // Ajustado a 'filename'
+      filename: url, 
       type: "URL", 
-      knowledgeBaseId, 
-      status: "PROCESSING" 
+      knowledgeBaseId 
     },
   });
 
   try {
     await processUrl(url, knowledgeBaseId, doc.id);
-    await prisma.document.update({ where: { id: doc.id }, data: { status: "COMPLETED" } });
   } catch (error) {
-    await prisma.document.update({ where: { id: doc.id }, data: { status: "FAILED" } });
+    console.error("Error procesando URL:", error);
   }
   revalidatePath(`/admin/knowledge/${knowledgeBaseId}`);
 }
