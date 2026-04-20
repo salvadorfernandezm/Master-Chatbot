@@ -6,25 +6,26 @@ import { processFile, processUrl } from "@/lib/documentProcessor";
 import { randomBytes } from "crypto";
 
 // ==========================================
-// 1. CONFIGURACIÓN GLOBAL (Lo que faltaba)
+// 1. ACCIONES DE GRUPOS (Lo que faltaba ahora)
 // ==========================================
-export async function updateSettings(formData: FormData) {
-  const orgName = formData.get("orgName") as string;
-  const logoUrl = formData.get("logoUrl") as string;
+export async function createGroup(formData: FormData) {
+  const name = formData.get("name") as string;
+  const description = formData.get("description") as string;
+  await prisma.group.create({ data: { name, description } });
+  revalidatePath("/admin/groups");
+}
 
-  const settings = await prisma.settings.findFirst();
+export async function updateGroup(formData: FormData) {
+  const id = formData.get("id") as string;
+  const name = formData.get("name") as string;
+  const description = formData.get("description") as string;
+  await prisma.group.update({ where: { id }, data: { name, description } });
+  revalidatePath("/admin/groups");
+}
 
-  if (settings) {
-    await prisma.settings.update({
-      where: { id: settings.id },
-      data: { orgName, logoUrl }
-    });
-  } else {
-    await prisma.settings.create({
-      data: { orgName, logoUrl }
-    });
-  }
-  revalidatePath("/admin/settings");
+export async function deleteGroup(id: string) {
+  await prisma.group.delete({ where: { id } });
+  revalidatePath("/admin/groups");
 }
 
 // ==========================================
@@ -58,7 +59,6 @@ export async function updateChatbot(formData: FormData) {
 
   const updateData: any = {};
   const fields = ["name", "welcomeMessage", "systemInstructions", "inputPlaceholder", "fallbackMessage"];
-  
   fields.forEach(field => {
     const value = formData.get(field);
     if (value !== null) updateData[field] = value as string;
@@ -154,4 +154,20 @@ export async function deleteDocument(id: string, knowledgeBaseId: string) {
   await prisma.documentChunk.deleteMany({ where: { documentId: id } });
   await prisma.document.delete({ where: { id } });
   revalidatePath(`/admin/knowledge/${knowledgeBaseId}`);
+}
+
+// ==========================================
+// 5. CONFIGURACIÓN GLOBAL
+// ==========================================
+export async function updateSettings(formData: FormData) {
+  const orgName = formData.get("orgName") as string;
+  const logoUrl = formData.get("logoUrl") as string;
+  const settings = await prisma.settings.findFirst();
+
+  if (settings) {
+    await prisma.settings.update({ where: { id: settings.id }, data: { orgName, logoUrl } });
+  } else {
+    await prisma.settings.create({ data: { orgName, logoUrl } });
+  }
+  revalidatePath("/admin/settings");
 }
