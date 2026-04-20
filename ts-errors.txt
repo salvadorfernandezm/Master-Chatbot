@@ -1,0 +1,6 @@
+src/lib/documentProcessor.ts(1,8): error TS1192: Module '"C:/Users/Salvador/.gemini/antigravity/scratch/master-chatbot/node_modules/pdf-parse/dist/pdf-parse/esm/index"' has no default export.
+src/lib/documentProcessor.ts(3,26): error TS2307: Cannot find module 'langchain/document' or its corresponding type declarations.
+src/lib/documentProcessor.ts(4,48): error TS2307: Cannot find module 'langchain/text_splitter' or its corresponding type declarations.
+src/lib/prisma.ts(1,10): error TS2305: Module '"@prisma/client"' has no exported member 'PrismaClient'.
+src/lib/vectorStore.ts(1,35): error TS2307: Cannot find module 'langchain/vectorstores/memory' or its corresponding type declarations.
+src/lib/vectorStore.ts(3,26): error TS2307: Cannot find module 'langchain/document' or its corresponding type declarations.

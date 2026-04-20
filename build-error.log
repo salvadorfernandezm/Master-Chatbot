@@ -1,0 +1,27 @@
+
+> master-chatbot@0.1.0 build
+> next build
+
+▲ Next.js 16.2.3 (Turbopack)
+- Environments: .env
+
+  Creating an optimized production build ...
+✓ Compiled successfully in 1647ms
+  Running TypeScript ...
+\nFailed to type check.
+
+./src/app/admin/settings/page.tsx:11:15
+Type error: Type '(formData: FormData) => Promise<{ success: boolean; }>' is not assignable to type 'string | ((formData: FormData) => void | Promise<void>) | undefined'.
+  Type '(formData: FormData) => Promise<{ success: boolean; }>' is not assignable to type '(formData: FormData) => void | Promise<void>'.
+    Type 'Promise<{ success: boolean; }>' is not assignable to type 'void | Promise<void>'.
+      Type 'Promise<{ success: boolean; }>' is not assignable to type 'Promise<void>'.
+        Type '{ success: boolean; }' is not assignable to type 'void'.
+
+  [90m 9 |[0m       
+  [90m10 |[0m       <div className=[32m"bg-white rounded-2xl shadow-xl shadow-slate-200/50 border border-sla...[0m
+[31m[1m>[0m [90m11 |[0m         <form action={updateGlobalSettings} className=[32m"space-y-6"[0m>
+  [90m   |[0m               [31m[1m^[0m
+  [90m12 |[0m           <div>
+  [90m13 |[0m             <label className=[32m"block text-sm font-semibold text-slate-700 mb-2"[0m>[33mNombre[0m de l..[33m.[0m
+  [90m14 |[0m             <input 
+Next.js build worker exited with code: 1 and signal: null
