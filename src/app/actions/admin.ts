@@ -6,7 +6,35 @@ import { processFile, processUrl } from "@/lib/documentProcessor";
 import { randomBytes } from "crypto";
 
 // ==========================================
-// 1. ACCIONES DE GRUPOS (Lo que faltaba ahora)
+// 1. CONFIGURACIÓN GLOBAL
+// ==========================================
+export async function updateSettings(formData: FormData) {
+  const orgName = formData.get("orgName") as string;
+  const logoUrl = formData.get("logoUrl") as string;
+
+  const settings = await prisma.settings.findFirst();
+
+  if (settings) {
+    await prisma.settings.update({
+      where: { id: settings.id },
+      data: { 
+        organizationName: orgName, // Ajustado de 'orgName' a 'organizationName'
+        organizationLogo: logoUrl  // Ajustado de 'logoUrl' a 'organizationLogo'
+      }
+    });
+  } else {
+    await prisma.settings.create({
+      data: { 
+        organizationName: orgName, 
+        organizationLogo: logoUrl 
+      }
+    });
+  }
+  revalidatePath("/admin/settings");
+}
+
+// ==========================================
+// 2. ACCIONES DE GRUPOS
 // ==========================================
 export async function createGroup(formData: FormData) {
   const name = formData.get("name") as string;
@@ -29,7 +57,7 @@ export async function deleteGroup(id: string) {
 }
 
 // ==========================================
-// 2. ACCIONES DE CHATBOTS
+// 3. ACCIONES DE CHATBOTS
 // ==========================================
 export async function createChatbot(formData: FormData) {
   const name = formData.get("name") as string;
@@ -77,7 +105,7 @@ export async function deleteChatbot(id: string) {
 }
 
 // ==========================================
-// 3. ACCIONES DE BASES DE CONOCIMIENTO
+// 4. ACCIONES DE BASES DE CONOCIMIENTO
 // ==========================================
 export async function createKnowledgeBase(formData: FormData) {
   const name = formData.get("name") as string;
@@ -105,7 +133,7 @@ export async function deleteKnowledgeBase(id: string) {
 }
 
 // ==========================================
-// 4. ACCIONES DE DOCUMENTOS
+// 5. ACCIONES DE DOCUMENTOS
 // ==========================================
 export async function uploadFileDocument(formData: FormData) {
   const file = formData.get("file") as File;
@@ -119,8 +147,15 @@ export async function uploadFileDocument(formData: FormData) {
   else if (fileName.endsWith(".txt")) type = "TEXT";
 
   const buffer = Buffer.from(await file.arrayBuffer());
+  
+  // AQUÍ ESTABA EL ERROR: Cambiamos 'name' por 'filename'
   const doc = await prisma.document.create({
-    data: { name: file.name, type, knowledgeBaseId, status: "PROCESSING" },
+    data: { 
+      filename: file.name, // Ajustado a 'filename'
+      type, 
+      knowledgeBaseId, 
+      status: "PROCESSING" 
+    },
   });
 
   try {
@@ -138,7 +173,12 @@ export async function addUrlDocument(formData: FormData) {
   if (!url || !knowledgeBaseId) return;
 
   const doc = await prisma.document.create({
-    data: { name: url, type: "URL", knowledgeBaseId, status: "PROCESSING" },
+    data: { 
+      filename: url, // Ajustado a 'filename'
+      type: "URL", 
+      knowledgeBaseId, 
+      status: "PROCESSING" 
+    },
   });
 
   try {
@@ -154,20 +194,4 @@ export async function deleteDocument(id: string, knowledgeBaseId: string) {
   await prisma.documentChunk.deleteMany({ where: { documentId: id } });
   await prisma.document.delete({ where: { id } });
   revalidatePath(`/admin/knowledge/${knowledgeBaseId}`);
-}
-
-// ==========================================
-// 5. CONFIGURACIÓN GLOBAL
-// ==========================================
-export async function updateSettings(formData: FormData) {
-  const orgName = formData.get("orgName") as string;
-  const logoUrl = formData.get("logoUrl") as string;
-  const settings = await prisma.settings.findFirst();
-
-  if (settings) {
-    await prisma.settings.update({ where: { id: settings.id }, data: { orgName, logoUrl } });
-  } else {
-    await prisma.settings.create({ data: { orgName, logoUrl } });
-  }
-  revalidatePath("/admin/settings");
 }
