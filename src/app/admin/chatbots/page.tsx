@@ -1,3 +1,4 @@
+export const dynamic = 'force-dynamic';
 import { prisma } from "@/lib/prisma";
 import { createChatbot, deleteChatbot } from "@/app/actions/admin";
 import { ChatbotList } from "@/components/ChatbotList";

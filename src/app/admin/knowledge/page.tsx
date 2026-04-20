@@ -1,3 +1,4 @@
+export const dynamic = 'force-dynamic';
 import { prisma } from "@/lib/prisma";
 import { createKnowledgeBase } from "@/app/actions/admin";
 import { KnowledgeBaseList } from "@/components/KnowledgeBaseList";
