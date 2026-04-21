@@ -9,29 +9,27 @@ import { randomBytes } from "crypto";
 // 1. CONFIGURACIÓN GLOBAL
 // ==========================================
 export async function updateSettings(formData: FormData) {
-  const orgName = formData.get("orgName") as string;
-  const logoUrl = formData.get("logoUrl") as string;
+  const organizationName = formData.get("organizationName") as string; // Coincide con el input
+  const organizationLogo = formData.get("organizationLogo") as string; // Coincide con el input
+  const defaultWelcomeMessage = formData.get("defaultWelcomeMessage") as string;
+  const timezone = formData.get("timezone") as string;
+
   const settings = await prisma.settings.findFirst();
 
+  const data = {
+    organizationName,
+    organizationLogo,
+    defaultWelcomeMessage,
+    timezone
+  };
+
   if (settings) {
-    await prisma.settings.update({
-      where: { id: settings.id },
-      data: { 
-        organizationName: orgName,
-        organizationLogo: logoUrl 
-      }
-    });
+    await prisma.settings.update({ where: { id: settings.id }, data });
   } else {
-    await prisma.settings.create({
-      data: { 
-        organizationName: orgName, 
-        organizationLogo: logoUrl 
-      }
-    });
+    await prisma.settings.create({ data });
   }
   revalidatePath("/admin/settings");
 }
-
 // ==========================================
 // 2. ACCIONES DE GRUPOS
 // ==========================================

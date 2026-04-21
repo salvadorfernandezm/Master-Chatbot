@@ -1,4 +1,5 @@
 export const dynamic = 'force-dynamic';
+export const revalidate = 0; // Agrega esta línea para matar la memoria vieja
 import { prisma } from "@/lib/prisma";
 import { createChatbot, deleteChatbot } from "@/app/actions/admin";
 import { ChatbotList } from "@/components/ChatbotList";
