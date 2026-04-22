@@ -1,17 +1,18 @@
 // @ts-nocheck
 import * as mammoth from "mammoth";
 import * as XLSX from "xlsx";
-import pdf from "pdf-parse";
 import { Document } from "@langchain/core/documents";
 import { RecursiveCharacterTextSplitter } from "@langchain/textsplitters";
 import { prisma } from "./prisma";
+
+// IMPORTANTE: Cambiamos la forma de importar el PDF para evitar el error de "not a function"
+const pdf = require("pdf-parse");
 
 const textSplitter = new RecursiveCharacterTextSplitter({
   chunkSize: 2000,
   chunkOverlap: 400,
 });
 
-// --- PROCESADOR DE ARCHIVOS (PDF, EXCEL, WORD, TXT) ---
 export async function processFile(
   buffer: Buffer,
   filename: string,
@@ -23,24 +24,25 @@ export async function processFile(
   const { getEmbeddingsForTexts, addDocumentsToStore } = require("./vectorStore");
   const fileExtension = filename.split('.').pop()?.toUpperCase();
 
-  console.log(`📂 Iniciando procesamiento: ${filename} (${fileExtension})`);
+  console.log(`📂 Procesando: ${filename} | Formato: ${fileExtension}`);
 
   try {
+    // --- LÓGICA PARA PDF (Corregida) ---
     if (fileExtension === "PDF") {
+      // Usamos el "require" para que la función sea reconocida
       const data = await pdf(buffer);
-      const text = data.text.trim();
+      const text = data.text;
       
-      if (!text || text.length < 10) {
-        console.warn("⚠️ ALERTA: El PDF parece ser una imagen o está vacío. Intentando extracción alternativa...");
-        // Si el texto es muy corto, devolvemos 0 para que no haya errores
+      if (text && text.trim().length > 0) {
+        console.log(`✅ Texto detectado en PDF: ${text.length} caracteres.`);
+        chunks = await textSplitter.createDocuments([text], [{ source: filename, knowledgeBaseId, documentId }]);
+      } else {
+        console.warn("⚠️ El PDF no devolvió texto legible.");
         return 0;
       }
-
-      console.log(`✅ Texto extraído del PDF (${text.length} caracteres). Troceando...`);
-      chunks = await textSplitter.createDocuments([text], [{ source: filename, knowledgeBaseId, documentId }]);
     } 
+    // --- LÓGICA PARA EXCEL ---
     else if (fileExtension === "XLSX" || fileExtension === "XLS") {
-      // (Aquí va tu código de Excel que ya funciona perfecto...)
       const workbook = XLSX.read(buffer, { type: 'buffer' });
       const excelBlocks: string[] = [];
       workbook.SheetNames.forEach(sheetName => {
@@ -54,22 +56,21 @@ export async function processFile(
       });
       chunks = await textSplitter.createDocuments(excelBlocks, [{ source: filename, knowledgeBaseId, documentId }]);
     }
+    // --- LÓGICA PARA TEXTO PLANO ---
     else if (fileExtension === "TXT") {
       const text = buffer.toString('utf-8');
       chunks = await textSplitter.createDocuments([text], [{ source: filename, knowledgeBaseId, documentId }]);
     }
+    // --- LÓGICA PARA WORD ---
     else if (fileExtension === "DOCX") {
       const result = await mammoth.extractRawText({ buffer });
       chunks = await textSplitter.createDocuments([result.value], [{ source: filename, knowledgeBaseId, documentId }]);
     }
 
-    if (chunks.length === 0) {
-      console.error("❌ No se pudieron generar fragmentos.");
-      return 0;
-    }
+    if (chunks.length === 0) return 0;
 
-    console.log(`💾 Guardando ${chunks.length} fragmentos en la base de datos...`);
-    const BATCH_SIZE = 50; // Reducimos el tamaño del lote para no saturar la Nube
+    console.log(`💾 Indexando ${chunks.length} fragmentos...`);
+    const BATCH_SIZE = 50; 
     for (let i = 0; i < chunks.length; i += BATCH_SIZE) {
       const batch = chunks.slice(i, i + BATCH_SIZE);
       const embeddings = await getEmbeddingsForTexts(batch.map(c => c.pageContent));
@@ -86,18 +87,17 @@ export async function processFile(
     }
     return chunks.length;
   } catch (error) {
-    console.error("❌ Error fatal en el procesador:", error);
+    console.error("❌ Error en el procesador:", error);
     throw error;
   }
 }
 
-// --- PROCESADOR DE ENLACES WEB (La que faltaba) ---
+// --- PROCESADOR DE ENLACES WEB ---
 export async function processUrl(url: string, knowledgeBaseId: string, documentId: string) {
   const { addDocumentsToStore } = require("./vectorStore");
   try {
     const res = await fetch(url);
     const html = await res.text();
-    // Limpieza básica de HTML
     const cleanHtml = html
       .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
       .replace(/<style\b[^<]*(?:(?!<\/style>)<[^<]*)*<\/style>/gi, '')
