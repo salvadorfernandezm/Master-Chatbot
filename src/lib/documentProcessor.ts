@@ -5,12 +5,12 @@ import { Document } from "@langchain/core/documents";
 import { RecursiveCharacterTextSplitter } from "@langchain/textsplitters";
 import { prisma } from "./prisma";
 
-// IMPORTACIÓN DE EMERGENCIA
-const pdf = require("pdf-parse");
+// IMPORTANTE: Cargamos la librería que ya sabemos que tiene la clase PDFParse
+const pdfLib = require("pdf-parse");
 
 const textSplitter = new RecursiveCharacterTextSplitter({
-  chunkSize: 1500,
-  chunkOverlap: 300,
+  chunkSize: 2000,
+  chunkOverlap: 400,
 });
 
 export async function processFile(
@@ -24,40 +24,28 @@ export async function processFile(
   const { getEmbeddingsForTexts, addDocumentsToStore } = require("./vectorStore");
   const fileExtension = filename.split('.').pop()?.toUpperCase();
 
-  console.log(`📂 PROCESANDO: ${filename} | EXT: ${fileExtension}`);
+  console.log(`📂 PROCESANDO: ${filename} | TIPO: ${fileExtension}`);
 
   try {
-    // --- LÓGICA PARA PDF (VERSIÓN DETECTIVE) ---
+    // --- LÓGICA PARA PDF (SINTAXIS DE CLASE) ---
     if (fileExtension === "PDF") {
-      console.log("🕵️ Analizando estructura de la librería PDF...");
+      console.log("🛠️ Usando constructor 'new PDFParse'...");
       
-      let parseFunc;
-
-      // Buscamos la función de lectura sea donde sea que esté escondida
-      if (typeof pdf === 'function') {
-        parseFunc = pdf;
-      } else if (pdf.default && typeof pdf.default === 'function') {
-        parseFunc = pdf.default;
-      } else if (typeof pdf === 'object') {
-        // Si la librería es un objeto, buscamos cualquier propiedad que sea una función
-        const keys = Object.keys(pdf);
-        console.log("🔍 Claves encontradas en la librería:", keys);
-        const firstFuncName = keys.find(k => typeof pdf[k] === 'function');
-        if (firstFuncName) parseFunc = pdf[firstFuncName];
-      }
-
-      if (!parseFunc) {
-        throw new Error("No se pudo localizar la función de lectura dentro de la librería PDF.");
-      }
-
-      const data = await parseFunc(buffer);
-      const text = data?.text?.trim();
+      // Extraemos la clase de la librería
+      const PDFParse = pdfLib.PDFParse || pdfLib;
       
-      if (text && text.length > 10) {
-        console.log(`✅ PDF leído con éxito: ${text.length} caracteres extraídos.`);
+      // Creamos la instancia (AQUÍ ESTABA EL SECRETO)
+      const parser = new PDFParse({ data: buffer, verbosity: 0 });
+      const result = await parser.getText();
+      
+      // Extraemos el texto de todas las páginas
+      const text = result.pages.map(p => p.text).join("\n");
+      
+      if (text && text.trim().length > 10) {
+        console.log(`✅ PDF procesado: ${result.pages.length} páginas, ${text.length} caracteres.`);
         chunks = await textSplitter.createDocuments([text], [{ source: filename, knowledgeBaseId, documentId }]);
       } else {
-        console.warn("⚠️ El PDF parece estar vacío o ser una imagen pura.");
+        console.warn("⚠️ No se pudo extraer texto. ¿El PDF es una imagen?");
         return 0;
       }
     } 
@@ -89,8 +77,8 @@ export async function processFile(
 
     if (chunks.length === 0) return 0;
 
-    // --- INDEXACIÓN EN LOTES (SUPABASE) ---
-    console.log(`💾 Indexando ${chunks.length} fragmentos en la Nube...`);
+    // --- INDEXACIÓN EN LOTES ---
+    console.log(`💾 Indexando ${chunks.length} fragmentos...`);
     const BATCH_SIZE = 40; 
     for (let i = 0; i < chunks.length; i += BATCH_SIZE) {
       const batch = chunks.slice(i, i + BATCH_SIZE);
@@ -109,12 +97,12 @@ export async function processFile(
     return chunks.length;
 
   } catch (error) {
-    console.error("❌ ERROR CRÍTICO EN PROCESADOR:", error.message);
+    console.error("❌ ERROR CRÍTICO:", error.message);
     throw error;
   }
 }
 
-// --- PROCESADOR DE URLs (MANTENIDO) ---
+// --- PROCESADOR DE URLs ---
 export async function processUrl(url: string, knowledgeBaseId: string, documentId: string) {
   const { addDocumentsToStore } = require("./vectorStore");
   try {
