@@ -7,7 +7,6 @@ if (typeof global.DOMMatrix === 'undefined') {
 }
 
 import * as mammoth from "mammoth";
-// ... el resto del código sigue igual ...
 
 // @ts-nocheck
 import * as mammoth from "mammoth";
