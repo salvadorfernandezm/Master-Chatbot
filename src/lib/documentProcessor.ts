@@ -1,5 +1,7 @@
 // @ts-nocheck
-// ESTA ES LA CURA PARA EL ERROR DOMMatrix
+
+// 1. PARCHE PARA VERCEL (Error DOMMatrix)
+// Esto debe ir al principio de todo para que pdf-parse no falle en la nube
 if (typeof global.DOMMatrix === 'undefined') {
   global.DOMMatrix = class DOMMatrix {
     constructor() {}
@@ -7,15 +9,12 @@ if (typeof global.DOMMatrix === 'undefined') {
 }
 
 import * as mammoth from "mammoth";
-
-// @ts-nocheck
-import * as mammoth from "mammoth";
 import * as XLSX from "xlsx";
 import { Document } from "@langchain/core/documents";
 import { RecursiveCharacterTextSplitter } from "@langchain/textsplitters";
 import { prisma } from "./prisma";
 
-// IMPORTANTE: Cargamos la librería que ya sabemos que tiene la clase PDFParse
+// Importamos la librería de PDF que ya sabemos que funciona como clase
 const pdfLib = require("pdf-parse");
 
 const textSplitter = new RecursiveCharacterTextSplitter({
@@ -23,6 +22,7 @@ const textSplitter = new RecursiveCharacterTextSplitter({
   chunkOverlap: 400,
 });
 
+// --- PROCESADOR DE ARCHIVOS ---
 export async function processFile(
   buffer: Buffer,
   filename: string,
@@ -37,29 +37,20 @@ export async function processFile(
   console.log(`📂 PROCESANDO: ${filename} | TIPO: ${fileExtension}`);
 
   try {
-    // --- LÓGICA PARA PDF (SINTAXIS DE CLASE) ---
+    // LÓGICA PARA PDF
     if (fileExtension === "PDF") {
-      console.log("🛠️ Usando constructor 'new PDFParse'...");
-      
-      // Extraemos la clase de la librería
       const PDFParse = pdfLib.PDFParse || pdfLib;
-      
-      // Creamos la instancia (AQUÍ ESTABA EL SECRETO)
       const parser = new PDFParse({ data: buffer, verbosity: 0 });
       const result = await parser.getText();
-      
-      // Extraemos el texto de todas las páginas
       const text = result.pages.map(p => p.text).join("\n");
       
       if (text && text.trim().length > 10) {
-        console.log(`✅ PDF procesado: ${result.pages.length} páginas, ${text.length} caracteres.`);
         chunks = await textSplitter.createDocuments([text], [{ source: filename, knowledgeBaseId, documentId }]);
       } else {
-        console.warn("⚠️ No se pudo extraer texto. ¿El PDF es una imagen?");
         return 0;
       }
     } 
-    // --- LÓGICA PARA EXCEL ---
+    // LÓGICA PARA EXCEL
     else if (fileExtension === "XLSX" || fileExtension === "XLS") {
       const workbook = XLSX.read(buffer, { type: 'buffer' });
       const excelBlocks: string[] = [];
@@ -74,12 +65,12 @@ export async function processFile(
       });
       chunks = await textSplitter.createDocuments(excelBlocks, [{ source: filename, knowledgeBaseId, documentId }]);
     }
-    // --- LÓGICA PARA TXT ---
+    // LÓGICA PARA TXT
     else if (fileExtension === "TXT") {
       const text = buffer.toString('utf-8');
       chunks = await textSplitter.createDocuments([text], [{ source: filename, knowledgeBaseId, documentId }]);
     }
-    // --- LÓGICA PARA WORD ---
+    // LÓGICA PARA WORD
     else if (fileExtension === "DOCX") {
       const result = await mammoth.extractRawText({ buffer });
       chunks = await textSplitter.createDocuments([result.value], [{ source: filename, knowledgeBaseId, documentId }]);
@@ -87,8 +78,7 @@ export async function processFile(
 
     if (chunks.length === 0) return 0;
 
-    // --- INDEXACIÓN EN LOTES ---
-    console.log(`💾 Indexando ${chunks.length} fragmentos...`);
+    // INDEXACIÓN EN LOTES
     const BATCH_SIZE = 40; 
     for (let i = 0; i < chunks.length; i += BATCH_SIZE) {
       const batch = chunks.slice(i, i + BATCH_SIZE);
@@ -107,7 +97,7 @@ export async function processFile(
     return chunks.length;
 
   } catch (error) {
-    console.error("❌ ERROR CRÍTICO:", error.message);
+    console.error("❌ ERROR CRÍTICO EN PROCESADOR:", error.message);
     throw error;
   }
 }
