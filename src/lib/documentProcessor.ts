@@ -5,7 +5,7 @@ import { Document } from "@langchain/core/documents";
 import { RecursiveCharacterTextSplitter } from "@langchain/textsplitters";
 import { prisma } from "./prisma";
 
-// Importamos la librería de PDF
+// IMPORTACIÓN DE EMERGENCIA
 const pdf = require("pdf-parse");
 
 const textSplitter = new RecursiveCharacterTextSplitter({
@@ -24,44 +24,40 @@ export async function processFile(
   const { getEmbeddingsForTexts, addDocumentsToStore } = require("./vectorStore");
   const fileExtension = filename.split('.').pop()?.toUpperCase();
 
-  console.log(`📂 Iniciando procesamiento: ${filename} (${fileExtension})`);
+  console.log(`📂 PROCESANDO: ${filename} | EXT: ${fileExtension}`);
 
   try {
-    // --- LÓGICA PARA PDF (VERSIÓN TRIPLE INTENTO) ---
+    // --- LÓGICA PARA PDF (VERSIÓN DETECTIVE) ---
     if (fileExtension === "PDF") {
-      let data;
+      console.log("🕵️ Analizando estructura de la librería PDF...");
       
-      console.log("🕵️ Intentando ejecutar extractor de PDF...");
-      
-      try {
-        // Intento 1: Llamada directa
-        data = await pdf(buffer);
-      } catch (e1) {
-        try {
-          // Intento 2: Llamada al default (común en Next.js/Turbopack)
-          data = await pdf.default(buffer);
-        } catch (e2) {
-          // Intento 3: Si es un objeto con la función dentro
-          if (typeof pdf === 'object' && pdf !== null) {
-            const keys = Object.keys(pdf);
-            console.log("🔍 Estructura de la librería detectada:", keys);
-            // Si hay una función disponible en el objeto, la usamos
-            const func = pdf[keys[0]]; 
-            if (typeof func === 'function') data = await func(buffer);
-            else throw new Error("No se encontró una función válida en la librería PDF.");
-          } else {
-            throw new Error("La librería PDF no se cargó correctamente.");
-          }
-        }
+      let parseFunc;
+
+      // Buscamos la función de lectura sea donde sea que esté escondida
+      if (typeof pdf === 'function') {
+        parseFunc = pdf;
+      } else if (pdf.default && typeof pdf.default === 'function') {
+        parseFunc = pdf.default;
+      } else if (typeof pdf === 'object') {
+        // Si la librería es un objeto, buscamos cualquier propiedad que sea una función
+        const keys = Object.keys(pdf);
+        console.log("🔍 Claves encontradas en la librería:", keys);
+        const firstFuncName = keys.find(k => typeof pdf[k] === 'function');
+        if (firstFuncName) parseFunc = pdf[firstFuncName];
       }
 
+      if (!parseFunc) {
+        throw new Error("No se pudo localizar la función de lectura dentro de la librería PDF.");
+      }
+
+      const data = await parseFunc(buffer);
       const text = data?.text?.trim();
       
       if (text && text.length > 10) {
-        console.log(`✅ PDF leído con éxito: ${text.length} caracteres.`);
+        console.log(`✅ PDF leído con éxito: ${text.length} caracteres extraídos.`);
         chunks = await textSplitter.createDocuments([text], [{ source: filename, knowledgeBaseId, documentId }]);
       } else {
-        console.warn("⚠️ El PDF no devolvió texto. ¿Es una imagen?");
+        console.warn("⚠️ El PDF parece estar vacío o ser una imagen pura.");
         return 0;
       }
     } 
@@ -93,7 +89,7 @@ export async function processFile(
 
     if (chunks.length === 0) return 0;
 
-    // --- INDEXACIÓN EN SUPABASE ---
+    // --- INDEXACIÓN EN LOTES (SUPABASE) ---
     console.log(`💾 Indexando ${chunks.length} fragmentos en la Nube...`);
     const BATCH_SIZE = 40; 
     for (let i = 0; i < chunks.length; i += BATCH_SIZE) {
@@ -113,12 +109,12 @@ export async function processFile(
     return chunks.length;
 
   } catch (error) {
-    console.error("❌ Error fatal en el procesador:", error.message);
+    console.error("❌ ERROR CRÍTICO EN PROCESADOR:", error.message);
     throw error;
   }
 }
 
-// --- PROCESADOR DE ENLACES WEB ---
+// --- PROCESADOR DE URLs (MANTENIDO) ---
 export async function processUrl(url: string, knowledgeBaseId: string, documentId: string) {
   const { addDocumentsToStore } = require("./vectorStore");
   try {
