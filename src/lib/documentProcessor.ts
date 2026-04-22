@@ -5,12 +5,12 @@ import { Document } from "@langchain/core/documents";
 import { RecursiveCharacterTextSplitter } from "@langchain/textsplitters";
 import { prisma } from "./prisma";
 
-// IMPORTANTE: Cambiamos la forma de importar el PDF para evitar el error de "not a function"
-const pdf = require("pdf-parse");
+// IMPORTANTE: Cambio de estrategia para PDF (Bypass de importación)
+const pdfParse = require("pdf-parse/lib/pdf-parse.js");
 
 const textSplitter = new RecursiveCharacterTextSplitter({
-  chunkSize: 2000,
-  chunkOverlap: 400,
+  chunkSize: 1500, // Un poco más pequeño para lecturas densas
+  chunkOverlap: 300,
 });
 
 export async function processFile(
@@ -24,24 +24,24 @@ export async function processFile(
   const { getEmbeddingsForTexts, addDocumentsToStore } = require("./vectorStore");
   const fileExtension = filename.split('.').pop()?.toUpperCase();
 
-  console.log(`📂 Procesando: ${filename} | Formato: ${fileExtension}`);
+  console.log(`📂 Procesando: ${filename} | Tipo: ${fileExtension}`);
 
   try {
-    // --- LÓGICA PARA PDF (Corregida) ---
+    // --- NUEVO MOTOR DE PDF ---
     if (fileExtension === "PDF") {
-      // Usamos el "require" para que la función sea reconocida
-      const data = await pdf(buffer);
+      // Usamos el buffer directo con la librería interna
+      const data = await pdfParse(buffer);
       const text = data.text;
       
-      if (text && text.trim().length > 0) {
-        console.log(`✅ Texto detectado en PDF: ${text.length} caracteres.`);
+      if (text && text.trim().length > 10) {
+        console.log(`✅ PDF leído con éxito: ${text.length} caracteres.`);
         chunks = await textSplitter.createDocuments([text], [{ source: filename, knowledgeBaseId, documentId }]);
       } else {
-        console.warn("⚠️ El PDF no devolvió texto legible.");
+        console.warn("⚠️ PDF vacío o sin texto extraíble.");
         return 0;
       }
     } 
-    // --- LÓGICA PARA EXCEL ---
+    // --- LÓGICA PARA EXCEL (Fichas de Salvador) ---
     else if (fileExtension === "XLSX" || fileExtension === "XLS") {
       const workbook = XLSX.read(buffer, { type: 'buffer' });
       const excelBlocks: string[] = [];
@@ -56,12 +56,12 @@ export async function processFile(
       });
       chunks = await textSplitter.createDocuments(excelBlocks, [{ source: filename, knowledgeBaseId, documentId }]);
     }
-    // --- LÓGICA PARA TEXTO PLANO ---
+    // --- LÓGICA PARA TEXTO PLANO (Conferencias) ---
     else if (fileExtension === "TXT") {
       const text = buffer.toString('utf-8');
       chunks = await textSplitter.createDocuments([text], [{ source: filename, knowledgeBaseId, documentId }]);
     }
-    // --- LÓGICA PARA WORD ---
+    // --- LÓGICA PARA WORD (Manual APA) ---
     else if (fileExtension === "DOCX") {
       const result = await mammoth.extractRawText({ buffer });
       chunks = await textSplitter.createDocuments([result.value], [{ source: filename, knowledgeBaseId, documentId }]);
@@ -69,8 +69,9 @@ export async function processFile(
 
     if (chunks.length === 0) return 0;
 
-    console.log(`💾 Indexando ${chunks.length} fragmentos...`);
-    const BATCH_SIZE = 50; 
+    // --- GUARDADO E INDEXACIÓN EN SUPABASE ---
+    console.log(`💾 Indexando ${chunks.length} fragmentos en la Nube...`);
+    const BATCH_SIZE = 40; // Lotes más pequeños para no agotar la memoria de Vercel
     for (let i = 0; i < chunks.length; i += BATCH_SIZE) {
       const batch = chunks.slice(i, i + BATCH_SIZE);
       const embeddings = await getEmbeddingsForTexts(batch.map(c => c.pageContent));
@@ -87,27 +88,19 @@ export async function processFile(
     }
     return chunks.length;
   } catch (error) {
-    console.error("❌ Error en el procesador:", error);
+    console.error("❌ Error en procesador:", error.message);
     throw error;
   }
 }
 
-// --- PROCESADOR DE ENLACES WEB ---
 export async function processUrl(url: string, knowledgeBaseId: string, documentId: string) {
   const { addDocumentsToStore } = require("./vectorStore");
   try {
     const res = await fetch(url);
     const html = await res.text();
-    const cleanHtml = html
-      .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
-      .replace(/<style\b[^<]*(?:(?!<\/style>)<[^<]*)*<\/style>/gi, '')
-      .replace(/<[^>]*>?/gm, ' ')
-      .replace(/\s+/g, ' ')
-      .trim();
-
+    const cleanHtml = html.replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '').replace(/<style\b[^<]*(?:(?!<\/style>)<[^<]*)*<\/style>/gi, '').replace(/<[^>]*>?/gm, ' ').replace(/\s+/g, ' ').trim();
     const chunks = await textSplitter.createDocuments([cleanHtml], [{ source: url, knowledgeBaseId, documentId }]);
     await addDocumentsToStore(chunks);
-
     await prisma.documentChunk.createMany({
       data: chunks.map(c => ({
         content: c.pageContent,
@@ -118,7 +111,7 @@ export async function processUrl(url: string, knowledgeBaseId: string, documentI
     });
     return chunks.length;
   } catch (error) {
-    console.error("❌ Error en processUrl:", error);
+    console.error("❌ Error en processUrl:", error.message);
     throw error;
   }
 }
