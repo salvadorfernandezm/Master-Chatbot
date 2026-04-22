@@ -44,7 +44,7 @@ export async function POST(req: Request) {
         contents: [{
           parts: [{ text: systemPrompt + "\n\nUsuario: " + message }]
         }],
-        generationConfig: { temperature: 0.2, maxOutputTokens: 2000 }
+        generationConfig: { temperature: 0.2, maxOutputTokens: 2500 }
       })
     });
 

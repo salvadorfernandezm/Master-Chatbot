@@ -27,7 +27,6 @@ export default function ChatClient({ token, name, welcomeMessage, inputPlacehold
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
-  // Función para que el cuadro crezca hacia arriba automáticamente
   useEffect(() => {
     if (textareaRef.current) {
       textareaRef.current.style.height = "auto";
@@ -49,7 +48,6 @@ export default function ChatClient({ token, name, welcomeMessage, inputPlacehold
 
     const userMsg = input.trim();
     setInput("");
-    // Resetear altura del textarea tras enviar
     if (textareaRef.current) textareaRef.current.style.height = "auto";
     
     setMessages(prev => [...prev, { role: "user", content: userMsg }]);
@@ -66,18 +64,27 @@ export default function ChatClient({ token, name, welcomeMessage, inputPlacehold
       if (!res.ok) throw new Error(data.error || "Error al obtener respuesta");
 
       setMessages(prev => [...prev, { role: "assistant", content: data.reply }]);
-   } catch (error: any) {
-      // TRADUCTOR DE ERRORES PARA ALUMNOS
+    } catch (error: any) {
+      // --- TU TRADUCTOR DE ERRORES PERSONALIZADO ---
       let friendlyMessage = `❌ Error: ${error.message}`;
       
-      if (error.message.includes("high demand") || error.message.includes("429")) {
-        friendlyMessage = "⚠️ **Nota del Profesor:** El sistema está un poco saturado en este momento (muchas consultas simultáneas). No es un fallo, por favor **espera 10 segundos e intenta enviar tu pregunta de nuevo.**";
+      const errorStr = error.message.toLowerCase();
+      if (errorStr.includes("high demand") || errorStr.includes("429") || errorStr.includes("overloaded")) {
+        friendlyMessage = "⚠️ **Nota del Profesor:** El chat está un poco saturado en este momento debido a muchas consultas simultáneas. **Esto no es un fallo del sistema; por favor, espera unos 10 a 15 segundos e intenta enviar tu pregunta de nuevo.**";
       }
       
       setMessages(prev => [...prev, { role: "assistant", content: friendlyMessage }]);
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      handleSubmit();
+    }
+  };
 
   return (
     <div className="flex flex-col h-screen bg-slate-50">
