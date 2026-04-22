@@ -1,4 +1,15 @@
 // @ts-nocheck
+// ESTA ES LA CURA PARA EL ERROR DOMMatrix
+if (typeof global.DOMMatrix === 'undefined') {
+  global.DOMMatrix = class DOMMatrix {
+    constructor() {}
+  };
+}
+
+import * as mammoth from "mammoth";
+// ... el resto del código sigue igual ...
+
+// @ts-nocheck
 import * as mammoth from "mammoth";
 import * as XLSX from "xlsx";
 import { Document } from "@langchain/core/documents";
