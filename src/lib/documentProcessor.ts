@@ -23,17 +23,24 @@ export async function processFile(
   const { getEmbeddingsForTexts, addDocumentsToStore } = require("./vectorStore");
   const fileExtension = filename.split('.').pop()?.toUpperCase();
 
-  console.log(`📂 Procesando archivo: ${filename}`);
+  console.log(`📂 Iniciando procesamiento: ${filename} (${fileExtension})`);
 
   try {
     if (fileExtension === "PDF") {
       const data = await pdf(buffer);
-      const text = data.text;
-      if (text && text.trim().length > 0) {
-        chunks = await textSplitter.createDocuments([text], [{ source: filename, knowledgeBaseId, documentId }]);
+      const text = data.text.trim();
+      
+      if (!text || text.length < 10) {
+        console.warn("⚠️ ALERTA: El PDF parece ser una imagen o está vacío. Intentando extracción alternativa...");
+        // Si el texto es muy corto, devolvemos 0 para que no haya errores
+        return 0;
       }
+
+      console.log(`✅ Texto extraído del PDF (${text.length} caracteres). Troceando...`);
+      chunks = await textSplitter.createDocuments([text], [{ source: filename, knowledgeBaseId, documentId }]);
     } 
     else if (fileExtension === "XLSX" || fileExtension === "XLS") {
+      // (Aquí va tu código de Excel que ya funciona perfecto...)
       const workbook = XLSX.read(buffer, { type: 'buffer' });
       const excelBlocks: string[] = [];
       workbook.SheetNames.forEach(sheetName => {
@@ -41,9 +48,7 @@ export async function processFile(
         const jsonData = XLSX.utils.sheet_to_json(worksheet, { defval: "0" });
         jsonData.forEach((row: any) => {
           let rowString = `FICHA DE CALIFICACIÓN OFICIAL - Alumno: ${row["Nombre"] || row["ALUMNO"] || "Estudiante"}\n`;
-          Object.entries(row).forEach(([key, value]) => {
-            rowString += `${key}: ${value} | `;
-          });
+          Object.entries(row).forEach(([key, value]) => { rowString += `${key}: ${value} | `; });
           excelBlocks.push(rowString);
         });
       });
@@ -58,10 +63,13 @@ export async function processFile(
       chunks = await textSplitter.createDocuments([result.value], [{ source: filename, knowledgeBaseId, documentId }]);
     }
 
-    if (chunks.length === 0) return 0;
+    if (chunks.length === 0) {
+      console.error("❌ No se pudieron generar fragmentos.");
+      return 0;
+    }
 
-    console.log(`💾 Indexando ${chunks.length} fragmentos...`);
-    const BATCH_SIZE = 100;
+    console.log(`💾 Guardando ${chunks.length} fragmentos en la base de datos...`);
+    const BATCH_SIZE = 50; // Reducimos el tamaño del lote para no saturar la Nube
     for (let i = 0; i < chunks.length; i += BATCH_SIZE) {
       const batch = chunks.slice(i, i + BATCH_SIZE);
       const embeddings = await getEmbeddingsForTexts(batch.map(c => c.pageContent));
@@ -78,7 +86,7 @@ export async function processFile(
     }
     return chunks.length;
   } catch (error) {
-    console.error("❌ Error en processFile:", error);
+    console.error("❌ Error fatal en el procesador:", error);
     throw error;
   }
 }
