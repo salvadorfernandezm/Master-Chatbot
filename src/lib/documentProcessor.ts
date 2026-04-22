@@ -5,11 +5,11 @@ import { Document } from "@langchain/core/documents";
 import { RecursiveCharacterTextSplitter } from "@langchain/textsplitters";
 import { prisma } from "./prisma";
 
-// IMPORTANTE: Cambio de estrategia para PDF (Bypass de importación)
-const pdfParse = require("pdf-parse/lib/pdf-parse.js");
+// Intentamos la importación estándar
+const pdf = require("pdf-parse");
 
 const textSplitter = new RecursiveCharacterTextSplitter({
-  chunkSize: 1500, // Un poco más pequeño para lecturas densas
+  chunkSize: 1500,
   chunkOverlap: 300,
 });
 
@@ -27,21 +27,27 @@ export async function processFile(
   console.log(`📂 Procesando: ${filename} | Tipo: ${fileExtension}`);
 
   try {
-    // --- NUEVO MOTOR DE PDF ---
+    // --- LÓGICA PARA PDF (REFORZADA) ---
     if (fileExtension === "PDF") {
-      // Usamos el buffer directo con la librería interna
-      const data = await pdfParse(buffer);
+      // TRUCO MAESTRO: Si la librería viene envuelta en ".default", la extraemos
+      const parseFunction = typeof pdf === 'function' ? pdf : pdf.default;
+      
+      if (typeof parseFunction !== 'function') {
+        throw new Error("No se pudo cargar la función de lectura de PDF.");
+      }
+
+      const data = await parseFunction(buffer);
       const text = data.text;
       
       if (text && text.trim().length > 10) {
         console.log(`✅ PDF leído con éxito: ${text.length} caracteres.`);
         chunks = await textSplitter.createDocuments([text], [{ source: filename, knowledgeBaseId, documentId }]);
       } else {
-        console.warn("⚠️ PDF vacío o sin texto extraíble.");
+        console.warn("⚠️ PDF sin texto legible.");
         return 0;
       }
     } 
-    // --- LÓGICA PARA EXCEL (Fichas de Salvador) ---
+    // --- LÓGICA PARA EXCEL ---
     else if (fileExtension === "XLSX" || fileExtension === "XLS") {
       const workbook = XLSX.read(buffer, { type: 'buffer' });
       const excelBlocks: string[] = [];
@@ -56,12 +62,12 @@ export async function processFile(
       });
       chunks = await textSplitter.createDocuments(excelBlocks, [{ source: filename, knowledgeBaseId, documentId }]);
     }
-    // --- LÓGICA PARA TEXTO PLANO (Conferencias) ---
+    // --- LÓGICA PARA TXT ---
     else if (fileExtension === "TXT") {
       const text = buffer.toString('utf-8');
       chunks = await textSplitter.createDocuments([text], [{ source: filename, knowledgeBaseId, documentId }]);
     }
-    // --- LÓGICA PARA WORD (Manual APA) ---
+    // --- LÓGICA PARA WORD ---
     else if (fileExtension === "DOCX") {
       const result = await mammoth.extractRawText({ buffer });
       chunks = await textSplitter.createDocuments([result.value], [{ source: filename, knowledgeBaseId, documentId }]);
@@ -69,9 +75,9 @@ export async function processFile(
 
     if (chunks.length === 0) return 0;
 
-    // --- GUARDADO E INDEXACIÓN EN SUPABASE ---
-    console.log(`💾 Indexando ${chunks.length} fragmentos en la Nube...`);
-    const BATCH_SIZE = 40; // Lotes más pequeños para no agotar la memoria de Vercel
+    // --- INDEXACIÓN EN LOTES ---
+    console.log(`💾 Indexando ${chunks.length} fragmentos...`);
+    const BATCH_SIZE = 40; 
     for (let i = 0; i < chunks.length; i += BATCH_SIZE) {
       const batch = chunks.slice(i, i + BATCH_SIZE);
       const embeddings = await getEmbeddingsForTexts(batch.map(c => c.pageContent));
@@ -88,7 +94,7 @@ export async function processFile(
     }
     return chunks.length;
   } catch (error) {
-    console.error("❌ Error en procesador:", error.message);
+    console.error("❌ Error en el procesador:", error.message);
     throw error;
   }
 }
