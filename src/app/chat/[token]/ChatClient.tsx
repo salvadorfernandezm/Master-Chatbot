@@ -66,20 +66,18 @@ export default function ChatClient({ token, name, welcomeMessage, inputPlacehold
       if (!res.ok) throw new Error(data.error || "Error al obtener respuesta");
 
       setMessages(prev => [...prev, { role: "assistant", content: data.reply }]);
-    } catch (error: any) {
-      setMessages(prev => [...prev, { role: "assistant", content: `❌ Error: ${error.message}` }]);
+   } catch (error: any) {
+      // TRADUCTOR DE ERRORES PARA ALUMNOS
+      let friendlyMessage = `❌ Error: ${error.message}`;
+      
+      if (error.message.includes("high demand") || error.message.includes("429")) {
+        friendlyMessage = "⚠️ **Nota del Profesor:** El sistema está un poco saturado en este momento (muchas consultas simultáneas). No es un fallo, por favor **espera 10 segundos e intenta enviar tu pregunta de nuevo.**";
+      }
+      
+      setMessages(prev => [...prev, { role: "assistant", content: friendlyMessage }]);
     } finally {
       setLoading(false);
     }
-  };
-
-  // Manejar el Enter para enviar
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === "Enter" && !e.shiftKey) {
-      e.preventDefault();
-      handleSubmit();
-    }
-  };
 
   return (
     <div className="flex flex-col h-screen bg-slate-50">
