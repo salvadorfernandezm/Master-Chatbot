@@ -9,6 +9,8 @@ export async function POST(req: Request) {
     const { message, token } = body;
     const apiKey = process.env.GEMINI_API_KEY;
 
+    if (!apiKey) return NextResponse.json({ error: "Falta API Key" }, { status: 500 });
+
     const chatbot = await prisma.chatbot.findUnique({
       where: { token, isActive: true },
       include: { knowledgeBase: true }
@@ -18,37 +20,39 @@ export async function POST(req: Request) {
 
     // 1. CARGAR CONTEXTO
     await loadStoreFromDB(chatbot.knowledgeBaseId, prisma);
-    const vectorContexts = await searchVectorStore(message, chatbot.knowledgeBaseId, 25);
+    const vectorContexts = await searchVectorStore(message, chatbot.knowledgeBaseId, 30);
     const contextText = vectorContexts.map(v => v.pageContent).join("\n\n---\n\n");
 
-    const systemPrompt = `Eres un asistente de notas y asistencias. 
-    Usa este contexto (que incluye un JSON con datos de alumnos): ${contextText}. 
-    Si el alumno te da su correo, busca sus faltas ('absent') y sus notas. No inventes nada.`;
+    const systemPrompt = `Eres "${chatbot.name}", el asistente del Prof. Salvador Fernández. 
+    REGLA: Para notas o faltas, el usuario DEBE dar su correo. 
+    Usa este contexto: ${contextText}`;
 
-    // 2. EL MODELO "LITE" (EL DE LA CUOTA ALTA)
-    // Usamos el 2.0-flash-lite que vimos en tu lista de la terminal
-    const modelName = "gemini-2.0-flash-lite"; 
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${apiKey}`;
+    // 2. LA LLAVE PARA LOS 1,500 MENSAJES (v1 + gemini-1.5-flash)
+    // Cambiamos 'v1beta' por 'v1' para entrar a la oficina estable
+    const modelName = "gemini-1.5-flash"; 
+    const url = `https://generativelanguage.googleapis.com/v1/models/${modelName}:generateContent?key=${apiKey}`;
 
-    console.log(`📡 Usando el modelo de alta capacidad: ${modelName}`);
+    console.log(`🚀 FORZANDO MODELO ESTABLE: ${modelName} en V1`);
 
     const response = await fetch(url, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        contents: [{ parts: [{ text: systemPrompt + "\n\nUsuario: " + message }] }]
+        contents: [{ parts: [{ text: systemPrompt + "\n\nPregunta: " + message }] }],
+        generationConfig: { temperature: 0.1, maxOutputTokens: 2000 }
       })
     });
 
     const data = await response.json();
 
     if (!response.ok) {
-        // Si el Lite también falla, es que necesitamos un Redeploy en Vercel sin caché
-        throw new Error(data.error?.message || "Error de cuota");
+      console.error("GOOGLE DIJO EN V1:", data);
+      throw new Error(data.error?.message || "Error en la oficina V1");
     }
 
     const reply = data.candidates[0].content.parts[0].text;
-    
+
+    // 3. GUARDAR ANALÍTICAS
     await prisma.interaction.create({
       data: { chatbotId: chatbot.id, query: message, response: reply }
     }).catch(() => {});
@@ -56,6 +60,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ reply });
 
   } catch (error: any) {
-    return NextResponse.json({ error: "⚠️ " + error.message }, { status: 500 });
+    console.error("❌ ERROR FINAL:", error.message);
+    return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
