@@ -9,51 +9,39 @@ export async function POST(req: Request) {
     const { message, token } = body;
     const apiKey = process.env.GEMINI_API_KEY;
 
-    const chatbot = await prisma.chatbot.findUnique({
-      where: { token, isActive: true },
-      include: { knowledgeBase: true }
-    });
+    // --- ESTO ES PARA EL DETECTIVE SALVADOR ---
+    const keyCheck = apiKey ? apiKey.substring(0, 8) : "NO HAY LLAVE";
+    console.log(`🔎 Vercel está usando la llave que empieza con: ${keyCheck}`);
 
+    if (!apiKey) return NextResponse.json({ error: "Falta API Key" }, { status: 500 });
+
+    const chatbot = await prisma.chatbot.findUnique({ where: { token, isActive: true } });
     if (!chatbot) return NextResponse.json({ error: "Chatbot no encontrado" }, { status: 404 });
 
     await loadStoreFromDB(chatbot.knowledgeBaseId, prisma);
-    const vectorContexts = await searchVectorStore(message, chatbot.knowledgeBaseId, 25);
+    const vectorContexts = await searchVectorStore(message, chatbot.knowledgeBaseId, 15);
     const contextText = vectorContexts.map(v => v.pageContent).join("\n\n---\n\n");
 
-    // MODELO LITE (El más generoso con la cuota)
-    const modelName = "gemini-2.0-flash-lite"; 
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${apiKey}`;
+    // MODELO ESTÁNDAR (El que tiene 1,500 mensajes)
+    const modelName = "gemini-1.5-flash"; 
+    const url = `https://generativelanguage.googleapis.com/v1/models/${modelName}:generateContent?key=${apiKey}`;
 
     const response = await fetch(url, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        contents: [{
-          parts: [{ text: `CONTEXTO ACADÉMICO:\n${contextText}\n\nPREGUNTA: ${message}\n\nINSTRUCCIÓN: Responde de forma directa basándote en los datos.` }]
-        }],
-        // APAGAMOS LOS FILTROS DE SEGURIDAD POR COMPLETO
-        safetySettings: [
-          { category: "HARM_CATEGORY_HARASSMENT", threshold: "BLOCK_NONE" },
-          { category: "HARM_CATEGORY_HATE_SPEECH", threshold: "BLOCK_NONE" },
-          { category: "HARM_CATEGORY_SEXUALLY_EXPLICIT", threshold: "BLOCK_NONE" },
-          { category: "HARM_CATEGORY_DANGEROUS_CONTENT", threshold: "BLOCK_NONE" }
-        ]
+        contents: [{ parts: [{ text: `CONTEXTO: ${contextText}\n\nPREGUNTA: ${message}` }] }]
       })
     });
 
     const data = await response.json();
 
     if (!response.ok) {
-        // Mostramos el error técnico exacto en el chat para saber qué pasa
-        return NextResponse.json({ error: `Google dice: ${data.error?.message || 'Error desconocido'}` }, { status: 500 });
+        console.error("❌ GOOGLE DIJO:", data.error?.message);
+        throw new Error(data.error?.message || "Saturación");
     }
 
-    const reply = data.candidates?.[0]?.content?.parts?.[0]?.text || "No encontré información para tu consulta.";
-    
-    await prisma.interaction.create({
-      data: { chatbotId: chatbot.id, query: message, response: reply }
-    }).catch(() => {});
-
+    const reply = data.candidates[0].content.parts[0].text;
     return NextResponse.json({ reply });
 
   } catch (error: any) {
