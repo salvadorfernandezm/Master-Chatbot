@@ -21,38 +21,38 @@ export async function POST(req: Request) {
     const vectorContexts = await searchVectorStore(message, chatbot.knowledgeBaseId, 25);
     const contextText = vectorContexts.map(v => v.pageContent).join("\n\n---\n\n");
 
-    const systemPrompt = `Eres un asistente académico. Usa este contexto: ${contextText}. Responde siempre basado en los documentos proporcionados.`;
+    const systemPrompt = `Eres "${chatbot.name}", el asistente del Prof. Salvador Fernández. 
+    INSTRUCCIÓN: Usa este contexto para responder: ${contextText}. 
+    Si preguntan por notas o faltas, busca el correo en el JSON del contexto. 
+    'absent' significa falta. Da resultados exactos.`;
 
-    // 2. LLAMADA A PRODUCCIÓN (V1 + 1.5 FLASH)
-    // Con la llave nueva, esta dirección nos dará 1,500 mensajes.
+    // 2. LLAMADA A GOOGLE (Oficina V1 - 1,500 Mensajes)
     const url = `https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
 
     const response = await fetch(url, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        contents: [{ parts: [{ text: systemPrompt + "\n\nPregunta: " + message }] }]
+        contents: [{ parts: [{ text: systemPrompt + "\n\nPregunta: " + message }] }],
+        generationConfig: { temperature: 0.1, maxOutputTokens: 2000 }
       })
     });
 
     const data = await response.json();
 
-    if (!response.ok) {
-      // Si con la llave nueva el 1.5 da 404, Google es realmente terco. 
-      // En ese caso, usa el modelo que te pongo aquí abajo como último recurso:
-      const fallbackUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-8b:generateContent?key=${apiKey}`;
-      const resFallback = await fetch(fallbackUrl, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ contents: [{ parts: [{ text: message }] }] })
-      });
-      const dataFallback = await resFallback.json();
-      return NextResponse.json({ reply: dataFallback.candidates[0].content.parts[0].text });
+    // --- MEJORA DE LECTURA (Aquí evitamos el error 'undefined 0') ---
+    let reply = "";
+    
+    if (data.candidates && data.candidates[0] && data.candidates[0].content) {
+        reply = data.candidates[0].content.parts[0].text;
+    } else if (data.error) {
+        throw new Error(data.error.message);
+    } else {
+        // Si Google bloqueó la respuesta por ver un correo (filtro de seguridad)
+        reply = "Lo siento, por políticas de seguridad de la API no puedo procesar esa información directamente. Por favor, intenta preguntarme por tus resultados sin incluir el correo en la misma frase, o verifica que el archivo de datos esté bien cargado.";
     }
 
-    const reply = data.candidates[0].content.parts[0].text;
-
-    // Guardar para analíticas
+    // 3. GUARDAR ANALÍTICAS
     await prisma.interaction.create({
       data: { chatbotId: chatbot.id, query: message, response: reply }
     }).catch(() => {});
@@ -60,6 +60,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ reply });
 
   } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    console.error("❌ ERROR:", error.message);
+    return NextResponse.json({ error: "Hubo un pequeño error al procesar los datos. Por favor, reintenta." }, { status: 500 });
   }
 }
