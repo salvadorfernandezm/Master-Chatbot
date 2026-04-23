@@ -3,6 +3,9 @@ import { NextResponse } from "next/dist/server/web/spec-extension/response";
 import { prisma } from "@/lib/prisma";
 import { searchVectorStore, loadStoreFromDB } from "@/lib/vectorStore";
 
+// Función para esperar si la cuota se agota
+const wait = (ms: number) => new Promise(res => setTimeout(res, ms));
+
 export async function POST(req: Request) {
   try {
     const body = await req.json();
@@ -11,7 +14,6 @@ export async function POST(req: Request) {
 
     if (!apiKey) return NextResponse.json({ error: "Falta API Key" }, { status: 500 });
 
-    // 1. IDENTIFICAR CHATBOT
     const chatbot = await prisma.chatbot.findUnique({
       where: { token, isActive: true },
       include: { knowledgeBase: true }
@@ -19,86 +21,58 @@ export async function POST(req: Request) {
 
     if (!chatbot) return NextResponse.json({ error: "Chatbot no encontrado" }, { status: 404 });
 
-    // 2. BUSCAR CONTEXTO (RAG)
     await loadStoreFromDB(chatbot.knowledgeBaseId, prisma);
     const vectorContexts = await searchVectorStore(message, chatbot.knowledgeBaseId, 25);
     const contextText = vectorContexts.map(v => v.pageContent).join("\n\n---\n\n");
 
-    // 3. INSTRUCCIONES DE IDENTIDAD Y SEGURIDAD (Correo ElectrónICO)
-    const isGradesChat = chatbot.name.toLowerCase().includes("calificaci") || chatbot.name.toLowerCase().includes("nota");
-    
-    let securityPrompt = "";
-    if (isGradesChat) {
-      securityPrompt = `
-      REGLA DE SEGURIDAD OBLIGATORIA:
-      - Solo puedes dar información si el usuario proporciona un CORREO ELECTRÓNICO.
-      - Si el usuario NO ha dado un correo en su mensaje actual, pídelo amablemente: "Por favor, para proteger tu privacidad, proporcióname tu correo (el que usas en la app de asistencias)".
-      - Busca en el contexto la columna 'Correo' o 'Email'. Si el correo no coincide exactamente, di que no encuentras el registro.
-      - NUNCA des notas basándote solo en nombres propios.`;
-    }
+    // LÓGICA DE SEGURIDAD POR CORREO
+    const systemPrompt = `Eres "${chatbot.name}", asistente del Prof. Salvador.
+    CONTEXTO: ${contextText}
 
-    const systemPrompt = `Eres "${chatbot.name}", el asistente académico del Profesor Salvador. 
-    ${securityPrompt}
-    
-    CONTEXTO DE TUS ARCHIVOS:
-    ${contextText || "No hay documentos cargados."}
+    REGLA DE SEGURIDAD:
+    - Para dar NOTAS o ASISTENCIAS, el usuario DEBE dar su correo.
+    - Si no lo da, pídelo: "Para ver tus datos, dime tu correo institucional".
+    - Si el correo está en el CONTEXTO (JSON o Tabla), dale su reporte completo:
+      * Calificaciones.
+      * Asistencias (cuenta cuántos 'absent' tiene).
+    - NO INVENTES NADA.`;
 
-    INSTRUCCIONES ADICIONALES: ${chatbot.systemInstructions || "Responde con profesionalismo."}
-    
-    REGLA DE SALIDA: No te cortes a mitad de frase. Sé detallado pero conciso.`;
-
-    // 4. CONEXIÓN ESTABLE (Para recuperar los 1,500 mensajes)
-    // Intentaremos usar la ruta 'v1' que es la de producción masiva
-   const modelName = "gemini-2.0-flash-lite"; 
-const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${apiKey}`;
-
-    console.log(`📡 Conectando a Producción (1,500 msgs): ${modelName}`);
-
-    const response = await fetch(url, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        contents: [{ parts: [{ text: systemPrompt + "\n\nPregunta: " + message }] }],
-        generationConfig: { 
-          temperature: 0.7, 
-          maxOutputTokens: 2500, // Micrófono abierto al máximo
-          topP: 0.95
-        }
-      })
-    });
-
-    const data = await response.json();
-    
-    // Si la oficina 'v1' nos da 404 (porque tu cuenta es VIP), saltamos automáticamente al 2.0 lite
-    if (!response.ok && response.status === 404) {
-      console.log("⚠️ Producción v1 no disponible, usando Gemini 2.0 Flash Lite...");
-      const backupUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-lite:generateContent?key=${apiKey}`;
-      const backupRes = await fetch(backupUrl, {
+    // Intentamos la llamada con reintento si hay saturación
+    let attempts = 0;
+    while (attempts < 2) {
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key=${apiKey}`;
+      const response = await fetch(url, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          contents: [{ parts: [{ text: systemPrompt + "\n\nPregunta: " + message }] }],
-          generationConfig: { maxOutputTokens: 2500 }
+          contents: [{ parts: [{ text: systemPrompt + "\n\nUsuario: " + message }] }],
+          generationConfig: { temperature: 0.1, maxOutputTokens: 2000 }
         })
       });
-      const backupData = await backupRes.json();
-      const reply = backupData.candidates[0].content.parts[0].text;
-      return NextResponse.json({ reply });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        const reply = data.candidates[0].content.parts[0].text;
+        // Guardar analíticas
+        await prisma.interaction.create({
+          data: { chatbotId: chatbot.id, query: message, response: reply }
+        }).catch(() => {});
+        return NextResponse.json({ reply });
+      }
+
+      if (data.error?.message.includes("quota") || response.status === 429) {
+        console.log("Cuota agotada, esperando para reintentar...");
+        await wait(10000); // Espera 10 segundos
+        attempts++;
+      } else {
+        throw new Error(data.error?.message || "Error desconocido");
+      }
     }
 
-    if (!response.ok) throw new Error(data.error?.message || "Fallo en Google");
-
-    const reply = data.candidates[0].content.parts[0].text;
-
-    // 5. GUARDAR ANALÍTICAS
-    await prisma.interaction.create({
-      data: { chatbotId: chatbot.id, query: message, response: reply }
-    }).catch(e => console.error("Error analíticas:", e));
-
-    return NextResponse.json({ reply });
+    return NextResponse.json({ error: "El servidor de Google está muy ocupado. Reintenta en 1 minuto." }, { status: 500 });
 
   } catch (error: any) {
-    console.error("❌ FALLO:", error.message);
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
