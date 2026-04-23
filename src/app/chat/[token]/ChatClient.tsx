@@ -60,23 +60,16 @@ export default function ChatClient({ token, name, welcomeMessage, inputPlacehold
         body: JSON.stringify({ message: userMsg, token }),
       });
 
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Error al obtener respuesta");
+      const data = await response.ok ? await res.json() : { error: "Saturación" };
+      if (!res.ok) throw new Error(data.error || "Saturación");
 
       setMessages(prev => [...prev, { role: "assistant", content: data.reply }]);
     } catch (error: any) {
       const errorTexto = error.message.toLowerCase();
       let friendlyMessage = `❌ Error: ${error.message}`;
       
-      if (
-        errorTexto.includes("high demand") || 
-        errorTexto.includes("temporary") || 
-        errorTexto.includes("429") || 
-        errorTexto.includes("overloaded") ||
-        errorTexto.includes("later") ||
-        errorTexto.includes("quota")
-      ) {
-        friendlyMessage = "⚠️ **Nota del Profesor:** Hola. El chat está un poco saturado por la alta demanda. **No es un fallo del sistema.** Por favor, espera 15 segundos y vuelve a enviar tu pregunta. ¡Gracias por tu paciencia!";
+      if (errorTexto.includes("high demand") || errorTexto.includes("quota") || errorTexto.includes("saturaci")) {
+        friendlyMessage = "⚠️ **Nota del Profesor:** El chat está un poco saturado. Espera 15 segundos e intenta de nuevo.";
       }
       
       setMessages(prev => [...prev, { role: "assistant", content: friendlyMessage }]);
@@ -99,9 +92,7 @@ export default function ChatClient({ token, name, welcomeMessage, inputPlacehold
           {logoUrl ? (
             <img src={logoUrl} alt="Logo" className="w-10 h-10 object-contain rounded-lg" />
           ) : (
-            <div className="h-10 w-10 bg-gradient-to-tr from-purple-600 to-indigo-600 rounded-xl flex items-center justify-center text-white text-xl shadow-lg">
-              🤖
-            </div>
+            <div className="h-10 w-10 bg-gradient-to-tr from-purple-600 to-indigo-600 rounded-xl flex items-center justify-center text-white text-xl shadow-lg">🤖</div>
           )}
           <div>
             <h1 className="font-bold text-slate-800">{name}</h1>
@@ -114,40 +105,19 @@ export default function ChatClient({ token, name, welcomeMessage, inputPlacehold
         <div className="max-w-3xl mx-auto space-y-6">
           {messages.map((msg, i) => (
             <div key={i} className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
-              <div 
-                className={`max-w-[85%] md:max-w-[75%] p-4 rounded-2xl ${
-                  msg.role === "user" 
-                    ? "bg-gradient-to-r from-purple-600 to-indigo-600 text-white rounded-tr-none shadow-md" 
-                    : "bg-white border border-slate-200 text-slate-800 rounded-tl-none shadow-sm"
-                }`}
-              >
-                <div className="max-w-none prose prose-slate">
-                  <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                    {msg.content}
-                  </ReactMarkdown>
-                </div>
+              <div className={`max-w-[85%] md:max-w-[75%] p-4 rounded-2xl ${msg.role === "user" ? "bg-purple-600 text-white shadow-md" : "bg-white border text-slate-800 shadow-sm"}`}>
+                <ReactMarkdown remarkPlugins={[remarkGfm]}>{msg.content}</ReactMarkdown>
               </div>
             </div>
           ))}
-          {loading && (
-             <div className="flex justify-start">
-               <div className="bg-white border text-slate-400 p-4 rounded-2xl rounded-tl-none shadow-sm flex items-center gap-2">
-                 <div className="flex gap-1">
-                   <div className="w-1.5 h-1.5 bg-slate-300 rounded-full animate-bounce"></div>
-                   <div className="w-1.5 h-1.5 bg-slate-300 rounded-full animate-bounce [animation-delay:0.2s]"></div>
-                   <div className="w-1.5 h-1.5 bg-slate-300 rounded-full animate-bounce [animation-delay:0.4s]"></div>
-                 </div>
-                 Escribiendo...
-               </div>
-             </div>
-          )}
+          {loading && <div className="text-xs text-slate-400 animate-pulse">Escribiendo...</div>}
           <div ref={messagesEndRef} />
         </div>
       </main>
 
       <footer className="bg-white border-t border-slate-200 p-4">
         <div className="max-w-3xl mx-auto">
-          <div className="flex items-end gap-3 bg-slate-100 p-3 rounded-2xl border border-slate-200 focus-within:ring-2 focus-within:ring-purple-500 shadow-inner transition-all">
+          <div className="flex items-end gap-3 bg-slate-100 p-3 rounded-2xl border border-slate-200 focus-within:ring-2 focus-within:ring-purple-500">
             <textarea
               ref={textareaRef}
               rows={1}
@@ -155,20 +125,11 @@ export default function ChatClient({ token, name, welcomeMessage, inputPlacehold
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={handleKeyDown}
               placeholder={inputPlaceholder}
-              className="flex-1 bg-transparent px-2 py-1 outline-none text-slate-700 placeholder-slate-400 resize-none max-h-48 overflow-y-auto"
+              className="flex-1 bg-transparent outline-none resize-none"
               disabled={loading}
             />
-            <button
-              onClick={() => handleSubmit()}
-              disabled={loading || !input.trim()}
-              className="bg-purple-600 hover:bg-purple-700 text-white p-3 rounded-xl disabled:opacity-50 transition-colors shadow-md flex-shrink-0"
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
-            </button>
+            <button onClick={() => handleSubmit()} disabled={loading || !input.trim()} className="bg-purple-600 text-white p-2 rounded-xl">Enviar</button>
           </div>
-          <p className="text-[10px] text-center text-slate-400 mt-2 italic">
-            Shift + Enter para nueva línea • Enter para enviar
-          </p>
         </div>
       </footer>
     </div>
