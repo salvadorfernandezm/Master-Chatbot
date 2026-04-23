@@ -60,7 +60,8 @@ export default function ChatClient({ token, name, welcomeMessage, inputPlacehold
         body: JSON.stringify({ message: userMsg, token }),
       });
 
-      const data = await response.ok ? await res.json() : { error: "Saturación" };
+      const data = await res.json();
+      
       if (!res.ok) throw new Error(data.error || "Saturación");
 
       setMessages(prev => [...prev, { role: "assistant", content: data.reply }]);
@@ -69,7 +70,7 @@ export default function ChatClient({ token, name, welcomeMessage, inputPlacehold
       let friendlyMessage = `❌ Error: ${error.message}`;
       
       if (errorTexto.includes("high demand") || errorTexto.includes("quota") || errorTexto.includes("saturaci")) {
-        friendlyMessage = "⚠️ **Nota del Profesor:** El chat está un poco saturado. Espera 15 segundos e intenta de nuevo.";
+        friendlyMessage = "⚠️ **Nota del Profesor:** El chat está un poco saturado por la alta demanda. Por favor, espera 15 segundos e intenta de nuevo. ¡Gracias!";
       }
       
       setMessages(prev => [...prev, { role: "assistant", content: friendlyMessage }]);
@@ -110,7 +111,7 @@ export default function ChatClient({ token, name, welcomeMessage, inputPlacehold
               </div>
             </div>
           ))}
-          {loading && <div className="text-xs text-slate-400 animate-pulse">Escribiendo...</div>}
+          {loading && <div className="text-xs text-slate-400 animate-pulse mt-2 ml-4">Escribiendo...</div>}
           <div ref={messagesEndRef} />
         </div>
       </main>
@@ -128,7 +129,7 @@ export default function ChatClient({ token, name, welcomeMessage, inputPlacehold
               className="flex-1 bg-transparent outline-none resize-none"
               disabled={loading}
             />
-            <button onClick={() => handleSubmit()} disabled={loading || !input.trim()} className="bg-purple-600 text-white p-2 rounded-xl">Enviar</button>
+            <button onClick={() => handleSubmit()} disabled={loading || !input.trim()} className="bg-purple-600 text-white px-4 py-2 rounded-xl transition-colors">Enviar</button>
           </div>
         </div>
       </footer>
