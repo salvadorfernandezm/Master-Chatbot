@@ -1,11 +1,11 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
 datasource db {
   provider  = "postgresql"
   url       = env("DATABASE_URL")
   directUrl = env("DIRECT_URL")
-}
-
-generator client {
-  provider = "prisma-client-js"
 }
 
 model User {
@@ -13,7 +13,7 @@ model User {
   name      String?
   email     String   @unique
   password  String
-  role      String   @default("ADMIN") // ADMIN or STUDENT
+  role      String   @default("ADMIN")
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
@@ -29,67 +29,62 @@ model Settings {
 }
 
 model Group {
-  id          String   @id @default(cuid())
+  id          String    @id @default(cuid())
   name        String
   description String?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
   chatbots    Chatbot[]
 }
 
 model KnowledgeBase {
-  id          String   @id @default(cuid())
+  id          String     @id @default(cuid())
   name        String
   description String?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  
-  documents   Document[]
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
   chatbots    Chatbot[]
+  documents   Document[]
 }
 
 model Document {
-  id              String   @id @default(cuid())
+  id              String          @id @default(cuid())
   filename        String
-  type            String   // "PDF", "WORD", "URL"
+  type            String
   urlOrPath       String?
   knowledgeBaseId String
-  createdAt       DateTime @default(now())
-  
-  knowledgeBase   KnowledgeBase @relation(fields: [knowledgeBaseId], references: [id], onDelete: Cascade)
+  createdAt       DateTime        @default(now())
+  knowledgeBase   KnowledgeBase   @relation(fields: [knowledgeBaseId], references: [id], onDelete: Cascade)
   chunks          DocumentChunk[]
 }
 
 model DocumentChunk {
   id              String   @id @default(cuid())
   content         String
-  metadata        String   // JSON string
-  embedding       String?  // JSON stringified array of numbers
+  metadata        String
+  embedding       String?
   documentId      String
   knowledgeBaseId String
-  
-  document        Document      @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  document        Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
 }
 
 model Chatbot {
-  id                 String   @id @default(cuid())
+  id                 String        @id @default(cuid())
   name               String
-  token              String   @unique // Unique link for students to access
+  token              String        @unique
   groupId            String
   knowledgeBaseId    String
-  isActive           Boolean  @default(true)
+  isActive           Boolean       @default(true)
   welcomeMessage     String?
-  systemInstructions String?  // Specific directives (e.g., "Answer only from context")
-  fallbackMessage    String?  // Message when no info is found
-  inputPlaceholder   String?  // Placeholder in the chat input
+  systemInstructions String?
+  fallbackMessage    String?
+  inputPlaceholder   String?
   logoUrl            String?
-  createdAt          DateTime @default(now())
-  updatedAt          DateTime @updatedAt
-
-  group           Group         @relation(fields: [groupId], references: [id], onDelete: Cascade)
-  knowledgeBase   KnowledgeBase @relation(fields: [knowledgeBaseId], references: [id], onDelete: Cascade)
-  interactions    Interaction[]
+  createdAt          DateTime      @default(now())
+  updatedAt          DateTime      @updatedAt
+  group              Group         @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  knowledgeBase      KnowledgeBase @relation(fields: [knowledgeBaseId], references: [id], onDelete: Cascade)
+  interactions       Interaction[]
 }
 
 model Interaction {
@@ -98,6 +93,5 @@ model Interaction {
   query     String
   response  String
   createdAt DateTime @default(now())
-
-  chatbot   Chatbot @relation(fields: [chatbotId], references: [id], onDelete: Cascade)
+  chatbot   Chatbot  @relation(fields: [chatbotId], references: [id], onDelete: Cascade)
 }

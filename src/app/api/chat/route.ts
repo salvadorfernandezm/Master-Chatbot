@@ -49,8 +49,8 @@ export async function POST(req: Request) {
 
     // 4. CONEXIÓN ESTABLE (Para recuperar los 1,500 mensajes)
     // Intentaremos usar la ruta 'v1' que es la de producción masiva
-    const modelName = "gemini-1.5-flash";
-    const url = `https://generativelanguage.googleapis.com/v1/models/${modelName}:generateContent?key=${apiKey}`;
+   const modelName = "gemini-2.0-flash-lite"; 
+const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${apiKey}`;
 
     console.log(`📡 Conectando a Producción (1,500 msgs): ${modelName}`);
 
