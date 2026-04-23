@@ -17,15 +17,10 @@ export async function POST(req: Request) {
     if (!chatbot) return NextResponse.json({ error: "Chatbot no encontrado" }, { status: 404 });
 
     await loadStoreFromDB(chatbot.knowledgeBaseId, prisma);
-    const vectorContexts = await searchVectorStore(message, chatbot.knowledgeBaseId, 30);
+    const vectorContexts = await searchVectorStore(message, chatbot.knowledgeBaseId, 25);
     const contextText = vectorContexts.map(v => v.pageContent).join("\n\n---\n\n");
 
-    const systemPrompt = `Eres "${chatbot.name}", asistente del Prof. Salvador. 
-    INSTRUCCIÓN: Usa este CONTEXTO (que es un JSON de alumnos): ${contextText}. 
-    Si te dan un correo, busca las notas y el conteo de 'absent' (faltas). 
-    No menciones que eres una IA, solo da los datos académicos.`;
-
-    // --- EL MODELO QUE SÍ EXISTE EN TU CUENTA ---
+    // MODELO LITE (El más generoso con la cuota)
     const modelName = "gemini-2.0-flash-lite"; 
     const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${apiKey}`;
 
@@ -33,39 +28,35 @@ export async function POST(req: Request) {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        contents: [{ parts: [{ text: systemPrompt + "\n\nPregunta: " + message }] }],
-        // Bajamos los filtros de seguridad para que el correo no cause bloqueos
+        contents: [{
+          parts: [{ text: `CONTEXTO ACADÉMICO:\n${contextText}\n\nPREGUNTA: ${message}\n\nINSTRUCCIÓN: Responde de forma directa basándote en los datos.` }]
+        }],
+        // APAGAMOS LOS FILTROS DE SEGURIDAD POR COMPLETO
         safetySettings: [
           { category: "HARM_CATEGORY_HARASSMENT", threshold: "BLOCK_NONE" },
           { category: "HARM_CATEGORY_HATE_SPEECH", threshold: "BLOCK_NONE" },
           { category: "HARM_CATEGORY_SEXUALLY_EXPLICIT", threshold: "BLOCK_NONE" },
           { category: "HARM_CATEGORY_DANGEROUS_CONTENT", threshold: "BLOCK_NONE" }
-        ],
-        generationConfig: { temperature: 0.1, maxOutputTokens: 2000 }
+        ]
       })
     });
 
     const data = await response.json();
 
     if (!response.ok) {
-        throw new Error(data.error?.message || "Error en la conexión");
+        // Mostramos el error técnico exacto en el chat para saber qué pasa
+        return NextResponse.json({ error: `Google dice: ${data.error?.message || 'Error desconocido'}` }, { status: 500 });
     }
 
-    if (data.candidates && data.candidates[0] && data.candidates[0].content) {
-        const reply = data.candidates[0].content.parts[0].text;
-        
-        await prisma.interaction.create({
-          data: { chatbotId: chatbot.id, query: message, response: reply }
-        }).catch(() => {});
-
-        return NextResponse.json({ reply });
-    } 
+    const reply = data.candidates?.[0]?.content?.parts?.[0]?.text || "No encontré información para tu consulta.";
     
-    return NextResponse.json({ 
-        reply: "El sistema de seguridad de Google detectó el correo como dato sensible. Por favor, intenta de nuevo o escribe tu nombre de usuario sin el @." 
-    });
+    await prisma.interaction.create({
+      data: { chatbotId: chatbot.id, query: message, response: reply }
+    }).catch(() => {});
+
+    return NextResponse.json({ reply });
 
   } catch (error: any) {
-    return NextResponse.json({ error: "⚠️ " + error.message }, { status: 500 });
+    return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
