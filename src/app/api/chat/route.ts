@@ -9,8 +9,11 @@ export async function POST(req: Request) {
     const { message, token } = body;
     const apiKey = process.env.GEMINI_API_KEY;
 
-    // LOG PARA EL MAESTRO SALVADOR
-    console.log(`🚀 LLAMADA RECIBIDA. Usando llave: ${apiKey?.substring(0, 10)}...`);
+    // --- LOG DE VERSIÓN PARA EL MAESTRO SALVADOR ---
+    console.log("-----------------------------------------");
+    console.log("🚀 EJECUTANDO RAG CHAT VERSIÓN 10.0");
+    console.log(`🔑 LLAVE USADA: ${apiKey?.substring(0, 10)}...`);
+    console.log("-----------------------------------------");
 
     if (!apiKey) return NextResponse.json({ error: "Falta API Key" }, { status: 500 });
 
@@ -22,10 +25,10 @@ export async function POST(req: Request) {
     if (!chatbot) return NextResponse.json({ error: "Chatbot no encontrado" }, { status: 404 });
 
     await loadStoreFromDB(chatbot.knowledgeBaseId, prisma);
-    const vectorContexts = await searchVectorStore(message, chatbot.knowledgeBaseId, 20);
+    const vectorContexts = await searchVectorStore(message, chatbot.knowledgeBaseId, 15);
     const contextText = vectorContexts.map(v => v.pageContent).join("\n\n---\n\n");
 
-    // USAMOS EL MODELO QUE TU CUENTA SÍ TIENE (2.0 LITE)
+    // USAMOS EL MODELO LITE (El que debe tener la cuota libre)
     const modelName = "gemini-2.0-flash-lite"; 
     const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${apiKey}`;
 
@@ -33,24 +36,21 @@ export async function POST(req: Request) {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        contents: [{ parts: [{ text: `CONTEXTO:\n${contextText}\n\nPREGUNTA: ${message}` }] }],
-        safetySettings: [
-          { category: "HARM_CATEGORY_HARASSMENT", threshold: "BLOCK_NONE" },
-          { category: "HARM_CATEGORY_HATE_SPEECH", threshold: "BLOCK_NONE" }
-        ]
+        contents: [{ parts: [{ text: `CONTEXTO:\n${contextText}\n\nPREGUNTA: ${message}` }] }]
       })
     });
 
     const data = await response.json();
 
     if (!response.ok) {
-        console.error("❌ ERROR GOOGLE:", data.error?.message);
+        // Logeamos el error exacto de Google para verlo en Vercel
+        console.error("❌ GOOGLE DIJO:", JSON.stringify(data));
         throw new Error(data.error?.message || "Saturación");
     }
 
     const reply = data.candidates[0].content.parts[0].text;
     
-    // Guardar analíticas
+    // Guardar para analíticas
     await prisma.interaction.create({
       data: { chatbotId: chatbot.id, query: message, response: reply }
     }).catch(() => {});
@@ -58,7 +58,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ reply });
 
   } catch (error: any) {
-    console.error("❌ FALLO:", error.message);
+    console.error("❌ FALLO EN LA RUTA:", error.message);
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
