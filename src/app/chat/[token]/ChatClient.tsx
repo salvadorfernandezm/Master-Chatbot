@@ -65,27 +65,32 @@ export default function ChatClient({ token, name, welcomeMessage, inputPlacehold
 
       setMessages(prev => [...prev, { role: "assistant", content: data.reply }]);
     } catch (error: any) {
-      console.log("Error detectado:", error.message);
-      
-      // TRADUCTOR SÚPER ROBUSTO
       const errorTexto = error.message.toLowerCase();
       let friendlyMessage = `❌ Error: ${error.message}`;
       
-      // Si el error contiene CUALQUIERA de estas palabras, lanzamos tu nota
       if (
         errorTexto.includes("high demand") || 
         errorTexto.includes("temporary") || 
         errorTexto.includes("429") || 
         errorTexto.includes("overloaded") ||
-        errorTexto.includes("later")
+        errorTexto.includes("later") ||
+        errorTexto.includes("quota")
       ) {
-        friendlyMessage = "⚠️ **Nota del Profesor:** Hola colega o alumno. El chat está un poco saturado por la alta demanda de consultas. **No es un fallo del sistema.** Por favor, espera 15 segundos y vuelve a enviar tu pregunta. ¡Gracias por la paciencia!";
+        friendlyMessage = "⚠️ **Nota del Profesor:** Hola. El chat está un poco saturado por la alta demanda. **No es un fallo del sistema.** Por favor, espera 15 segundos y vuelve a enviar tu pregunta. ¡Gracias por tu paciencia!";
       }
       
       setMessages(prev => [...prev, { role: "assistant", content: friendlyMessage }]);
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      handleSubmit();
+    }
+  };
 
   return (
     <div className="flex flex-col h-screen bg-slate-50">
