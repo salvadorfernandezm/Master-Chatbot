@@ -18,49 +18,68 @@ export async function POST(req: Request) {
 
     if (!chatbot) return NextResponse.json({ error: "Chatbot no encontrado" }, { status: 404 });
 
-    // 1. CARGAR CONTEXTO
+    // 1. CARGAR CONTEXTO (Buscando a Alondra en el JSON)
     await loadStoreFromDB(chatbot.knowledgeBaseId, prisma);
     const vectorContexts = await searchVectorStore(message, chatbot.knowledgeBaseId, 30);
     const contextText = vectorContexts.map(v => v.pageContent).join("\n\n---\n\n");
 
-    const systemPrompt = `Eres "${chatbot.name}", el asistente del Prof. Salvador Fernández. 
-    REGLA: Para notas o faltas, el usuario DEBE dar su correo. 
-    Usa este contexto: ${contextText}`;
+    const systemPrompt = `Eres "${chatbot.name}", el asistente del Prof. Salvador.
+    INSTRUCCIÓN: Si el usuario da un correo, busca sus notas y faltas en este CONTEXTO:
+    ${contextText}
+    REGLA: Di la verdad, no inventes. Si el correo no está, pide que lo verifiquen.`;
 
-    // 2. LA LLAVE PARA LOS 1,500 MENSAJES (v1 + gemini-1.5-flash)
-    // Cambiamos 'v1beta' por 'v1' para entrar a la oficina estable
-    const modelName = "gemini-1.5-flash"; 
-    const url = `https://generativelanguage.googleapis.com/v1/models/${modelName}:generateContent?key=${apiKey}`;
+    // 2. CADENA DE SUPERVIVENCIA (INTENTAREMOS 3 MODELOS)
+    // El 2.0-flash-lite y el 1.5-flash-8b suelen tener cuota de 1,500 mensajes
+    const modelsToTry = [
+      "gemini-2.0-flash-lite", 
+      "gemini-1.5-flash-8b",
+      "gemini-2.0-flash"
+    ];
 
-    console.log(`🚀 FORZANDO MODELO ESTABLE: ${modelName} en V1`);
+    let lastError = "";
+    
+    for (const modelName of modelsToTry) {
+      console.log(`📡 Intentando con modelo: ${modelName}...`);
+      
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${apiKey}`;
 
-    const response = await fetch(url, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        contents: [{ parts: [{ text: systemPrompt + "\n\nPregunta: " + message }] }],
-        generationConfig: { temperature: 0.1, maxOutputTokens: 2000 }
-      })
-    });
+      try {
+        const response = await fetch(url, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            contents: [{ parts: [{ text: systemPrompt + "\n\nPregunta: " + message }] }],
+            generationConfig: { temperature: 0.1, maxOutputTokens: 2000 }
+          })
+        });
 
-    const data = await response.json();
+        const data = await response.json();
 
-    if (!response.ok) {
-      console.error("GOOGLE DIJO EN V1:", data);
-      throw new Error(data.error?.message || "Error en la oficina V1");
+        if (response.ok) {
+          const reply = data.candidates[0].content.parts[0].text;
+          
+          // GUARDAR ANALÍTICAS (Esto ya sabemos que funciona)
+          await prisma.interaction.create({
+            data: { chatbotId: chatbot.id, query: message, response: reply }
+          }).catch(() => {});
+
+          return NextResponse.json({ reply });
+        } else {
+          console.warn(`⚠️ Modelo ${modelName} falló: ${data.error?.message}`);
+          lastError = data.error?.message;
+          // Si el error es de cuota o no encontrado, el bucle sigue al siguiente modelo
+        }
+      } catch (e: any) {
+        lastError = e.message;
+      }
     }
 
-    const reply = data.candidates[0].content.parts[0].text;
-
-    // 3. GUARDAR ANALÍTICAS
-    await prisma.interaction.create({
-      data: { chatbotId: chatbot.id, query: message, response: reply }
-    }).catch(() => {});
-
-    return NextResponse.json({ reply });
+    // Si llegamos aquí, es que los 3 modelos fallaron
+    return NextResponse.json({ 
+      error: `Google está limitando el acceso temporalmente. Detalle: ${lastError}. Por favor, intenta de nuevo en un momento.` 
+    }, { status: 500 });
 
   } catch (error: any) {
-    console.error("❌ ERROR FINAL:", error.message);
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
