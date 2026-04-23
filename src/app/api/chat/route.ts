@@ -22,7 +22,7 @@ export async function POST(req: Request) {
 
     if (!chatbot) return NextResponse.json({ error: "Chatbot no encontrado" }, { status: 404 });
 
-    // CARGAR CONTEXTO CON PROTECCIÓN
+    // CARGAR CONTEXTO
     let contextText = "No hay documentos cargados.";
     try {
         await loadStoreFromDB(chatbot.knowledgeBaseId, prisma);
@@ -31,17 +31,14 @@ export async function POST(req: Request) {
             contextText = vectorContexts.map(v => v?.pageContent || "").join("\n\n---\n\n");
         }
     } catch (err) {
-        console.warn("⚠️ Advertencia en búsqueda de vectores:", err.message);
+        console.warn("Error en búsqueda:", err.message);
     }
 
-    const systemPrompt = `Eres un asistente académico. Contexto: ${contextText}. Responde directo.`;
+    const systemPrompt = `Eres un asistente académico. Usa este contexto: ${contextText}. Responde de forma directa.`;
 
-    // --- EL MODELO QUE NUNCA TIENE LÍMITE 0 ---
-    // El 1.5-flash-8b es el 'plebeyo' oficial de Google. 1,500 mensajes garantizados.
+    // USAMOS EL MODELO 8B (EL QUE SIEMPRE TIENE CUOTA)
     const modelName = "gemini-1.5-flash-8b"; 
     const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${apiKey}`;
-
-    console.log(`📡 Llamando al modelo de alta disponibilidad: ${modelName}`);
 
     const response = await fetch(url, {
       method: "POST",
@@ -54,8 +51,7 @@ export async function POST(req: Request) {
     const data = await response.json();
 
     if (!response.ok) {
-        console.error("❌ GOOGLE RECHAZÓ EL PEDIDO:", JSON.stringify(data));
-        throw new Error(data.error?.message || "Error de cuota");
+        throw new Error(data.error?.message || "Error de Google");
     }
 
     const reply = data.candidates[0].content.parts[0].text;
@@ -68,6 +64,6 @@ export async function POST(req: Request) {
 
   } catch (error: any) {
     console.error("❌ FALLO:", error.message);
-    return NextResponse.json({ error: "El servidor de Google está procesando datos. Reintenta en 10 segundos." }, { status: 500 });
+    return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
