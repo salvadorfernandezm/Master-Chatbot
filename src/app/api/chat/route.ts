@@ -9,7 +9,7 @@ export async function POST(req: Request) {
     const { message, token } = body;
     const apiKey = process.env.GEMINI_API_KEY;
 
-    if (!apiKey) return NextResponse.json({ error: "Falta API Key" }, { status: 500 });
+    if (!apiKey) return NextResponse.json({ error: "Falta la API Key" }, { status: 500 });
 
     const chatbot = await prisma.chatbot.findUnique({
       where: { token, isActive: true },
@@ -17,16 +17,19 @@ export async function POST(req: Request) {
 
     if (!chatbot) return NextResponse.json({ error: "Chatbot no encontrado" }, { status: 404 });
 
-    // --- OPTIMIZACIÓN DE VELOCIDAD ---
-    // Cargamos los vectores pero de forma mucho más ligera
-    await loadStoreFromDB(chatbot.knowledgeBaseId, prisma);
+    // 1. CARGA LIGERA DE CONTEXTO
+    try {
+      await loadStoreFromDB(chatbot.knowledgeBaseId, prisma);
+    } catch (e) {
+      console.warn("Aviso: No se pudo cargar la base de datos, respondiendo con IA general.");
+    }
+    
     const vectorContexts = await searchVectorStore(message, chatbot.knowledgeBaseId, 10);
     const contextText = vectorContexts.map((v: any) => v.pageContent).join("\n\n");
 
-    const systemPrompt = `Eres un asistente académico. Contexto: ${contextText}. Responde directo y breve.`;
+    const systemPrompt = `Eres un asistente académico. Contexto: ${contextText}. Responde de forma clara.`;
 
-    // USAMOS EL MODELO QUE TU TERMINAL DIJO QUE TIENES (v1beta)
-    // El 2.0-flash es el que Google quiere que uses ahora
+    // 2. LLAMADA A GOOGLE (Modelo 2.0 Flash - El más moderno)
     const modelName = "gemini-2.0-flash"; 
     const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${apiKey}`;
 
@@ -34,30 +37,29 @@ export async function POST(req: Request) {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        contents: [{ parts: [{ text: systemPrompt + "\n\nUsuario: " + message }] }]
+        contents: [{ parts: [{ text: systemPrompt + "\n\nPregunta: " + message }] }],
+        // Bajamos los filtros para evitar que las respuestas vengan vacías
+        safetySettings: [
+          { category: "HARM_CATEGORY_HARASSMENT", threshold: "BLOCK_NONE" },
+          { category: "HARM_CATEGORY_HATE_SPEECH", threshold: "BLOCK_NONE" }
+        ]
       })
     });
 
     const data = await response.json();
 
-    if (!response.ok) {
-        // Si el 2.0 falla, saltamos al 1.5 automáticamente para no dar error
-        const altUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
-        const altRes = await fetch(altUrl, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ contents: [{ parts: [{ text: message }] }] })
-        });
-        const altData = await altRes.json();
-        return NextResponse.json({ reply: altData.candidates[0].content.parts[0].text });
+    // --- DETECTOR DE RESPUESTA VACÍA (Evita el error 'reading 0') ---
+    if (data.candidates && data.candidates.length > 0 && data.candidates[0].content) {
+        const reply = data.candidates[0].content.parts[0].text;
+        return NextResponse.json({ reply });
+    } else {
+        // Si Google bloqueó la respuesta o falló la cuota
+        const errorMsg = data.error?.message || "Google bloqueó la respuesta por seguridad o saturación.";
+        return NextResponse.json({ reply: `⚠️ Nota: ${errorMsg}. Por favor, intenta con otra pregunta.` });
     }
 
-    const reply = data.candidates[0].content.parts[0].text;
-    return NextResponse.json({ reply });
-
   } catch (error: any) {
-    console.error("❌ FALLO REAL:", error.message);
-    // Cambiamos el mensaje para que veas el error real si algo falla
-    return NextResponse.json({ error: "Google está pensando... reintenta una vez más: " + error.message }, { status: 500 });
+    console.error("❌ FALLO:", error.message);
+    return NextResponse.json({ error: "Reintentando... " + error.message }, { status: 500 });
   }
 }
