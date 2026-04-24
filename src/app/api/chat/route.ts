@@ -19,14 +19,17 @@ export async function POST(req: Request) {
     const vectorContexts = await searchVectorStore(message, chatbot.knowledgeBaseId, 25);
     const contextText = vectorContexts.map((v: any) => v.pageContent).join("\n\n");
 
-    const systemPrompt = `Eres el asistente académico del Prof. Salvador. 
-    Usa este contexto: ${contextText}. 
-    CÁLCULO: Si una nota es sobre 12, divídela entre 1.2 para el promedio base 10.
-    INSTRUCCIÓN: Responde de forma breve y directa.`;
+    const systemPrompt = `Eres el asistente académico del Prof. Salvador.
+    Usa estos datos: ${contextText}.
+    CÁLCULO: Si una nota es sobre 12, divídela entre 1.2. Si es sobre 5, multiplícala por 2.
+    INSTRUCCIÓN: Responde directo y amable.`;
 
-    // 2. ESTRATEGIA DE MODELOS (INTENTAREMOS LA PUERTA ESTABLE V1)
-    // El modelo 1.5-flash en V1 es el que tiene los 1,500 mensajes garantizados.
-    const url = `https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
+    // 2. EL MODELO QUE SÍ EXISTE EN TU CUENTA (2.0 FLASH)
+    // Usamos el endpoint v1 (Producción) con el nombre exacto
+    const modelName = "gemini-2.0-flash"; 
+    const url = `https://generativelanguage.googleapis.com/v1/models/${modelName}:generateContent?key=${apiKey}`;
+
+    console.log(`🚀 Conectando a Producción con el modelo: ${modelName}`);
 
     const response = await fetch(url, {
       method: "POST",
@@ -34,38 +37,39 @@ export async function POST(req: Request) {
       body: JSON.stringify({
         contents: [{ parts: [{ text: systemPrompt + "\n\nPregunta: " + message }] }],
         safetySettings: [
-            { category: "HARM_CATEGORY_HARASSMENT", threshold: "BLOCK_NONE" },
-            { category: "HARM_CATEGORY_HATE_SPEECH", threshold: "BLOCK_NONE" },
-            { category: "HARM_CATEGORY_SEXUALLY_EXPLICIT", threshold: "BLOCK_NONE" },
-            { category: "HARM_CATEGORY_DANGEROUS_CONTENT", threshold: "BLOCK_NONE" }
+          { category: "HARM_CATEGORY_HARASSMENT", threshold: "BLOCK_NONE" },
+          { category: "HARM_CATEGORY_HATE_SPEECH", threshold: "BLOCK_NONE" },
+          { category: "HARM_CATEGORY_SEXUALLY_EXPLICIT", threshold: "BLOCK_NONE" },
+          { category: "HARM_CATEGORY_DANGEROUS_CONTENT", threshold: "BLOCK_NONE" }
         ],
-        generationConfig: { temperature: 0.1 }
+        generationConfig: { temperature: 0.1, maxOutputTokens: 2000 }
       })
     });
 
     const data = await response.json();
 
-    // 3. SI LA PUERTA ESTABLE FALLA, INTENTAMOS EL MODELO 8B (EL ÚLTIMO RECURSO)
     if (!response.ok) {
-        console.warn("Fallo en V1, intentando modelo 8b de emergencia...");
-        const altUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-8b:generateContent?key=${apiKey}`;
-        const altRes = await fetch(altUrl, {
+        // Si el modelo 2.0 da error de cuota, probamos el alias universal 'gemini-flash-latest'
+        console.warn("Intentando con el alias 'latest' por saturación...");
+        const backupUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key=${apiKey}`;
+        const backupRes = await fetch(backupUrl, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ contents: [{ parts: [{ text: systemPrompt + message }] }] })
         });
-        const altData = await altRes.json();
+        const backupData = await backupRes.json();
         
-        if (!altRes.ok) {
-            return NextResponse.json({ reply: `⚠️ Nota del Profesor: Google está saturado. El error es: ${altData.error?.message}. Por favor, descansa 5 minutos e intenta de nuevo.` });
+        if (!backupRes.ok) {
+            throw new Error(backupData.error?.message || "Google está saturado");
         }
-        return NextResponse.json({ reply: altData.candidates[0].content.parts[0].text });
+        return NextResponse.json({ reply: backupData.candidates[0].content.parts[0].text });
     }
 
     const reply = data.candidates[0].content.parts[0].text;
     return NextResponse.json({ reply });
 
   } catch (error: any) {
-    return NextResponse.json({ error: "Sincronizando... " + error.message }, { status: 500 });
+    console.error("❌ FALLO:", error.message);
+    return NextResponse.json({ error: "Nota: " + error.message }, { status: 500 });
   }
 }
