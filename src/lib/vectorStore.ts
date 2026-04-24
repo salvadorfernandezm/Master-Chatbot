@@ -14,11 +14,11 @@ let store: any = null;
 
 export async function loadStoreFromDB(knowledgeBaseId: string, prisma: any) {
   try {
+    // IMPORTACIÓN DINÁMICA MEJORADA
     const { MemoryVectorStore } = await import("langchain/vectorstores/memory");
     
-    // Traemos los fragmentos (chunks)
     const chunks = await prisma.documentChunk.findMany({
-      where: { knowledgeBaseId }
+        where: { knowledgeBaseId }
     });
 
     if (!chunks || chunks.length === 0) return;
@@ -31,36 +31,16 @@ export async function loadStoreFromDB(knowledgeBaseId: string, prisma: any) {
     store = await MemoryVectorStore.fromDocuments(docs, embeddings);
     console.log(`✅ Memoria cargada: ${chunks.length} fragmentos.`);
   } catch (error) {
-    console.error("❌ Error en carga:", error.message);
+    console.error("❌ Error en carga de memoria:", error.message);
   }
 }
 
 export async function searchVectorStore(query: string, knowledgeBaseId: string, limit: number = 20) {
-  // --- BÚSQUEDA HÍBRIDA ---
-  // 1. Intentamos búsqueda inteligente
-  let results = [];
-  if (store) {
-    results = await store.similaritySearch(query, limit);
+  if (!store) return [];
+  try {
+    return await store.similaritySearch(query, limit);
+  } catch (error) {
+    console.error("❌ Error en búsqueda:", error.message);
+    return [];
   }
-
-  // 2. BÚSQUEDA DE EMERGENCIA (Texto directo por si la inteligente falla)
-  // Esto asegura que si el nombre "Alondra" está en el archivo, aparezca SÍ o SÍ.
-  const { prisma } = await import("./prisma");
-  const words = query.split(' ').filter(w => w.length > 3);
-  
-  if (words.length > 0) {
-    const directChunks = await prisma.documentChunk.findMany({
-      where: {
-        knowledgeBaseId,
-        OR: words.map(w => ({ content: { contains: w, mode: 'insensitive' } }))
-      },
-      take: 10
-    });
-    
-    directChunks.forEach(c => {
-      results.push({ pageContent: c.content, metadata: c.metadata });
-    });
-  }
-
-  return results;
 }
