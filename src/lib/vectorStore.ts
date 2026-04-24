@@ -16,32 +16,51 @@ export async function loadStoreFromDB(knowledgeBaseId: string, prisma: any) {
   try {
     const { MemoryVectorStore } = await import("langchain/vectorstores/memory");
     
-    // CARGAMOS ABSOLUTAMENTE TODO LO QUE HAYA EN LA NUBE
-    const chunks = await prisma.documentChunk.findMany();
+    // Traemos los fragmentos (chunks)
+    const chunks = await prisma.documentChunk.findMany({
+      where: { knowledgeBaseId }
+    });
 
-    if (!chunks || chunks.length === 0) {
-      console.log("⚠️ Supabase no tiene datos aún.");
-      return;
-    }
+    if (!chunks || chunks.length === 0) return;
 
     const docs = chunks.map((chunk) => ({
       pageContent: chunk.content,
-      metadata: chunk.metadata,
+      metadata: typeof chunk.metadata === 'string' ? JSON.parse(chunk.metadata) : chunk.metadata,
     }));
 
     store = await MemoryVectorStore.fromDocuments(docs, embeddings);
-    console.log(`✅ Memoria cargada con éxito: ${chunks.length} fragmentos encontrados.`);
+    console.log(`✅ Memoria cargada: ${chunks.length} fragmentos.`);
   } catch (error) {
-    console.error("❌ Error cargando memoria:", error.message);
+    console.error("❌ Error en carga:", error.message);
   }
 }
 
-export async function searchVectorStore(query: string, knowledgeBaseId: string, limit: number = 15) {
-  if (!store) return [];
-  try {
-    // Buscamos en toda la bolsa de datos sin filtros de ID
-    return await store.similaritySearch(query, limit);
-  } catch (error) {
-    return [];
+export async function searchVectorStore(query: string, knowledgeBaseId: string, limit: number = 20) {
+  // --- BÚSQUEDA HÍBRIDA ---
+  // 1. Intentamos búsqueda inteligente
+  let results = [];
+  if (store) {
+    results = await store.similaritySearch(query, limit);
   }
+
+  // 2. BÚSQUEDA DE EMERGENCIA (Texto directo por si la inteligente falla)
+  // Esto asegura que si el nombre "Alondra" está en el archivo, aparezca SÍ o SÍ.
+  const { prisma } = await import("./prisma");
+  const words = query.split(' ').filter(w => w.length > 3);
+  
+  if (words.length > 0) {
+    const directChunks = await prisma.documentChunk.findMany({
+      where: {
+        knowledgeBaseId,
+        OR: words.map(w => ({ content: { contains: w, mode: 'insensitive' } }))
+      },
+      take: 10
+    });
+    
+    directChunks.forEach(c => {
+      results.push({ pageContent: c.content, metadata: c.metadata });
+    });
+  }
+
+  return results;
 }
