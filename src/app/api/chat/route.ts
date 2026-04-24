@@ -9,35 +9,21 @@ export async function POST(req: Request) {
     const { message, token } = body;
     const apiKey = process.env.GEMINI_API_KEY;
 
-    if (!apiKey) return NextResponse.json({ error: "Falta API Key" }, { status: 500 });
-
     const chatbot = await prisma.chatbot.findUnique({
       where: { token, isActive: true },
-      include: { knowledgeBase: true }
     });
 
-    if (!chatbot) return NextResponse.json({ error: "Chatbot no encontrado" }, { status: 404 });
+    if (!chatbot) return NextResponse.json({ error: "No hay chatbot" }, { status: 404 });
 
-    // 1. CARGA DE CONTEXTO (Buscando a Alondra)
     await loadStoreFromDB(chatbot.knowledgeBaseId, prisma);
     const vectorContexts = await searchVectorStore(message, chatbot.knowledgeBaseId, 25);
     const contextText = vectorContexts.map((v: any) => v.pageContent).join("\n\n---\n\n");
 
-    // 2. PROMPT DE AUTORIDAD (Aquí está la clave)
-    const systemPrompt = `ATENCIÓN: Eres el asistente del Prof. Salvador. 
-    A CONTINUACIÓN SE ENCUENTRA TU BASE DE DATOS OFICIAL. ES TU ÚNICA FUENTE DE VERDAD.
-    
-    INFORMACIÓN DE LOS ARCHIVOS:
-    ${contextText || "No hay datos cargados."}
+    console.log(`🔎 Chunks encontrados para Gemini: ${vectorContexts.length}`);
 
-    REGLAS:
-    - SI EL USUARIO DICE "SOY ALONDRA" O PREGUNTA POR "ALONDRA", BUSCA EN LOS DATOS DE ARRIBA.
-    - EL ARCHIVO CONTIENE UN JSON CON CALIFICACIONES Y ASISTENCIAS.
-    - "absent" significa FALTA.
-    - NUNCA digas que no tienes acceso a archivos. Los datos de arriba SON tus archivos.
-    - Responde de forma amable y directa.`;
+    const systemPrompt = `Eres un asistente experto. TU FUENTE DE VERDAD ES ESTA:\n${contextText}\n
+    INSTRUCCIÓN: Si Alondra o cualquier alumno pregunta, busca su dato arriba. NO MIENTAS. SI NO HAY DATOS, DI: 'No veo información en los fragmentos' y menciona cuántos chunks encontraste (${vectorContexts.length})`;
 
-    // 3. MODELO LITE (El que ya vimos que funciona)
     const modelName = "gemini-2.0-flash-lite"; 
     const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${apiKey}`;
 
@@ -45,25 +31,16 @@ export async function POST(req: Request) {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        contents: [{ parts: [{ text: systemPrompt + "\n\nPregunta del Alumno: " + message }] }],
-        safetySettings: [
-          { category: "HARM_CATEGORY_HARASSMENT", threshold: "BLOCK_NONE" },
-          { category: "HARM_CATEGORY_HATE_SPEECH", threshold: "BLOCK_NONE" }
-        ],
-        generationConfig: { temperature: 0.1 }
+        contents: [{ parts: [{ text: systemPrompt + "\n\nPregunta: " + message }] }]
       })
     });
 
     const data = await response.json();
+    const reply = data.candidates?.[0]?.content?.parts?.[0]?.text || "No obtuve respuesta de la IA.";
 
-    if (data.candidates && data.candidates[0].content) {
-      const reply = data.candidates[0].content.parts[0].text;
-      return NextResponse.json({ reply });
-    } else {
-      return NextResponse.json({ reply: "No encontré el registro. ¿Podrías darme tu correo o nombre completo para buscar mejor?" });
-    }
+    return NextResponse.json({ reply });
 
   } catch (error: any) {
-    return NextResponse.json({ error: "Sincronizando... " + error.message }, { status: 500 });
+    return NextResponse.json({ error: "Fallo técnico: " + error.message }, { status: 500 });
   }
 }
