@@ -13,61 +13,57 @@ export async function POST(req: Request) {
 
     const chatbot = await prisma.chatbot.findUnique({
       where: { token, isActive: true },
+      include: { knowledgeBase: true }
     });
 
     if (!chatbot) return NextResponse.json({ error: "Chatbot no encontrado" }, { status: 404 });
 
-    // 1. CARGA DE CONTEXTO
+    // 1. CARGA DE CONTEXTO (Buscando a Alondra)
     await loadStoreFromDB(chatbot.knowledgeBaseId, prisma);
-    const vectorContexts = await searchVectorStore(message, chatbot.knowledgeBaseId, 15);
-    const contextText = vectorContexts.map((v: any) => v.pageContent).join("\n\n");
+    const vectorContexts = await searchVectorStore(message, chatbot.knowledgeBaseId, 25);
+    const contextText = vectorContexts.map((v: any) => v.pageContent).join("\n\n---\n\n");
 
-    const systemPrompt = `Eres un asistente académico. Contexto: ${contextText}. Responde directo y breve.`;
+    // 2. PROMPT DE AUTORIDAD (Aquí está la clave)
+    const systemPrompt = `ATENCIÓN: Eres el asistente del Prof. Salvador. 
+    A CONTINUACIÓN SE ENCUENTRA TU BASE DE DATOS OFICIAL. ES TU ÚNICA FUENTE DE VERDAD.
+    
+    INFORMACIÓN DE LOS ARCHIVOS:
+    ${contextText || "No hay datos cargados."}
 
-    // 2. LISTA DE MODELOS A PROBAR (En orden de probabilidad de éxito)
-    const modelsToTry = [
-      "gemini-2.0-flash-lite",  // El más probable con cuota libre
-      "gemini-2.5-flash-lite",  // El futuro "Lite"
-      "gemini-1.5-flash",       // El clásico
-    ];
+    REGLAS:
+    - SI EL USUARIO DICE "SOY ALONDRA" O PREGUNTA POR "ALONDRA", BUSCA EN LOS DATOS DE ARRIBA.
+    - EL ARCHIVO CONTIENE UN JSON CON CALIFICACIONES Y ASISTENCIAS.
+    - "absent" significa FALTA.
+    - NUNCA digas que no tienes acceso a archivos. Los datos de arriba SON tus archivos.
+    - Responde de forma amable y directa.`;
 
-    let lastError = "";
+    // 3. MODELO LITE (El que ya vimos que funciona)
+    const modelName = "gemini-2.0-flash-lite"; 
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${apiKey}`;
 
-    for (const modelName of modelsToTry) {
-      console.log(`📡 Probando "gasolina" en el modelo: ${modelName}`);
-      
-      // Intentamos con v1beta que es donde están los Lite
-      const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${apiKey}`;
-
-      const response = await fetch(url, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          contents: [{ parts: [{ text: systemPrompt + "\n\nPregunta: " + message }] }],
-          safetySettings: [
-            { category: "HARM_CATEGORY_HARASSMENT", threshold: "BLOCK_NONE" },
-            { category: "HARM_CATEGORY_HATE_SPEECH", threshold: "BLOCK_NONE" }
-          ]
-        })
-      });
-
-      const data = await response.json();
-
-      if (response.ok && data.candidates && data.candidates[0].content) {
-        const reply = data.candidates[0].content.parts[0].text;
-        return NextResponse.json({ reply });
-      } else {
-        lastError = data.error?.message || "Error desconocido";
-        console.warn(`⚠️ Modelo ${modelName} sin cuota o no encontrado. Pasando al siguiente...`);
-      }
-    }
-
-    // Si llegamos aquí, ninguno funcionó
-    return NextResponse.json({ 
-        reply: `⚠️ Lo siento, Salvador. Google indica: "${lastError}". Esto suele significar que el modelo está saturado. Por favor, reintenta en un minuto.` 
+    const response = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        contents: [{ parts: [{ text: systemPrompt + "\n\nPregunta del Alumno: " + message }] }],
+        safetySettings: [
+          { category: "HARM_CATEGORY_HARASSMENT", threshold: "BLOCK_NONE" },
+          { category: "HARM_CATEGORY_HATE_SPEECH", threshold: "BLOCK_NONE" }
+        ],
+        generationConfig: { temperature: 0.1 }
+      })
     });
 
+    const data = await response.json();
+
+    if (data.candidates && data.candidates[0].content) {
+      const reply = data.candidates[0].content.parts[0].text;
+      return NextResponse.json({ reply });
+    } else {
+      return NextResponse.json({ reply: "No encontré el registro. ¿Podrías darme tu correo o nombre completo para buscar mejor?" });
+    }
+
   } catch (error: any) {
-    return NextResponse.json({ error: "Fallo técnico: " + error.message }, { status: 500 });
+    return NextResponse.json({ error: "Sincronizando... " + error.message }, { status: 500 });
   }
 }
