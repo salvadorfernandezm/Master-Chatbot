@@ -9,62 +9,42 @@ export async function POST(req: Request) {
     const { message, token } = body;
     const apiKey = process.env.GEMINI_API_KEY;
 
-    // --- IDENTIFICAR CHATBOT ---
-    const chatbot = await prisma.chatbot.findUnique({
-      where: { token, isActive: true }
-    });
-    if (!chatbot) return NextResponse.json({ error: "Chatbot no encontrado" }, { status: 404 });
+    const chatbot = await prisma.chatbot.findUnique({ where: { token, isActive: true } });
+    if (!chatbot) return NextResponse.json({ error: "No hay chatbot" }, { status: 404 });
 
-    // --- CARGAR CONTEXTO (MÁXIMA VELOCIDAD) ---
     await loadStoreFromDB(chatbot.knowledgeBaseId, prisma);
-    const vectorContexts = await searchVectorStore(message, chatbot.knowledgeBaseId, 10);
-    const contextText = vectorContexts.map((v: any) => v.pageContent).join("\n\n");
+    const vectorContexts = await searchVectorStore(message, chatbot.knowledgeBaseId, 35);
+    const contextText = vectorContexts.map((v: any) => v.pageContent).join("\n\n---\n\n");
 
-    // --- LOG PARA EL MAESTRO ---
-    console.log(`🔎 Buscando para: ${message}. Chunks: ${vectorContexts.length}`);
+    const systemPrompt = `Eres el Asistente del Profesor Salvador. Tu fuente de datos es un JSON con tres listas: 'students', 'grades' y 'records'.
+    
+    INSTRUCCIONES DE BÚSQUEDA:
+    1. Busca el nombre o correo en la lista 'students' para obtener su "id".
+    2. Con ese "id", busca en 'grades' para dar sus calificaciones.
+    3. Con ese mismo "id", busca en 'records' y CUENTA cuántas veces aparece el estado "absent". Ese número son sus FALTAS reales.
+    4. Responde con el desglose de notas y el total de inasistencias.
+    
+    CONTEXTO DE DATOS:
+    ${contextText}`;
 
-    // --- LLAMADA A GOOGLE (VERSIÓN 2.5 FLASH) ---
-    // Usamos el nombre que tu terminal confirmó como activo
-    const modelName = "gemini-2.5-flash"; 
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${apiKey}`;
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-lite:generateContent?key=${apiKey}`;
 
     const response = await fetch(url, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        contents: [{
-          parts: [{ text: `CONTEXTO ACADÉMICO:\n${contextText}\n\nPREGUNTA: ${message}\n\nINSTRUCCIÓN: Responde basado solo en el contexto.` }]
-        }],
-        // APAGAMOS LOS FILTROS PARA QUE NO BLOQUEE CORREOS
-        safetySettings: [
-          { category: "HARM_CATEGORY_HARASSMENT", threshold: "BLOCK_NONE" },
-          { category: "HARM_CATEGORY_HATE_SPEECH", threshold: "BLOCK_NONE" },
-          { category: "HARM_CATEGORY_SEXUALLY_EXPLICIT", threshold: "BLOCK_NONE" },
-          { category: "HARM_CATEGORY_DANGEROUS_CONTENT", threshold: "BLOCK_NONE" }
-        ],
-        generationConfig: { temperature: 0.2, maxOutputTokens: 1000 }
+        contents: [{ parts: [{ text: systemPrompt + "\n\nPregunta: " + message }] }],
+        safetySettings: [{ category: "HARM_CATEGORY_DANGEROUS_CONTENT", threshold: "BLOCK_NONE" }],
+        generationConfig: { temperature: 0.1 }
       })
     });
 
     const data = await response.json();
+    const reply = data.candidates?.[0]?.content?.parts?.[0]?.text || "No encontré los datos. Revisa el nombre.";
 
-    // --- EL MOMENTO DE LA VERDAD (LOGS) ---
-    if (!response.ok) {
-        console.error("❌ ERROR DE GOOGLE:", JSON.stringify(data));
-        return NextResponse.json({ reply: `Google dice: ${data.error?.message || "Error desconocido"}` });
-    }
-
-    if (data.candidates && data.candidates[0]?.content?.parts?.[0]?.text) {
-        const reply = data.candidates[0].content.parts[0].text;
-        return NextResponse.json({ reply });
-    } else {
-        // Esto pasa si Google bloquea la respuesta por seguridad
-        console.warn("⚠️ RESPUESTA VACÍA. POSIBLE BLOQUEO DE SEGURIDAD:", JSON.stringify(data));
-        return NextResponse.json({ reply: "Google recibió la pregunta pero no pudo responder por sus políticas de seguridad. Intenta sin usar nombres propios o correos." });
-    }
+    return NextResponse.json({ reply });
 
   } catch (error: any) {
-    console.error("❌ FALLO TÉCNICO:", error.message);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ error: "Sincronizando: " + error.message }, { status: 500 });
   }
 }
