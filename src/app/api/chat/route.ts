@@ -9,30 +9,48 @@ export async function POST(req: Request) {
     const { message, token } = body;
     const apiKey = process.env.GEMINI_API_KEY;
 
-    console.log("🚀 EJECUTANDO: VERSIÓN PRODUCCIÓN FINAL");
+    console.log("-----------------------------------------");
+    console.log("🚀 EJECUTANDO: VERSIÓN DE PRODUCCIÓN FINAL");
+    console.log("-----------------------------------------");
 
     const chatbot = await prisma.chatbot.findUnique({ where: { token, isActive: true } });
-    if (!chatbot) return NextResponse.json({ error: "No hay chatbot" }, { status: 404 });
+    if (!chatbot) return NextResponse.json({ error: "Chatbot no encontrado" }, { status: 404 });
 
     await loadStoreFromDB(chatbot.knowledgeBaseId, prisma);
     const vectorContexts = await searchVectorStore(message, chatbot.knowledgeBaseId, 10);
-    const contextText = vectorContexts.map(v => v.pageContent).join("\n\n");
+    const contextText = vectorContexts.map(v => v.pageContent).join("\n\n---\n\n");
 
-    const url = `https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
+    const systemPrompt = `Eres un asistente académico. Usa este contexto: ${contextText}. Responde directo.`;
 
-    const response = await fetch(url, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        contents: [{ parts: [{ text: `CONTEXTO:\n${contextText}\n\nPREGUNTA: ${message}` }] }]
-      })
-    });
+    // --- ESTRATEGIA DE MODELOS (INTENTO DOBLE) ---
+    const models = ["gemini-1.5-flash", "gemini-2.0-flash"];
+    let reply = "";
+    let success = false;
 
-    const data = await response.json();
-    if (!response.ok) throw new Error(data.error?.message || "Error");
+    for (const modelName of models) {
+      if (success) break;
+      console.log(`📡 Probando modelo: ${modelName}`);
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${apiKey}`;
+      
+      const response = await fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ contents: [{ parts: [{ text: systemPrompt + "\n\nPregunta: " + message }] }] })
+      });
 
-    return NextResponse.json({ reply: data.candidates[0].content.parts[0].text });
+      const data = await response.json();
+      if (response.ok) {
+        reply = data.candidates[0].content.parts[0].text;
+        success = true;
+      }
+    }
+
+    if (!success) throw new Error("Google está procesando. Reintenta en 10 segundos.");
+
+    return NextResponse.json({ reply });
+
   } catch (error: any) {
-    return NextResponse.json({ error: "Procesando... reintenta en 5 segundos." }, { status: 500 });
+    console.error("❌ FALLO:", error.message);
+    return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
