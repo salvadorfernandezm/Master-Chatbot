@@ -88,15 +88,15 @@ export const searchVectorStore = async (query: string, knowledgeBaseId: string, 
   const store = await getVectorStore();
   
   try {
-    return await store.maxMarginalRelevanceSearch(query, {
-      k: limit,
-      fetchK: 100,
-      filter: (doc: any) => doc?.metadata?.knowledgeBaseId === knowledgeBaseId,
-    });
-  } catch (error) {
-    console.warn("MMR Search fallback:", error);
-    return await store.similaritySearch(query, limit, (doc: any) => {
-      return doc?.metadata?.knowledgeBaseId === knowledgeBaseId;
-    });
+  const results = await store.similaritySearch(query, limit);
+  // Filtramos manualmente para evitar el error de 'metadata' undefined
+  return results.filter(doc => {
+    const meta = typeof doc?.metadata === 'string' ? JSON.parse(doc.metadata) : doc?.metadata;
+    return meta?.knowledgeBaseId === knowledgeBaseId;
+  });
+} catch (error) {
+  console.error("❌ Error en búsqueda vectorial:", error.message);
+  return [];
+}
   }
 };

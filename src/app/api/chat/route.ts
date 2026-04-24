@@ -10,34 +10,23 @@ export async function POST(req: Request) {
     const apiKey = process.env.GEMINI_API_KEY;
 
     console.log("-----------------------------------------");
-    console.log("🚀 EJECUTANDO RAG CHAT VERSIÓN FINAL (8b)");
+    console.log("🚀 EJECUTANDO VERSIÓN DE RESCATE 2.0");
     console.log("-----------------------------------------");
-
-    if (!apiKey) return NextResponse.json({ error: "Falta API Key" }, { status: 500 });
 
     const chatbot = await prisma.chatbot.findUnique({
       where: { token, isActive: true },
-      include: { knowledgeBase: true }
     });
 
-    if (!chatbot) return NextResponse.json({ error: "Chatbot no encontrado" }, { status: 404 });
+    if (!chatbot) return NextResponse.json({ error: "No hay chatbot" }, { status: 404 });
 
-    // CARGAR CONTEXTO
-    let contextText = "No hay documentos cargados.";
-    try {
-        await loadStoreFromDB(chatbot.knowledgeBaseId, prisma);
-        const vectorContexts = await searchVectorStore(message, chatbot.knowledgeBaseId, 15);
-        if (vectorContexts && vectorContexts.length > 0) {
-            contextText = vectorContexts.map(v => v?.pageContent || "").join("\n\n---\n\n");
-        }
-    } catch (err) {
-        console.warn("Error en búsqueda:", err.message);
-    }
+    await loadStoreFromDB(chatbot.knowledgeBaseId, prisma);
+    const vectorContexts = await searchVectorStore(message, chatbot.knowledgeBaseId, 10);
+    const contextText = vectorContexts.map(v => v.pageContent).join("\n\n---\n\n");
 
-    const systemPrompt = `Eres un asistente académico. Usa este contexto: ${contextText}. Responde de forma directa.`;
+    const systemPrompt = `Eres un asistente académico. Contexto: ${contextText}. Responde breve.`;
 
-    // USAMOS EL MODELO 8B (EL QUE SIEMPRE TIENE CUOTA)
-    const modelName = "gemini-1.5-flash-8b"; 
+    // USAMOS EL MODELO 2.0 FLASH (Suele ser el más estable en tu cuenta)
+    const modelName = "gemini-2.0-flash"; 
     const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${apiKey}`;
 
     const response = await fetch(url, {
@@ -51,19 +40,13 @@ export async function POST(req: Request) {
     const data = await response.json();
 
     if (!response.ok) {
-        throw new Error(data.error?.message || "Error de Google");
+        console.error("❌ ERROR GOOGLE:", JSON.stringify(data));
+        throw new Error(data.error?.message || "Error de cuota");
     }
 
-    const reply = data.candidates[0].content.parts[0].text;
-    
-    await prisma.interaction.create({
-      data: { chatbotId: chatbot.id, query: message, response: reply }
-    }).catch(() => {});
-
-    return NextResponse.json({ reply });
+    return NextResponse.json({ reply: data.candidates[0].content.parts[0].text });
 
   } catch (error: any) {
-    console.error("❌ FALLO:", error.message);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ error: "⚠️ " + error.message }, { status: 500 });
   }
 }
