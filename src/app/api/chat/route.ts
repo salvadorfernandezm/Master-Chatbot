@@ -10,24 +10,33 @@ export async function POST(req: Request) {
     const apiKey = process.env.GEMINI_API_KEY;
 
     const chatbot = await prisma.chatbot.findUnique({ where: { token, isActive: true } });
-    if (!chatbot) return NextResponse.json({ error: "No hay chatbot" }, { status: 404 });
+    if (!chatbot) return NextResponse.json({ error: "Chatbot no encontrado" }, { status: 404 });
 
     await loadStoreFromDB(chatbot.knowledgeBaseId, prisma);
-    const vectorContexts = await searchVectorStore(message, chatbot.knowledgeBaseId, 35);
+    const vectorContexts = await searchVectorStore(message, chatbot.knowledgeBaseId, 25);
     const contextText = vectorContexts.map((v: any) => v.pageContent).join("\n\n---\n\n");
 
-    const systemPrompt = `Eres el Asistente del Profesor Salvador. Tu fuente de datos es un JSON con tres listas: 'students', 'grades' y 'records'.
-    
-    INSTRUCCIONES DE BÚSQUEDA:
-    1. Busca el nombre o correo en la lista 'students' para obtener su "id".
-    2. Con ese "id", busca en 'grades' para dar sus calificaciones.
-    3. Con ese mismo "id", busca en 'records' y CUENTA cuántas veces aparece el estado "absent". Ese número son sus FALTAS reales.
-    4. Responde con el desglose de notas y el total de inasistencias.
+    const systemPrompt = `Eres el asistente académico del Prof. Salvador. Tu misión es dar información exacta y realizar cálculos de promedios ponderados.
     
     CONTEXTO DE DATOS:
-    ${contextText}`;
+    ${contextText}
 
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-lite:generateContent?key=${apiKey}`;
+    LÓGICA DE CALIFICACIONES (SISTEMA DE PONDERACIÓN):
+    1. Identifica al alumno y sus notas por actividad.
+    2. DETERMINA LA ESCALA: Para cada actividad, observa el valor máximo posible. 
+       - Si las notas rondan el 5, la escala es 5.
+       - Si hay notas mayores a 10 (como 12), la escala es 12.
+       - Por defecto, si no hay indicios, la escala es 10.
+    3. NORMALIZACIÓN A BASE 10: Convierte cada nota a escala 10 usando la fórmula: (Nota obtenida / Escala Máxima) * 10.
+       - Ejemplo: Un 4.5 en escala 5 se convierte en 9.0.
+       - Ejemplo: Un 12.0 en escala 12 se convierte en 10.0.
+    4. CÁLCULO FINAL: Suma las notas normalizadas y divide entre el número total de actividades.
+    5. EXPLICACIÓN: Muestra el desglose indicando qué escala detectaste para cada actividad para que el alumno entienda el proceso.
+
+    INSTRUCCIÓN GENERAL: Sé amable, profesional y usa exclusivamente los datos proporcionados. Si no hay datos, pide el nombre o correo.`;
+
+    const modelName = "gemini-2.0-flash-lite"; 
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${apiKey}`;
 
     const response = await fetch(url, {
       method: "POST",
@@ -40,7 +49,7 @@ export async function POST(req: Request) {
     });
 
     const data = await response.json();
-    const reply = data.candidates?.[0]?.content?.parts?.[0]?.text || "No encontré los datos. Revisa el nombre.";
+    const reply = data.candidates?.[0]?.content?.parts?.[0]?.text || "Lo siento, no pude procesar el cálculo. Reintenta por favor.";
 
     return NextResponse.json({ reply });
 
