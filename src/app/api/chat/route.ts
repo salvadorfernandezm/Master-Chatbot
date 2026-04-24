@@ -10,30 +10,26 @@ export async function POST(req: Request) {
     const apiKey = process.env.GEMINI_API_KEY;
 
     console.log("-----------------------------------------");
-    console.log("🚀 EJECUTANDO VERSIÓN DE RESCATE 2.0");
+    console.log("🚀 EJECUTANDO VERSIÓN DE PRODUCCIÓN 1.5");
     console.log("-----------------------------------------");
 
-    const chatbot = await prisma.chatbot.findUnique({
-      where: { token, isActive: true },
-    });
-
+    const chatbot = await prisma.chatbot.findUnique({ where: { token, isActive: true } });
     if (!chatbot) return NextResponse.json({ error: "No hay chatbot" }, { status: 404 });
 
     await loadStoreFromDB(chatbot.knowledgeBaseId, prisma);
-    const vectorContexts = await searchVectorStore(message, chatbot.knowledgeBaseId, 10);
+    const vectorContexts = await searchVectorStore(message, chatbot.knowledgeBaseId, 15);
     const contextText = vectorContexts.map(v => v.pageContent).join("\n\n---\n\n");
 
-    const systemPrompt = `Eres un asistente académico. Contexto: ${contextText}. Responde breve.`;
+    const systemPrompt = `Eres un asistente académico. Usa este contexto: ${contextText}. Responde directo y sin inventar.`;
 
-    // USAMOS EL MODELO 2.0 FLASH (Suele ser el más estable en tu cuenta)
-    const modelName = "gemini-2.0-flash"; 
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${apiKey}`;
+    // USAMOS EL MODELO ESTÁNDAR POR LA PUERTA DE PRODUCCIÓN (v1)
+    const url = `https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
 
     const response = await fetch(url, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        contents: [{ parts: [{ text: systemPrompt + "\n\nPregunta: " + message }] }]
+        contents: [{ parts: [{ text: systemPrompt + "\n\nUsuario: " + message }] }]
       })
     });
 
@@ -47,6 +43,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ reply: data.candidates[0].content.parts[0].text });
 
   } catch (error: any) {
-    return NextResponse.json({ error: "⚠️ " + error.message }, { status: 500 });
+    console.error("❌ FALLO:", error.message);
+    return NextResponse.json({ error: "El sistema está procesando datos. Por favor, reintenta en 10 segundos." }, { status: 500 });
   }
 }
