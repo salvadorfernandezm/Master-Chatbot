@@ -12,29 +12,20 @@ export async function POST(req: Request) {
     const chatbot = await prisma.chatbot.findUnique({ where: { token, isActive: true } });
     if (!chatbot) return NextResponse.json({ error: "Chatbot no encontrado" }, { status: 404 });
 
+    // 1. CARGAR CONTEXTO
     await loadStoreFromDB(chatbot.knowledgeBaseId, prisma);
     const vectorContexts = await searchVectorStore(message, chatbot.knowledgeBaseId, 25);
     const contextText = vectorContexts.map((v: any) => v.pageContent).join("\n\n---\n\n");
 
-    const systemPrompt = `Eres el asistente académico del Prof. Salvador. Tu misión es dar información exacta y realizar cálculos de promedios ponderados.
-    
-    CONTEXTO DE DATOS:
+    const systemPrompt = `Eres el asistente académico del Prof. Salvador.
+    DATOS DISPONIBLES:
     ${contextText}
 
-    LÓGICA DE CALIFICACIONES (SISTEMA DE PONDERACIÓN):
-    1. Identifica al alumno y sus notas por actividad.
-    2. DETERMINA LA ESCALA: Para cada actividad, observa el valor máximo posible. 
-       - Si las notas rondan el 5, la escala es 5.
-       - Si hay notas mayores a 10 (como 12), la escala es 12.
-       - Por defecto, si no hay indicios, la escala es 10.
-    3. NORMALIZACIÓN A BASE 10: Convierte cada nota a escala 10 usando la fórmula: (Nota obtenida / Escala Máxima) * 10.
-       - Ejemplo: Un 4.5 en escala 5 se convierte en 9.0.
-       - Ejemplo: Un 12.0 en escala 12 se convierte en 10.0.
-    4. CÁLCULO FINAL: Suma las notas normalizadas y divide entre el número total de actividades.
-    5. EXPLICACIÓN: Muestra el desglose indicando qué escala detectaste para cada actividad para que el alumno entienda el proceso.
+    TAREA: Busca al alumno y calcula su promedio. 
+    REGLA DE PONDERACIÓN: Si una nota es sobre 5, multiplícala por 2. Si es sobre 12, divídela entre 1.2. 
+    Muestra el proceso. Si no hay datos, di que no los encuentras.`;
 
-    INSTRUCCIÓN GENERAL: Sé amable, profesional y usa exclusivamente los datos proporcionados. Si no hay datos, pide el nombre o correo.`;
-
+    // 2. MODELO LITE CON SEGURIDAD DESACTIVADA
     const modelName = "gemini-2.0-flash-lite"; 
     const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${apiKey}`;
 
@@ -42,18 +33,36 @@ export async function POST(req: Request) {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        contents: [{ parts: [{ text: systemPrompt + "\n\nPregunta: " + message }] }],
-        safetySettings: [{ category: "HARM_CATEGORY_DANGEROUS_CONTENT", threshold: "BLOCK_NONE" }],
+        contents: [{ parts: [{ text: systemPrompt + "\n\nUsuario: " + message }] }],
+        // APAGAMOS ABSOLUTAMENTE TODOS LOS FILTROS DE SEGURIDAD
+        safetySettings: [
+          { category: "HARM_CATEGORY_HARASSMENT", threshold: "BLOCK_NONE" },
+          { category: "HARM_CATEGORY_HATE_SPEECH", threshold: "BLOCK_NONE" },
+          { category: "HARM_CATEGORY_SEXUALLY_EXPLICIT", threshold: "BLOCK_NONE" },
+          { category: "HARM_CATEGORY_DANGEROUS_CONTENT", threshold: "BLOCK_NONE" }
+        ],
         generationConfig: { temperature: 0.1 }
       })
     });
 
     const data = await response.json();
-    const reply = data.candidates?.[0]?.content?.parts?.[0]?.text || "Lo siento, no pude procesar el cálculo. Reintenta por favor.";
 
-    return NextResponse.json({ reply });
+    // --- DETECTOR DE ERRORES REALES ---
+    if (data.error) {
+        return NextResponse.json({ reply: `⚠️ Error de Google: ${data.error.message}` });
+    }
+
+    if (data.candidates && data.candidates[0]?.content?.parts?.[0]?.text) {
+        const reply = data.candidates[0].content.parts[0].text;
+        return NextResponse.json({ reply });
+    } 
+    
+    // Si llegamos aquí, es que Google bloqueó la respuesta por otra razón
+    return NextResponse.json({ 
+        reply: "Google no pudo generar la respuesta (posible bloqueo de privacidad). Intenta preguntando por el nombre sin el apellido o solo por la nota de una actividad." 
+    });
 
   } catch (error: any) {
-    return NextResponse.json({ error: "Sincronizando: " + error.message }, { status: 500 });
+    return NextResponse.json({ error: "Error técnico: " + error.message }, { status: 500 });
   }
 }
