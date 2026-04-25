@@ -35,7 +35,16 @@ export async function processFile(
       const text = result.pages.map(p => p.text).join("\n");
       if (text) chunks = await textSplitter.createDocuments([text], [{ source: filename, knowledgeBaseId, documentId }]);
     } 
-    else if (fileExtension === "XLSX" || fileExtension === "XLS") {
+   else if (fileExtension === "DOCX") {
+      console.log("📝 Extrayendo texto de Word...");
+      const result = await mammoth.extractRawText({ buffer });
+      const text = result.value;
+      if (text) {
+        chunks = await textSplitter.createDocuments([text], [{ source: filename, knowledgeBaseId, documentId }]);
+      }
+    }
+
+ else if (fileExtension === "XLSX" || fileExtension === "XLS") {
       const workbook = XLSX.read(buffer, { type: 'buffer' });
       let excelText = "";
       workbook.SheetNames.forEach(sheet => {

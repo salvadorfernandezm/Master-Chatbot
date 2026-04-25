@@ -1,11 +1,9 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  serverExternalPackages: ["pdf-parse", "pdfjs-dist", "@napi-rs/canvas"],
+  /* config options here */
   experimental: {
-    serverActions: {
-      bodySizeLimit: "200mb",
-    },
+    serverComponentsExternalPackages: ['@prisma/client', 'langchain', 'pdf-parse', 'mammoth', 'xlsx'],
   },
 };
 
