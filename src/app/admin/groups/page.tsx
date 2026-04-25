@@ -1,7 +1,7 @@
 export const dynamic = 'force-dynamic';
-export const revalidate = 0; // Agrega esta línea para matar la memoria vieja
 import { prisma } from "@/lib/prisma";
-import { GroupList, CreateGroupForm } from "@/components/GroupList";
+import { GroupList } from "@/components/GroupList";
+import GroupFormWrapper from "@/components/GroupFormWrapper";
 
 export default async function GroupsPage() {
   const groups = await prisma.group.findMany({
@@ -10,16 +10,9 @@ export default async function GroupsPage() {
   });
 
   return (
-    <div>
-      <div className="flex justify-between items-center mb-8">
-        <h1 className="text-2xl font-bold text-slate-800">Grupos de Alumnos</h1>
-      </div>
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        <CreateGroupForm />
-        <div className="lg:col-span-2">
-          <GroupList groups={groups as any} />
-        </div>
-      </div>
+    <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+      <div><GroupFormWrapper /></div>
+      <div className="lg:col-span-2"><GroupList groups={groups as any} /></div>
     </div>
   );
 }
