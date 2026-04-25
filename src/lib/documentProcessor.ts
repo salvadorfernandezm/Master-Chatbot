@@ -23,11 +23,13 @@ export async function processFile(
   documentId: string
 ) {
   let chunks: Document[] = [];
-  // IMPORTANTE: Llamamos a la función correcta de vectorStore
   const { getEmbeddingsForTexts } = require("./vectorStore");
   const fileExtension = filename.split('.').pop()?.toUpperCase();
 
+  console.log(`📂 Procesando: ${filename} | Tipo: ${fileExtension}`);
+
   try {
+    // --- LÓGICA PARA PDF ---
     if (fileExtension === "PDF") {
       const PDFParse = pdfLib.PDFParse || pdfLib;
       const parser = new PDFParse({ data: buffer, verbosity: 0 });
@@ -35,7 +37,8 @@ export async function processFile(
       const text = result.pages.map(p => p.text).join("\n");
       if (text) chunks = await textSplitter.createDocuments([text], [{ source: filename, knowledgeBaseId, documentId }]);
     } 
-   else if (fileExtension === "DOCX") {
+    // --- LÓGICA PARA WORD (RECUPERADA) ---
+    else if (fileExtension === "DOCX") {
       console.log("📝 Extrayendo texto de Word...");
       const result = await mammoth.extractRawText({ buffer });
       const text = result.value;
@@ -43,8 +46,8 @@ export async function processFile(
         chunks = await textSplitter.createDocuments([text], [{ source: filename, knowledgeBaseId, documentId }]);
       }
     }
-
- else if (fileExtension === "XLSX" || fileExtension === "XLS") {
+    // --- LÓGICA PARA EXCEL ---
+    else if (fileExtension === "XLSX" || fileExtension === "XLS") {
       const workbook = XLSX.read(buffer, { type: 'buffer' });
       let excelText = "";
       workbook.SheetNames.forEach(sheet => {
@@ -52,17 +55,20 @@ export async function processFile(
       });
       chunks = await textSplitter.createDocuments([excelText], [{ source: filename, knowledgeBaseId, documentId }]);
     }
+    // --- LÓGICA PARA TXT ---
     else if (fileExtension === "TXT") {
       chunks = await textSplitter.createDocuments([buffer.toString('utf-8')], [{ source: filename, knowledgeBaseId, documentId }]);
     }
 
-    if (chunks.length === 0) return 0;
+    if (chunks.length === 0) {
+      console.log("⚠️ No se generaron fragmentos.");
+      return 0;
+    }
 
     console.log(`💾 Indexando ${chunks.length} fragmentos...`);
     const BATCH_SIZE = 50; 
     for (let i = 0; i < chunks.length; i += BATCH_SIZE) {
       const batch = chunks.slice(i, i + BATCH_SIZE);
-      // Aquí ya no dará error porque la función ahora sí existe
       const embeddings = await getEmbeddingsForTexts(batch.map(c => c.pageContent));
       
       await prisma.documentChunk.createMany({
@@ -77,11 +83,11 @@ export async function processFile(
     }
     return chunks.length;
   } catch (error) {
-    console.error("❌ Error:", error.message);
+    console.error("❌ Error en procesador:", error.message);
     throw error;
   }
 }
 
 export async function processUrl(url: string, knowledgeBaseId: string, documentId: string) {
-    return 0; // Simplificado para evitar errores
+    return 0;
 }
