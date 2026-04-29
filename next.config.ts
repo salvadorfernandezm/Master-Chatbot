@@ -1,13 +1,13 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  /* 1. Permitimos librerías externas rebeldes */
+  /* 1. Librerías externas */
   serverExternalPackages: ['@prisma/client', 'langchain', 'pdf-parse', 'mammoth', 'xlsx'],
   
-  /* 2. Aumentamos el límite de tamaño para archivos (Server Actions) */
+  /* 2. Aumento de límite de carga */
   experimental: {
     serverActions: {
-      bodySizeLimit: '20mb', // Ahora puedes subir archivos de hasta 20 MB
+      bodySizeLimit: '50mb', // Subimos a 50MB por si las imágenes pesan mucho
     },
   },
 };
