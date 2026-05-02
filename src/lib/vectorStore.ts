@@ -10,37 +10,40 @@ export async function getEmbeddingsForTexts(texts: string[]) {
   return await embeddings.embedDocuments(texts);
 }
 
-let localDocs: any[] = [];
+let store: any = null;
 
 export async function loadStoreFromDB(knowledgeBaseId: string, prisma: any) {
   try {
-    const chunks = await prisma.documentChunk.findMany(); // Traemos todo para no fallar por IDs
-    localDocs = chunks.map((chunk) => ({
+    const { MemoryVectorStore } = await import("langchain/vectorstores/memory");
+    
+    // FILTRO ESTRICTO: Buscamos solo los archivos de LA BASE que tiene este chatbot
+    const chunks = await prisma.documentChunk.findMany({
+      where: { knowledgeBaseId } 
+    });
+
+    if (!chunks || chunks.length === 0) {
+      console.log(`⚠️ Advertencia: La base ${knowledgeBaseId} no tiene fragmentos.`);
+      return;
+    }
+
+    const docs = chunks.map((chunk) => ({
       pageContent: chunk.content,
       metadata: typeof chunk.metadata === 'string' ? JSON.parse(chunk.metadata) : chunk.metadata,
     }));
-    console.log(`✅ ${localDocs.length} fragmentos listos para consulta.`);
+
+    store = await MemoryVectorStore.fromDocuments(docs, embeddings);
+    console.log(`✅ Base de datos [${knowledgeBaseId}] cargada con ${chunks.length} fragmentos.`);
   } catch (error) {
     console.error("Error cargando base de datos:", error.message);
   }
 }
 
 export async function searchVectorStore(query: string, knowledgeBaseId: string, limit: number = 30) {
-  if (localDocs.length === 0) return [];
-  const searchText = query.toLowerCase();
-
-  // BUSCADOR FLEXIBLE: Busca palabras clave de más de 3 letras
-  const words = searchText.split(' ').filter(w => w.length > 3);
-  
-  let matches = localDocs.filter(doc => 
-    words.some(word => doc.pageContent.toLowerCase().includes(word))
-  );
-
-  // Si no hay coincidencias (preguntas muy generales), enviamos los fragmentos más recientes
-  // para que Gemini tenga material de donde sacar información
-  if (matches.length === 0) {
-    return localDocs.slice(-limit); 
+  if (!store) return [];
+  try {
+    // Buscamos dentro del material específico de este chat
+    return await store.similaritySearch(query, limit);
+  } catch (error) {
+    return [];
   }
-
-  return matches.slice(0, limit);
 }
