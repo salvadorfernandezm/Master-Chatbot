@@ -19,7 +19,7 @@ export async function POST(req: Request) {
 
     // 1. CARGA DE CONTEXTO (Mantenemos la optimización de velocidad)
     await loadStoreFromDB(chatbot.knowledgeBaseId, prisma);
-    const vectorContexts = await searchVectorStore(message, chatbot.knowledgeBaseId, 10);
+     const vectorContexts = await searchVectorStore(message, chatbot.knowledgeBaseId, 30);
     const contextText = vectorContexts.map((v: any) => v.pageContent).join("\n\n");
 
     const systemPrompt = `Eres el asistente académico oficial del Profesor Salvador. 
