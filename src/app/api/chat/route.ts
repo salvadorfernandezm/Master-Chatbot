@@ -16,27 +16,28 @@ export async function POST(req: Request) {
 
     await loadStoreFromDB(chatbot.knowledgeBaseId, prisma);
     
-    // TRUCO DE PRECISIÓN: Buscamos el mensaje pero forzamos a traer siempre la parte superior de la tabla
+    // Traemos contexto suficiente pero enfocado
     const vectorContexts = await searchVectorStore(message, chatbot.knowledgeBaseId, 25);
-    const headers = await searchVectorStore("Fila 1 actividades nombres", chatbot.knowledgeBaseId, 3);
-    
-    const contextText = [...headers, ...vectorContexts].map((v: any) => v.pageContent).join("\n\n---\n\n");
+    const contextText = vectorContexts.map((v: any) => v.pageContent).join("\n\n---\n\n");
 
-    const systemPrompt = `Eres el clon digital y asistente académico del Profesor Salvador Fernández Martínez. 
-    Tu fuente de datos incluye el Cronograma y el Acta de Calificaciones.
+    const systemPrompt = `Eres el asistente oficial del Profesor Salvador Fernández Martínez. 
+    TU ÚNICA FUENTE DE VERDAD NUMÉRICA ES EL EXCEL (Fragmentos que empiezan con "REGISTRO ACADÉMICO").
     
-    INSTRUCCIONES DE ALTA PRECISIÓN:
-    1. ETIQUETADO REAL: En el documento de calificaciones, la FILA 1 tiene los nombres de las actividades (ej: Act 1 Plenario, Act 2 Conferencia, etc.). 
-       - ¡NO digas "Nota 1"! Busca el nombre real en la cabecera de la columna y úsalo.
+    INSTRUCCIONES OBLIGATORIAS:
+    1. IDENTIFICACIÓN: Busca la línea exacta que corresponde a "${message}" (o el nombre/correo detectado).
+    2. EXTRACCIÓN LITERAL: Toma los números tal cual aparecen en esa fila del EXCEL. NO inventes actividades que no estén en esa fila específica.
+    3. REGLAS DE NOMBRES Y CÁLCULO:
+       - Act. 1 Plenario Dignidad: Úsala tal cual.
+       - Act. 2 Conferencia: Úsala tal cual.
+       - Act. 4 Código: Úsala tal cual.
+       - Act. 5 Moral ética meta: Vale 12. DIVIDE ENTRE 1.2 para el promedio. (Ej: 12.0 / 1.2 = 10.0).
+       - Act 6 Examen 1: Úsala tal cual.
+    4. SI NO HAY NOTA: Si una actividad no tiene número en esa fila, di "Sin calificar". NO inventes notas de 4.5 o 9.5.
     
-    2. CÁLCULO PONDERADO: 
-       - Si una actividad (como Act 5) tiene un valor real de 12.0, divídela entre 1.2 para obtener su peso en Base 10.
-       - Si una actividad tiene base 5, multiplícala por 2.
-       - Suma las 5 actividades normalizadas y divide entre 5 para dar el PROMEDIO FINAL sobre 10.
+    PROCESO:
+    Suma las notas (normalizando la Act 5) y divide entre el número de actividades calificadas.
     
-    3. PERSONALIDAD: Sé amable, usa los recordatorios del cronograma pero aclara que son para referencia del semestre actual. Felicita por los logros específicos.
-    
-    CONTEXTO:
+    DATOS DEL SISTEMA:
     ${contextText}`;
 
     const modelName = "gemini-flash-latest"; 
@@ -48,12 +49,12 @@ export async function POST(req: Request) {
       body: JSON.stringify({
         contents: [{ parts: [{ text: systemPrompt + "\n\nUsuario: " + message }] }],
         safetySettings: [{ category: "HARM_CATEGORY_DANGEROUS_CONTENT", threshold: "BLOCK_NONE" }],
-        generationConfig: { temperature: 0.1, maxOutputTokens: 2500 }
+        generationConfig: { temperature: 0.0, maxOutputTokens: 1500 } // Temperatura 0 para evitar creatividad
       })
     });
 
     const data = await response.json();
-    const reply = data.candidates?.[0]?.content?.parts?.[0]?.text || "Lo siento, ¿podrías repetirme tu nombre o correo?";
+    const reply = data.candidates?.[0]?.content?.parts?.[0]?.text || "Lo siento, ¿podrías ser más específico con tu nombre?";
 
     return NextResponse.json({ reply });
 
