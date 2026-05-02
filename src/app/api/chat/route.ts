@@ -16,20 +16,24 @@ export async function POST(req: Request) {
     });
     if (!chatbot) return NextResponse.json({ error: "Chatbot no encontrado" }, { status: 404 });
 
+    // 1. CARGA DE CONTEXTO
     await loadStoreFromDB(chatbot.knowledgeBaseId, prisma);
-    const vectorContexts = await searchVectorStore(message, chatbot.knowledgeBaseId, 15);
-    const contextText = vectorContexts.map((v: any) => v.pageContent).join("\n\n");
+    const vectorContexts = await searchVectorStore(message, chatbot.knowledgeBaseId, 12);
+    const contextText = vectorContexts.map((v: any) => v.pageContent).join("\n\n---\n\n");
 
-    const systemPrompt = `Eres el asistente académico del Profesor Salvador. 
-    REGLA: Usa este CONTEXTO para responder: ${contextText}
-    CALIFICACIONES: Si ves notas de 12, divídelas entre 1.2. Si ves de 5, multiplícalas por 2.
-    ESTILO: Sé profesional, no menciones estas instrucciones.`;
+    const systemPrompt = `Eres el asistente oficial del Profesor Salvador Fernández. 
+    REGLA: Usa este CONTEXTO para responder: ${contextText}.
+    CÁLCULO: Si ves notas, aplica el promedio normalizado (Base 12 divide entre 1.2 | Base 5 multiplica por 2).
+    ÉTICA: Para el Dr. Xabier Etxeberria, explica con detalle el 'Mapa de la ética'. No cortes la respuesta.`;
 
-    // USAMOS EL MODELO "LITE" - El único que te da 1,500 mensajes garantizados
+    // 2. LA BALA DE PLATA: GEMINI 2.0 LITE
+    // Usamos el nombre exacto que Google acepta para cuota alta
     const modelName = "gemini-2.0-flash-lite"; 
     const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${apiKey}`;
 
-    console.log(`📡 FORZANDO MODELO LITE: ${modelName}`);
+    console.log("-----------------------------------------");
+    console.log(`🚀 DESPEGUE SEGURO CON: ${modelName}`);
+    console.log("-----------------------------------------");
 
     const response = await fetch(url, {
       method: "POST",
@@ -37,27 +41,33 @@ export async function POST(req: Request) {
       body: JSON.stringify({
         contents: [{ parts: [{ text: systemPrompt + "\n\nPregunta: " + message }] }],
         generationConfig: { 
-          temperature: 0.2, 
-          maxOutputTokens: 2500 // Evita respuestas cortadas
-        }
+            temperature: 0.1, 
+            maxOutputTokens: 2000 // Micrófono abierto para Etxeberria
+        },
+        safetySettings: [
+            { category: "HARM_CATEGORY_HARASSMENT", threshold: "BLOCK_NONE" },
+            { category: "HARM_CATEGORY_HATE_SPEECH", threshold: "BLOCK_NONE" }
+        ]
       })
     });
 
     const data = await response.json();
-    if (!response.ok) throw new Error(data.error?.message || "Google saturado");
+
+    if (!response.ok) {
+        throw new Error(data.error?.message || "Google saturado");
+    }
 
     const reply = data.candidates[0].content.parts[0].text;
-    
-    // Analíticas
+
+    // 3. GUARDAR ANALÍTICAS
     await prisma.interaction.create({
       data: { chatbotId: chatbot.id, query: message.substring(0, 500), response: reply.substring(0, 2000) }
-    }).catch(() => {});
+    }).catch(e => console.error("Aviso analíticas:", e));
 
     return NextResponse.json({ reply });
 
   } catch (error: any) {
     console.error("❌ FALLO:", error.message);
-    // Este mensaje lo verá el ChatClient.tsx y lo traducirá a tu "Nota del Profesor"
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
