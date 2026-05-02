@@ -14,28 +14,19 @@ export async function POST(req: Request) {
     });
     if (!chatbot) return NextResponse.json({ error: "No encontrado" }, { status: 404 });
 
+    // CARGAMOS TODO LO QUE TENEMOS EN SUPABASE
     await loadStoreFromDB(chatbot.knowledgeBaseId, prisma);
-    
-    // Traemos contexto suficiente pero enfocado
-    const vectorContexts = await searchVectorStore(message, chatbot.knowledgeBaseId, 25);
+    const vectorContexts = await searchVectorStore(message, chatbot.knowledgeBaseId, 50); // Le mandamos 50 pedazos para estar seguros
     const contextText = vectorContexts.map((v: any) => v.pageContent).join("\n\n---\n\n");
 
     const systemPrompt = `Eres el asistente oficial del Profesor Salvador Fernández Martínez. 
-    TU ÚNICA FUENTE DE VERDAD NUMÉRICA ES EL EXCEL (Fragmentos que empiezan con "REGISTRO ACADÉMICO").
-    
-    INSTRUCCIONES OBLIGATORIAS:
-    1. IDENTIFICACIÓN: Busca la línea exacta que corresponde a "${message}" (o el nombre/correo detectado).
-    2. EXTRACCIÓN LITERAL: Toma los números tal cual aparecen en esa fila del EXCEL. NO inventes actividades que no estén en esa fila específica.
-    3. REGLAS DE NOMBRES Y CÁLCULO:
-       - Act. 1 Plenario Dignidad: Úsala tal cual.
-       - Act. 2 Conferencia: Úsala tal cual.
-       - Act. 4 Código: Úsala tal cual.
-       - Act. 5 Moral ética meta: Vale 12. DIVIDE ENTRE 1.2 para el promedio. (Ej: 12.0 / 1.2 = 10.0).
-       - Act 6 Examen 1: Úsala tal cual.
-    4. SI NO HAY NOTA: Si una actividad no tiene número en esa fila, di "Sin calificar". NO inventes notas de 4.5 o 9.5.
-    
-    PROCESO:
-    Suma las notas (normalizando la Act 5) y divide entre el número de actividades calificadas.
+    TU ÚNICA MISIÓN es buscar a los alumnos y darles sus notas basándote en los datos.
+
+    INSTRUCCIONES CRÍTICAS:
+    1. FUENTE DE DATOS: Tienes acceso a fragmentos del manual APA y listas de calificaciones. 
+    2. CALIFICACIONES: Si el usuario dice "Soy [Nombre]", busca la línea donde aparece ese nombre.
+       - Usa estos nombres reales de actividades: Act. 1 Plenario Dignidad, Act. 2 Conferencia, Act. 4 Código, Act. 5 Moral ética meta (esta es sobre 12 y se divide entre 1.2), Act 6 Examen 1.
+    3. REGLA DE ORO: Si ves números junto a un nombre en el texto de abajo, ¡USALOS! No digas que no tienes acceso.
     
     DATOS DEL SISTEMA:
     ${contextText}`;
@@ -48,13 +39,15 @@ export async function POST(req: Request) {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         contents: [{ parts: [{ text: systemPrompt + "\n\nUsuario: " + message }] }],
-        safetySettings: [{ category: "HARM_CATEGORY_DANGEROUS_CONTENT", threshold: "BLOCK_NONE" }],
-        generationConfig: { temperature: 0.0, maxOutputTokens: 1500 } // Temperatura 0 para evitar creatividad
+        generationConfig: { 
+          temperature: 0.1, // Un toque de inteligencia para no ser tan rígido
+          maxOutputTokens: 2000 
+        }
       })
     });
 
     const data = await response.json();
-    const reply = data.candidates?.[0]?.content?.parts?.[0]?.text || "Lo siento, ¿podrías ser más específico con tu nombre?";
+    const reply = data.candidates?.[0]?.content?.parts?.[0]?.text || "Registro localizado pero sigo analizando. ¿Puedes repetir solo tu apellido?";
 
     return NextResponse.json({ reply });
 
