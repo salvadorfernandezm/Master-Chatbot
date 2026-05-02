@@ -9,29 +9,35 @@ export async function POST(req: Request) {
     const { message, token } = body;
     const apiKey = process.env.GEMINI_API_KEY;
 
+    // 1. IDENTIFICAR CHATBOT
     const chatbot = await prisma.chatbot.findUnique({
-      where: { token, isActive: true }
+      where: { token, isActive: true },
+      include: { knowledgeBase: true }
     });
-    if (!chatbot) return NextResponse.json({ error: "No encontrado" }, { status: 404 });
 
-    // CARGAMOS TODO LO QUE TENEMOS EN SUPABASE
+    if (!chatbot) return NextResponse.json({ error: "Chatbot no encontrado" }, { status: 404 });
+
+    // 2. CARGAR MEMORIA ESPECIALIZADA
     await loadStoreFromDB(chatbot.knowledgeBaseId, prisma);
-    const vectorContexts = await searchVectorStore(message, chatbot.knowledgeBaseId, 50); // Le mandamos 50 pedazos para estar seguros
+    const vectorContexts = await searchVectorStore(message, chatbot.knowledgeBaseId, 30);
     const contextText = vectorContexts.map((v: any) => v.pageContent).join("\n\n---\n\n");
 
-    const systemPrompt = `Eres el asistente oficial del Profesor Salvador Fernández Martínez. 
-    TU ÚNICA MISIÓN es buscar a los alumnos y darles sus notas basándote en los datos.
+    // 3. INSTRUCCIONES SEGÚN EL TIPO DE CHAT
+    const isGradesChat = chatbot.knowledgeBase.name.toLowerCase().includes("califica") || 
+                         chatbot.name.toLowerCase().includes("nota");
 
-    INSTRUCCIONES CRÍTICAS:
-    1. FUENTE DE DATOS: Tienes acceso a fragmentos del manual APA y listas de calificaciones. 
-    2. CALIFICACIONES: Si el usuario dice "Soy [Nombre]", busca la línea donde aparece ese nombre.
-       - Usa estos nombres reales de actividades: Act. 1 Plenario Dignidad, Act. 2 Conferencia, Act. 4 Código, Act. 5 Moral ética meta (esta es sobre 12 y se divide entre 1.2), Act 6 Examen 1.
-    3. REGLA DE ORO: Si ves números junto a un nombre en el texto de abajo, ¡USALOS! No digas que no tienes acceso.
-    
-    DATOS DEL SISTEMA:
-    ${contextText}`;
+    const systemPrompt = `Eres el asistente académico del Profesor Salvador. 
+    ESTA ES TU ÚNICA FUENTE DE VERDAD PARA ESTE CHAT:
+    ${contextText || "ATENCIÓN: Tu base de conocimiento está vacía."}
 
-    const modelName = "gemini-flash-latest"; 
+    MODO DE OPERACIÓN:
+    ${isGradesChat ? 
+      '- ESTÁS EN MODO CALIFICACIONES. Busca al alumno por nombre o correo en el texto. Aplica promedio normalizado (Base 12 / 1.2). Muestra el desglose.' : 
+      '- ESTÁS EN MODO TEÓRICO (Xabier Etxeberria o APA). Responde pedagógicamente y no pidas correos ni nombres.'
+    }
+    - REGLA: Si la información está arriba, úsala. NUNCA digas que no tienes acceso.`;
+
+    const modelName = "gemini-2.0-flash-lite"; 
     const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${apiKey}`;
 
     const response = await fetch(url, {
@@ -39,17 +45,23 @@ export async function POST(req: Request) {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         contents: [{ parts: [{ text: systemPrompt + "\n\nUsuario: " + message }] }],
-        generationConfig: { 
-          temperature: 0.1, // Un toque de inteligencia para no ser tan rígido
-          maxOutputTokens: 2000 
-        }
+        safetySettings: [
+          { category: "HARM_CATEGORY_DANGEROUS_CONTENT", threshold: "BLOCK_NONE" },
+          { category: "HARM_CATEGORY_HARASSMENT", threshold: "BLOCK_NONE" }
+        ],
+        generationConfig: { temperature: 0.1, maxOutputTokens: 2048 }
       })
     });
 
     const data = await response.json();
-    const reply = data.candidates?.[0]?.content?.parts?.[0]?.text || "Registro localizado pero sigo analizando. ¿Puedes repetir solo tu apellido?";
+    
+    if (data.candidates && data.candidates[0]?.content) {
+        return NextResponse.json({ reply: data.candidates[0].content.parts[0].text });
+    }
 
-    return NextResponse.json({ reply });
+    // SI ALGO FALLA CON GOOGLE, DAMOS UN MENSAJE ÚTIL
+    const errorMsg = data.error?.message || "Google no devolvió respuesta. Reintenta en unos segundos.";
+    return NextResponse.json({ reply: `⚠️ Error técnico: ${errorMsg}` });
 
   } catch (error: any) {
     return NextResponse.json({ error: "Sincronizando: " + error.message }, { status: 500 });

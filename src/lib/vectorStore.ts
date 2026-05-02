@@ -10,41 +10,38 @@ export async function getEmbeddingsForTexts(texts: string[]) {
   return await embeddings.embedDocuments(texts);
 }
 
-// ALMACÉN TEMPORAL (Solo de la base actual)
-let currentDocs: any[] = [];
+let localDocs: any[] = [];
 
 export async function loadStoreFromDB(knowledgeBaseId: string, prisma: any) {
   try {
-    // FILTRO CRÍTICO: Solo traemos fragmentos que pertenezcan a este chatbot
+    // FILTRO TOTAL: Solo cargamos los fragmentos de LA BASE asignada
     const chunks = await prisma.documentChunk.findMany({
       where: { knowledgeBaseId: knowledgeBaseId }
     });
 
-    currentDocs = chunks.map((chunk) => ({
+    localDocs = chunks.map((chunk) => ({
       pageContent: chunk.content,
       metadata: typeof chunk.metadata === 'string' ? JSON.parse(chunk.metadata) : chunk.metadata,
     }));
     
-    console.log(`✅ Base de Conocimiento [${knowledgeBaseId}] cargada con ${currentDocs.length} datos.`);
+    console.log(`✅ Base [${knowledgeBaseId}] cargada: ${localDocs.length} datos.`);
   } catch (error) {
-    console.error("❌ Error cargando base de datos:", error.message);
+    console.error("❌ Error en DB:", error.message);
   }
 }
 
 export async function searchVectorStore(query: string, knowledgeBaseId: string, limit: number = 30) {
-  if (currentDocs.length === 0) return [];
+  if (localDocs.length === 0) return [];
   const searchText = query.toLowerCase();
   
-  // Separamos el nombre por palabras (ej. Alondra Casas)
-  const words = searchText.split(' ').filter(w => w.length > 2);
+  // Separamos las palabras clave
+  const words = searchText.split(' ').filter(w => w.length > 3);
   
-  // 1. Buscamos filas que tengan TODAS las palabras (Máxima precisión)
-  const matches = currentDocs.filter(doc => 
-    words.every(word => doc.pageContent.toLowerCase().includes(word))
+  // Buscamos coincidencias dentro de esta base específica
+  const matches = localDocs.filter(doc => 
+    words.some(word => doc.pageContent.toLowerCase().includes(word))
   );
 
-  if (matches.length > 0) return matches;
-
-  // 2. Si no hay coincidencia exacta, devolvemos una muestra solo de esta base
-  return currentDocs.slice(0, limit);
+  // Si no hay coincidencias exactas, mandamos una muestra amplia del archivo
+  return matches.length > 0 ? matches : localDocs.slice(0, limit);
 }
