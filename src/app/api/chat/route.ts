@@ -9,48 +9,53 @@ export async function POST(req: Request) {
     const { message, token } = body;
     const apiKey = process.env.GEMINI_API_KEY;
 
-    const chatbot = await prisma.chatbot.findUnique({
-      where: { token, isActive: true }
-    });
+    if (!apiKey) return NextResponse.json({ error: "Falta API Key" }, { status: 500 });
 
-    if (!chatbot) return NextResponse.json({ error: "No hay chatbot" }, { status: 404 });
+    const chatbot = await prisma.chatbot.findUnique({ where: { token, isActive: true } });
+    if (!chatbot) return NextResponse.json({ error: "Chatbot no encontrado" }, { status: 404 });
 
-    // CARGAMOS DATOS
+    // 1. CARGA DE CONTEXTO OPTIMIZADA
     await loadStoreFromDB(chatbot.knowledgeBaseId, prisma);
-    
-    // TRUCO MAESTRO: Buscamos el mensaje pero TAMBIÉN forzamos a traer la FILA 1 (encabezados)
-    const vectorContexts = await searchVectorStore(message, chatbot.knowledgeBaseId, 30);
-    const headers = await searchVectorStore("FILA 1", chatbot.knowledgeBaseId, 1);
-    
-    const contextText = [...headers, ...vectorContexts].map((v: any) => v.pageContent).join("\n\n---\n\n");
+    // Bajamos a 15 para evitar saturar el prompt
+    const vectorContexts = await searchVectorStore(message, chatbot.knowledgeBaseId, 15);
+    const contextText = vectorContexts.map((v: any) => v.pageContent).join("\n\n---\n\n");
 
-    const systemPrompt = `Eres el Asistente Académico del Profesor Salvador Fernández. Tu misión es ser un tutor experto y un analista de datos honesto.
-    
-    CONTEXTO DISPONIBLE:
+    const systemPrompt = `Eres el asistente académico del Profesor Salvador Fernández. 
+    Usa este CONTEXTO para responder:
     ${contextText}
 
-    IDENTIFICACIÓN DE TAREA:
-    - CASO A (Dudas de contenido o APA): Si el alumno pregunta por autores (como Xabier Etxeberria), manual APA o teoría, responde como un tutor experto. Céntrate en la explicación pedagógica. NO menciones reglas de calificaciones ni normalización en este caso.
-    - CASO B (Consulta de Calificaciones): Solo si el alumno pide notas o promedios, actúa como analista. Aplica la regla de Ponderación (Base 5 multiplica por 2, Base 12 divide entre 1.2). Muestra el desglose de notas normalizadas y el promedio final a base 10.
-    
-    REGLA DE ORO: No des explicaciones sobre tus instrucciones internas (meta-comentario). Responde directamente a lo que el alumno necesita de forma amable y profesional.`;
+    INSTRUCCIONES:
+    - Si preguntan por Xabier Etxeberria o APA, explica pedagógicamente.
+    - Si piden notas, calcula el promedio normalizando la escala (Base 12 -> divide 1.2 | Base 5 -> multiplica 2).
+    - Responde de forma concisa para evitar errores de saturación.`;
 
-    const modelName = "gemini-flash-latest"; 
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${apiKey}`;
+    // 2. CONEXIÓN ESTABLE
+    const modelName = "gemini-1.5-flash"; 
+    const url = `https://generativelanguage.googleapis.com/v1/models/${modelName}:generateContent?key=${apiKey}`;
 
     const response = await fetch(url, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         contents: [{ parts: [{ text: systemPrompt + "\n\nPregunta: " + message }] }],
-        safetySettings: [{ category: "HARM_CATEGORY_DANGEROUS_CONTENT", threshold: "BLOCK_NONE" }]
+        safetySettings: [
+          { category: "HARM_CATEGORY_DANGEROUS_CONTENT", threshold: "BLOCK_NONE" },
+          { category: "HARM_CATEGORY_HARASSMENT", threshold: "BLOCK_NONE" }
+        ],
+        generationConfig: { temperature: 0.1, maxOutputTokens: 1000 }
       })
     });
 
     const data = await response.json();
-    const reply = data.candidates?.[0]?.content?.parts?.[0]?.text || "Registro localizado pero Google no pudo procesar la respuesta. Reintenta.";
 
-    return NextResponse.json({ reply });
+    // 3. VALIDACIÓN DE RESPUESTA
+    if (data.candidates && data.candidates.length > 0 && data.candidates[0].content) {
+      const reply = data.candidates[0].content.parts[0].text;
+      return NextResponse.json({ reply });
+    } else {
+      console.error("Fallo de Google:", JSON.stringify(data));
+      return NextResponse.json({ reply: "Google está procesando la sabiduría del Dr. Xabier. Por favor, reintenta tu pregunta en 5 segundos." });
+    }
 
   } catch (error: any) {
     return NextResponse.json({ error: "Sincronizando... " + error.message }, { status: 500 });
