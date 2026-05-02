@@ -46,6 +46,8 @@ export async function POST(req: Request) {
        - Si el fragmento menciona una sección (ej: 6.46), úsala pero complementa con la regla general del manual.
     3. REGLA DE ORO: No seas tímido. Si ves la información arriba, el usuario confía en que la procesarás.`;
 
+"IMPORTANTE: Extrae los nombres de las actividades directamente de la FILA 1 de los datos. No digas 'Actividad 1', di '[Nombre de la columna]'. De esa forma Alondra verá: 'Plenario Dignidad: 10.0'."
+
     const modelName = "gemini-flash-latest"; 
     const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${apiKey}`;
 
