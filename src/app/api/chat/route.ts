@@ -11,43 +11,53 @@ export async function POST(req: Request) {
 
     if (!apiKey) return NextResponse.json({ error: "Falta API Key" }, { status: 500 });
 
-    const chatbot = await prisma.chatbot.findUnique({ where: { token, isActive: true } });
-    if (!chatbot) return NextResponse.json({ error: "No hay chatbot" }, { status: 404 });
+    const chatbot = await prisma.chatbot.findUnique({
+      where: { token, isActive: true },
+    });
 
+    if (!chatbot) return NextResponse.json({ error: "Chatbot no encontrado" }, { status: 404 });
+
+    // 1. CARGA DE DATOS (RAG)
     await loadStoreFromDB(chatbot.knowledgeBaseId, prisma);
-    const vectorContexts = await searchVectorStore(message, chatbot.knowledgeBaseId, 12);
-    const contextText = vectorContexts.map((v: any) => v.pageContent).join("\n\n---\n\n");
+    const vectorContexts = await searchVectorStore(message, chatbot.knowledgeBaseId, 15);
+    const contextText = vectorContexts.map((v: any) => v.pageContent).join("\n\n");
 
-    const systemPrompt = `Eres el asistente académico del Profesor Salvador. Usa este CONTEXTO: ${contextText}. Responde directo y breve.`;
+    const systemPrompt = `Eres un asistente académico experto. Usa este contexto: ${contextText}. Responde de forma clara y directa.`;
 
-    // --- LA PUERTA DE ESTABILIDAD (v1 estable) ---
-    // Usamos el modelo 1.5 que es el que garantiza 1,500 mensajes con la llave de la UJED
-    const modelName = "gemini-1.5-flash"; 
-    const url = `https://generativelanguage.googleapis.com/v1/models/${modelName}:generateContent?key=${apiKey}`;
+    // 2. EL MODELO "LITE" (Aquí está la clave de los 1,500 mensajes)
+    const modelName = "gemini-2.0-flash-lite"; 
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${apiKey}`;
+
+    console.log(`📡 CONECTANDO AL MODELO DE ALTA CUOTA: ${modelName}`);
 
     const response = await fetch(url, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         contents: [{ parts: [{ text: systemPrompt + "\n\nPregunta: " + message }] }],
-        generationConfig: { temperature: 0.1, maxOutputTokens: 2000 }
+        generationConfig: { temperature: 0.1, maxOutputTokens: 2500 }
       })
     });
 
     const data = await response.json();
-    if (!response.ok) throw new Error(data.error?.message || "Google Saturado");
+
+    if (!response.ok) {
+        // Si por algo este falla, este mensaje saldrá en la terminal negra
+        console.error("❌ ERROR GOOGLE:", data.error?.message);
+        throw new Error(data.error?.message || "Google saturado");
+    }
 
     const reply = data.candidates[0].content.parts[0].text;
 
-    // Analíticas (importante para tu monitoreo)
+    // 3. GUARDAR ANALÍTICAS
     await prisma.interaction.create({
-      data: { chatbotId: chatbot.id, query: message.substring(0,500), response: reply.substring(0,2000) }
+      data: { chatbotId: chatbot.id, query: message.substring(0, 500), response: reply.substring(0, 2000) }
     }).catch(() => {});
 
     return NextResponse.json({ reply });
 
   } catch (error: any) {
-    console.error("❌ FALLO:", error.message);
+    console.error("❌ FALLO CRÍTICO EN LA RUTA:", error.message);
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
