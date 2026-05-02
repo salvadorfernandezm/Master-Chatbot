@@ -1,6 +1,7 @@
 export const dynamic = 'force-dynamic';
 import { NextResponse } from "next/dist/server/web/spec-extension/response";
 import { prisma } from "@/lib/prisma";
+import { searchVectorStore, loadStoreFromDB } from "@/lib/vectorStore";
 
 export async function POST(req: Request) {
   try {
@@ -11,42 +12,32 @@ export async function POST(req: Request) {
     const chatbot = await prisma.chatbot.findUnique({
       where: { token, isActive: true }
     });
-    if (!chatbot) return NextResponse.json({ error: "Chatbot no encontrado" }, { status: 404 });
+    if (!chatbot) return NextResponse.json({ error: "No encontrado" }, { status: 404 });
 
-    // 1. BUSCADOR INTELIGENTE: Identificamos palabras clave (Email o Nombres)
-    const rawWords = message.toLowerCase().split(/[ ,.!@]+/);
-    const keywords = rawWords.filter((w: string) => w.length > 3);
+    await loadStoreFromDB(chatbot.knowledgeBaseId, prisma);
     
-    const chunks = await prisma.documentChunk.findMany({
-      where: {
-        knowledgeBaseId: chatbot.knowledgeBaseId,
-        OR: keywords.map((w: string) => ({ content: { contains: w, mode: 'insensitive' } }))
-      },
-      take: 20 // Subimos a 20 para tener más variedad de páginas
-    });
+    // TRUCO DE PRECISIÓN: Buscamos el mensaje pero forzamos a traer siempre la parte superior de la tabla
+    const vectorContexts = await searchVectorStore(message, chatbot.knowledgeBaseId, 25);
+    const headers = await searchVectorStore("Fila 1 actividades nombres", chatbot.knowledgeBaseId, 3);
+    
+    const contextText = [...headers, ...vectorContexts].map((v: any) => v.pageContent).join("\n\n---\n\n");
 
-    // 2. RESPALDO: Si no hay palabras clave, traemos lo más reciente
-    const finalChunks = chunks.length > 0 ? chunks : await prisma.documentChunk.findMany({
-      where: { knowledgeBaseId: chatbot.knowledgeBaseId },
-      take: 15
-    });
-
-    const contextText = finalChunks.map(c => c.content).join("\n\n---\n\n");
-
-    // 3. INSTRUCCIONES DE MAESTRÍA (Eliminamos la timidez de Gemini)
-    const systemPrompt = `Eres "${chatbot.name}", el asistente del Prof. Salvador.
-    TU FUENTE DE VERDAD ES ESTE CONTEXTO:
-    ${contextText}
-
-    PROTOCOLO DE RESPUESTA:
-    1. SI PIDEN NOTAS/CALIFICACIONES: Busca el nombre o correo del alumno en los datos de arriba. 
-       - Si ves números y un nombre, esa ES la sábana de notas. NO digas que no tienes acceso.
-       - Aplica la normalización (Base 12 divide entre 1.2, Base 5 multiplica por 2).
-    2. SI PIDEN APA O ETXEBERRIA: Explica de forma completa. 
-       - Si el fragmento menciona una sección (ej: 6.46), úsala pero complementa con la regla general del manual.
-    3. REGLA DE ORO: No seas tímido. Si ves la información arriba, el usuario confía en que la procesarás.`;
-
-"IMPORTANTE: Extrae los nombres de las actividades directamente de la FILA 1 de los datos. No digas 'Actividad 1', di '[Nombre de la columna]'. De esa forma Alondra verá: 'Plenario Dignidad: 10.0'."
+    const systemPrompt = `Eres el clon digital y asistente académico del Profesor Salvador Fernández Martínez. 
+    Tu fuente de datos incluye el Cronograma y el Acta de Calificaciones.
+    
+    INSTRUCCIONES DE ALTA PRECISIÓN:
+    1. ETIQUETADO REAL: En el documento de calificaciones, la FILA 1 tiene los nombres de las actividades (ej: Act 1 Plenario, Act 2 Conferencia, etc.). 
+       - ¡NO digas "Nota 1"! Busca el nombre real en la cabecera de la columna y úsalo.
+    
+    2. CÁLCULO PONDERADO: 
+       - Si una actividad (como Act 5) tiene un valor real de 12.0, divídela entre 1.2 para obtener su peso en Base 10.
+       - Si una actividad tiene base 5, multiplícala por 2.
+       - Suma las 5 actividades normalizadas y divide entre 5 para dar el PROMEDIO FINAL sobre 10.
+    
+    3. PERSONALIDAD: Sé amable, usa los recordatorios del cronograma pero aclara que son para referencia del semestre actual. Felicita por los logros específicos.
+    
+    CONTEXTO:
+    ${contextText}`;
 
     const modelName = "gemini-flash-latest"; 
     const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${apiKey}`;
@@ -55,21 +46,18 @@ export async function POST(req: Request) {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        contents: [{ parts: [{ text: systemPrompt + "\n\nPregunta: " + message }] }],
-        safetySettings: [
-          { category: "HARM_CATEGORY_DANGEROUS_CONTENT", threshold: "BLOCK_NONE" },
-          { category: "HARM_CATEGORY_HARASSMENT", threshold: "BLOCK_NONE" }
-        ],
-        generationConfig: { temperature: 0.2, maxOutputTokens: 2000 }
+        contents: [{ parts: [{ text: systemPrompt + "\n\nUsuario: " + message }] }],
+        safetySettings: [{ category: "HARM_CATEGORY_DANGEROUS_CONTENT", threshold: "BLOCK_NONE" }],
+        generationConfig: { temperature: 0.1, maxOutputTokens: 2500 }
       })
     });
 
     const data = await response.json();
-    const reply = data.candidates?.[0]?.content?.parts?.[0]?.text || "Lo siento, tuve un problema de conexión con el cerebro central. Reintenta ahora mismo.";
+    const reply = data.candidates?.[0]?.content?.parts?.[0]?.text || "Lo siento, ¿podrías repetirme tu nombre o correo?";
 
     return NextResponse.json({ reply });
 
   } catch (error: any) {
-    return NextResponse.json({ error: "Sincronizando sabiduría..." }, { status: 500 });
+    return NextResponse.json({ error: "Sincronizando: " + error.message }, { status: 500 });
   }
 }
