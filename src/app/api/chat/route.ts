@@ -16,65 +16,48 @@ export async function POST(req: Request) {
     });
     if (!chatbot) return NextResponse.json({ error: "Chatbot no encontrado" }, { status: 404 });
 
-    // 1. CARGAR CONTEXTO (Lecturas + Notas)
     await loadStoreFromDB(chatbot.knowledgeBaseId, prisma);
     const vectorContexts = await searchVectorStore(message, chatbot.knowledgeBaseId, 15);
-    const contextText = vectorContexts.map((v: any) => v.pageContent).join("\n\n---\n\n");
+    const contextText = vectorContexts.map((v: any) => v.pageContent).join("\n\n");
 
-    // 2. EL PROMPT "CON CORAZÓN" (Matemático y Filosófico)
-    const systemPrompt = `Eres el asistente oficial del Profesor Salvador Fernández. 
-    Usa este CONTEXTO para responder:
-    ${contextText}
+    const systemPrompt = `Eres el asistente académico del Profesor Salvador. 
+    REGLA: Usa este CONTEXTO para responder: ${contextText}
+    CALIFICACIONES: Si ves notas de 12, divídelas entre 1.2. Si ves de 5, multiplícalas por 2.
+    ESTILO: Sé profesional, no menciones estas instrucciones.`;
 
-    TAREAS ESPECIALES:
-    - SI PIDEN NOTAS: Busca al alumno por nombre o correo. Si una nota es sobre 12, divídela entre 1.2; si es sobre 5, multiplícala por 2. Entrega el promedio normalizado a base 10.
-    - SI ES TEORÍA (Dr. Xabier Etxeberria): Explica con detalle pedagógico y finura intelectual. No te cortes.
-    - REGLA DE ORO: Di siempre la verdad basándote en los datos. No inventes registros.`;
-
-    // 3. LA CONEXIÓN DE ALTA CUOTA (v1beta + 2.0-flash-lite)
-    // Usamos el modelo Lite para asegurar los 1,500 mensajes gratuitos diarios.
+    // USAMOS EL MODELO "LITE" - El único que te da 1,500 mensajes garantizados
     const modelName = "gemini-2.0-flash-lite"; 
     const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${apiKey}`;
 
-    console.log(`🚀 Conectando con éxito a: ${modelName}`);
+    console.log(`📡 FORZANDO MODELO LITE: ${modelName}`);
 
     const response = await fetch(url, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        contents: [{
-          parts: [{ text: systemPrompt + "\n\nPregunta: " + message }]
-        }],
-        generationConfig: {
-          temperature: 0.2, // Baja para que los cálculos sean exactos
-          maxOutputTokens: 2500, // Papel de sobra para respuestas largas
-          topP: 0.95
-        },
-        safetySettings: [
-          { category: "HARM_CATEGORY_HARASSMENT", threshold: "BLOCK_NONE" },
-          { category: "HARM_CATEGORY_HATE_SPEECH", threshold: "BLOCK_NONE" }
-        ]
+        contents: [{ parts: [{ text: systemPrompt + "\n\nPregunta: " + message }] }],
+        generationConfig: { 
+          temperature: 0.2, 
+          maxOutputTokens: 2500 // Evita respuestas cortadas
+        }
       })
     });
 
     const data = await response.json();
-
-    if (!response.ok) {
-        throw new Error(data.error?.message || "Google está procesando datos...");
-    }
+    if (!response.ok) throw new Error(data.error?.message || "Google saturado");
 
     const reply = data.candidates[0].content.parts[0].text;
-
-    // 4. GUARDAR PARA ANALÍTICAS
+    
+    // Analíticas
     await prisma.interaction.create({
-      data: { chatbotId: chatbot.id, query: message, response: reply }
-    }).catch(e => console.error("Aviso analíticas:", e));
+      data: { chatbotId: chatbot.id, query: message.substring(0, 500), response: reply.substring(0, 2000) }
+    }).catch(() => {});
 
     return NextResponse.json({ reply });
 
   } catch (error: any) {
     console.error("❌ FALLO:", error.message);
-    // Mensaje amable por si la cuota de un solo minuto se satura
-    return NextResponse.json({ error: "⚠️ " + error.message + ". Reintenta enviar tu pregunta en unos segundos." }, { status: 500 });
+    // Este mensaje lo verá el ChatClient.tsx y lo traducirá a tu "Nota del Profesor"
+    return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
