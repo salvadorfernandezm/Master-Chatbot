@@ -14,61 +14,40 @@ export async function POST(req: Request) {
     const chatbot = await prisma.chatbot.findUnique({
       where: { token, isActive: true },
     });
-    if (!chatbot) return NextResponse.json({ error: "Chatbot no encontrado" }, { status: 404 });
+    if (!chatbot) return NextResponse.json({ error: "No encontrado" }, { status: 404 });
 
-    // CARGAR DATOS
     await loadStoreFromDB(chatbot.knowledgeBaseId, prisma);
-    const vectorContexts = await searchVectorStore(message, chatbot.knowledgeBaseId, 12);
-    const contextText = vectorContexts.map((v: any) => v.pageContent).join("\n\n");
+    // SUBIMOS A 25 FRAGMENTOS para que las notas no se queden fuera por culpa del cronograma
+    const vectorContexts = await searchVectorStore(message, chatbot.knowledgeBaseId, 25);
+    const contextText = vectorContexts.map((v: any) => v.pageContent).join("\n\n---\n\n");
 
-    const systemPrompt = `Eres un asistente académico. Contexto:\n${contextText}\n\nResponde basado en los datos.`;
+    const systemPrompt = `Eres el asistente oficial del Profesor Salvador. 
+    A CONTINUACIÓN ESTÁN LOS DOCUMENTOS CARGADOS (Incluyen Notas y Cronograma):
+    ${contextText}
 
-    // --- CADENA DE SUPERVIVENCIA (INTENTO DE MODELOS DISPONIBLES) ---
-    // Usamos los nombres exactos que aparecieron en tu lista de la terminal
-    const modelsToTry = [
-      "gemini-2.0-flash-lite", // 1er Intento: El que debe tener cuota alta
-      "gemini-2.5-flash-lite", // 2do Intento: El modelo de estreno
-      "gemini-2.0-flash"      // 3er Intento: Por si los Lite están ocupados
-    ];
+    TAREA:
+    - Si el usuario dice "Soy Alondra" o pregunta por calificaciones, BUSCA específicamente los bloques que digan "REGISTRO ACADÉMICO".
+    - El registro dice literalmente las notas. Di cada una de forma clara.
+    - RECUERDA: Si ves notas de 12, divídelas entre 1.2 para el promedio. Si son de 5, multiplícalas por 2.
+    - NO menciones que no hay notas si ves los registros arriba.`;
 
-    let lastError = "";
+    const modelName = "gemini-2.0-flash-lite"; 
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${apiKey}`;
 
-    for (const modelName of modelsToTry) {
-      console.log(`📡 Intentando conectar vía: ${modelName}`);
-      
-      const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${apiKey}`;
-
-      const response = await fetch(url, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          contents: [{ parts: [{ text: systemPrompt + "\n\nPregunta: " + message }] }],
-          generationConfig: { temperature: 0.1, maxOutputTokens: 2000 }
-        })
-      });
-
-      const data = await response.json();
-
-      if (response.ok && data.candidates?.[0]?.content) {
-        const reply = data.candidates[0].content.parts[0].text;
-        
-        // Guardar analíticas
-        await prisma.interaction.create({
-          data: { chatbotId: chatbot.id, query: message.substring(0, 500), response: reply.substring(0, 2000) }
-        }).catch(() => {});
-
-        return NextResponse.json({ reply });
-      } else {
-        lastError = data.error?.message || "Fallo desconocido";
-        console.warn(`⚠️ Modelo ${modelName} rechazado por: ${lastError}`);
-        // El bucle sigue al siguiente modelo de la lista
-      }
-    }
-
-    // Si llegamos aquí, es que ninguno funcionó
-    return NextResponse.json({ 
-        reply: `⚠️ Lo sentimos, pero Google está saturado o los modelos están en mantenimiento técnico. Error reportado: "${lastError}". Por favor, espera 30 segundos y reintenta.` 
+    const response = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        contents: [{ parts: [{ text: systemPrompt + "\n\nUsuario: " + message }] }],
+        safetySettings: [{ category: "HARM_CATEGORY_DANGEROUS_CONTENT", threshold: "BLOCK_NONE" }],
+        generationConfig: { temperature: 0.1 }
+      })
     });
+
+    const data = await response.json();
+    const reply = data.candidates?.[0]?.content?.parts?.[0]?.text || "Lo siento, ¿podrías repetirme tu nombre o correo?";
+
+    return NextResponse.json({ reply });
 
   } catch (error: any) {
     return NextResponse.json({ error: "Sincronizando: " + error.message }, { status: 500 });
