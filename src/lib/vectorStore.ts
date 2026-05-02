@@ -6,50 +6,47 @@ const embeddings = new GoogleGenerativeAIEmbeddings({
   modelName: "embedding-001",
 });
 
+// Esta función es necesaria para el procesador de documentos
 export async function getEmbeddingsForTexts(texts: string[]) {
   return await embeddings.embedDocuments(texts);
 }
 
-let store: any = null;
+// ALMACÉN TEMPORAL
+let localDocs: any[] = [];
 
 export async function loadStoreFromDB(knowledgeBaseId: string, prisma: any) {
   try {
-    const { MemoryVectorStore } = await import("langchain/vectorstores/memory");
-    const chunks = await prisma.documentChunk.findMany({ where: { knowledgeBaseId } });
-    if (!chunks || chunks.length === 0) return;
-    const docs = chunks.map((chunk) => ({
+    const chunks = await prisma.documentChunk.findMany({
+      where: { knowledgeBaseId },
+      take: 100 // Suficiente para traer todos los alumnos y reglas clave
+    });
+
+    localDocs = chunks.map((chunk) => ({
       pageContent: chunk.content,
       metadata: typeof chunk.metadata === 'string' ? JSON.parse(chunk.metadata) : chunk.metadata,
     }));
-    store = await MemoryVectorStore.fromDocuments(docs, embeddings);
+    
+    console.log(`✅ ${localDocs.length} datos listos en memoria.`);
   } catch (error) {
-    console.error("❌ Error en carga:", error.message);
+    console.error("❌ Error cargando base de datos:", error.message);
   }
 }
 
 export async function searchVectorStore(query: string, knowledgeBaseId: string, limit: number = 20) {
-  let results = [];
-  if (store) {
-    results = await store.similaritySearch(query, limit);
-  }
-
-  // --- BÚSQUEDA DE PALABRA EXACTA (EL SECRETO) ---
-  const { prisma } = await import("./prisma");
-  const words = query.toLowerCase().split(/[ @.]+/).filter(w => w.length > 4);
+  // BYPASS DE MEMORYVECTORSTORE:
+  // Si no tenemos datos, devolvemos vacío
+  if (localDocs.length === 0) return [];
   
-  if (words.length > 0) {
-    const directResults = await prisma.documentChunk.findMany({
-      where: {
-        knowledgeBaseId,
-        OR: words.map(w => ({ content: { contains: w, mode: 'insensitive' } }))
-      },
-      take: 5
-    });
-    
-    directResults.forEach(c => {
-      results.push({ pageContent: c.content, metadata: {} });
-    });
-  }
+  const searchText = query.toLowerCase();
+  
+  // 1. Prioridad: Búsqueda exacta (Súper efectivo para correos y nombres)
+  const matches = localDocs.filter(doc => 
+    doc.pageContent.toLowerCase().includes(searchText)
+  );
 
-  return results;
+  if (matches.length > 0) return matches;
+
+  // 2. Si no hay coincidencia exacta, devolvemos una muestra de datos
+  // Esto permite que Gemini "lea" la lista si el usuario no es preciso
+  return localDocs.slice(0, limit);
 }
