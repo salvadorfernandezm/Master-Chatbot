@@ -1,7 +1,6 @@
 export const dynamic = 'force-dynamic';
 import { NextResponse } from "next/dist/server/web/spec-extension/response";
 import { prisma } from "@/lib/prisma";
-import { searchVectorStore, loadStoreFromDB } from "@/lib/vectorStore";
 
 export async function POST(req: Request) {
   try {
@@ -9,50 +8,71 @@ export async function POST(req: Request) {
     const { message, token } = body;
     const apiKey = process.env.GEMINI_API_KEY;
 
-    if (!apiKey) return NextResponse.json({ error: "Falta API Key" }, { status: 500 });
-
+    // 1. IDENTIFICAR CHATBOT Y SU BASE
     const chatbot = await prisma.chatbot.findUnique({
-      where: { token, isActive: true },
-      include: { knowledgeBase: true }
+      where: { token, isActive: true }
     });
 
     if (!chatbot) return NextResponse.json({ error: "Chatbot no encontrado" }, { status: 404 });
 
-    // 1. REHIDRATAR MEMORIA (Solo de su base específica)
-    await loadStoreFromDB(chatbot.knowledgeBaseId, prisma);
-    const vectorContexts = await searchVectorStore(message, chatbot.knowledgeBaseId, 25);
-    const contextText = vectorContexts.map((v: any) => v.pageContent).join("\n\n---\n\n");
+    // 2. LECTURA DIRECTA DE SUPABASE (BYPASS DE VECTORES)
+    // Buscamos TODOS los fragmentos que pertenezcan a la base de este chatbot
+    const chunks = await prisma.documentChunk.findMany({
+      where: { knowledgeBaseId: chatbot.knowledgeBaseId },
+      select: { content: true } // Solo nos interesa el texto
+    });
 
-    // 2. PROMPT DE ESPECIALIDAD
+    // Unimos todo el conocimiento en un solo bloque de texto
+    const allKnowledge = chunks.map(c => c.content).join("\n\n---\n\n");
+
+    console.log(`📚 Sistema cargado con ${chunks.length} fragmentos de la base: ${chatbot.knowledgeBaseId}`);
+
+    // 3. PROMPT DE MAESTRÍA
     const systemPrompt = `Eres el asistente académico del Profesor Salvador. 
-    ESTOS SON TUS DOCUMENTOS OFICIALES PARA ESTE CHAT ESPECÍFICO:
-    ${contextText || "Atención: Tu base de conocimiento está vacía actualmente."}
+    ESTA ES TU FUENTE DE VERDAD ABSOLUTA PARA ESTE CHAT:
+    
+    ${allKnowledge || "AVISO: No se encontraron documentos cargados para este chat."}
 
-    INSTRUCCIÓN:
-    - Responde únicamente basándote en la información de arriba.
-    - Si el contexto contiene CALIFICACIONES, actúa como analista y normaliza (Base 12 / 1.2).
-    - Si el contexto es sobre ETXEBERRIA o APA, sé pedagógico y detallado.
-    - REGLA: Si arriba no hay información, pide amablemente los datos (como correo o tema) para buscar mejor.`;
+    INSTRUCCIONES:
+    - Responde únicamente basado en el texto de arriba. 
+    - Si preguntan por Dr. Xabier Etxeberria, usa la sabiduría de la trascripción.
+    - Si preguntan por notas, busca al alumno y aplica la normalización (Base 12 divide entre 1.2).
+    - NUNCA pidas correo ni nombre si la pregunta es teórica (como "¿Qué es la moral?").
+    - Si la fuente está arriba, DEBES responder con detalle. No digas que no tienes acceso.`;
 
-    const modelName = "gemini-flash-latest"; 
+    // 4. LLAMADA A GEMINI (OFICINA V1BETA PARA TU CUENTA 2.0)
+    const modelName = "gemini-2.0-flash-lite"; 
     const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${apiKey}`;
 
     const response = await fetch(url, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        contents: [{ parts: [{ text: systemPrompt + "\n\nUsuario: " + message }] }],
-        safetySettings: [{ category: "HARM_CATEGORY_DANGEROUS_CONTENT", threshold: "BLOCK_NONE" }],
-        generationConfig: { temperature: 0.1, maxOutputTokens: 2500 }
+        contents: [{ parts: [{ text: systemPrompt + "\n\nConsulta del Estudiante: " + message }] }],
+        safetySettings: [
+          { category: "HARM_CATEGORY_DANGEROUS_CONTENT", threshold: "BLOCK_NONE" }
+        ],
+        generationConfig: { temperature: 0.1, maxOutputTokens: 2048 }
       })
     });
 
     const data = await response.json();
-    const reply = data.candidates?.[0]?.content?.parts?.[0]?.text || "Lo siento, tuve un problema al procesar la respuesta. ¿Puedes reintentar ser más específico?";
+    
+    if (data.candidates && data.candidates[0]?.content) {
+        const reply = data.candidates[0].content.parts[0].text;
+        
+        // Guardar para tus maravillosas analíticas
+        await prisma.interaction.create({
+            data: { chatbotId: chatbot.id, query: message, response: reply }
+        }).catch(() => {});
 
-    return NextResponse.json({ reply });
+        return NextResponse.json({ reply });
+    }
+
+    return NextResponse.json({ reply: "Lo siento, tuve un problema al procesar la sabiduría de los textos. ¿Podrías repetir tu pregunta?" });
 
   } catch (error: any) {
-    return NextResponse.json({ error: "Sincronizando: " + error.message }, { status: 500 });
+    console.error("❌ ERROR EN RUTA:", error.message);
+    return NextResponse.json({ error: "Sincronizando con la nube... intenta de nuevo." }, { status: 500 });
   }
 }
