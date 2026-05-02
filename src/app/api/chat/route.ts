@@ -9,7 +9,8 @@ export async function POST(req: Request) {
     const { message, token } = body;
     const apiKey = process.env.GEMINI_API_KEY;
 
-    // 1. IDENTIFICAR CHATBOT
+    if (!apiKey) return NextResponse.json({ error: "Falta API Key" }, { status: 500 });
+
     const chatbot = await prisma.chatbot.findUnique({
       where: { token, isActive: true },
       include: { knowledgeBase: true }
@@ -17,53 +18,66 @@ export async function POST(req: Request) {
 
     if (!chatbot) return NextResponse.json({ error: "Chatbot no encontrado" }, { status: 404 });
 
-    // 2. CARGAR MEMORIA ESPECIALIZADA
+    // 1. CARGAR MEMORIA (RAG)
     await loadStoreFromDB(chatbot.knowledgeBaseId, prisma);
-    const vectorContexts = await searchVectorStore(message, chatbot.knowledgeBaseId, 30);
+    const vectorContexts = await searchVectorStore(message, chatbot.knowledgeBaseId, 15);
     const contextText = vectorContexts.map((v: any) => v.pageContent).join("\n\n---\n\n");
 
-    // 3. INSTRUCCIONES SEGÚN EL TIPO DE CHAT
+    // 2. INSTRUCCIONES SEGÚN EL TIPO DE CHAT (Lógica salvada de ayer)
     const isGradesChat = chatbot.knowledgeBase.name.toLowerCase().includes("califica") || 
                          chatbot.name.toLowerCase().includes("nota");
 
     const systemPrompt = `Eres el asistente académico del Profesor Salvador. 
-    ESTA ES TU ÚNICA FUENTE DE VERDAD PARA ESTE CHAT:
-    ${contextText || "ATENCIÓN: Tu base de conocimiento está vacía."}
+    USA ESTE CONTEXTO:
+    ${contextText}
 
-    MODO DE OPERACIÓN:
+    MODO:
     ${isGradesChat ? 
-      '- ESTÁS EN MODO CALIFICACIONES. Busca al alumno por nombre o correo en el texto. Aplica promedio normalizado (Base 12 / 1.2). Muestra el desglose.' : 
-      '- ESTÁS EN MODO TEÓRICO (Xabier Etxeberria o APA). Responde pedagógicamente y no pidas correos ni nombres.'
+      '- MODO NOTAS: Busca al alumno, normaliza (Base 12 / 1.2), da el promedio.' : 
+      '- MODO TEÓRICO: Explica con detalle pedagógico. No pidas correos.'
     }
-    - REGLA: Si la información está arriba, úsala. NUNCA digas que no tienes acceso.`;
+    REGLA: Responde siempre de forma completa.`;
 
-    const modelName = "gemini-2.0-flash-lite"; 
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${apiKey}`;
+    // 3. LA BALA DE PLATA: USAMOS LA PUERTA DE PRODUCCIÓN V1 (1,500 MENSAJES)
+    // El modelo gemini-1.5-flash por la oficina /v1/ es el que no falla con el límite.
+    const modelName = "gemini-1.5-flash"; 
+    const url = `https://generativelanguage.googleapis.com/v1/models/${modelName}:generateContent?key=${apiKey}`;
+
+    console.log(`📡 Cambiando a canal de producción estable: ${modelName}`);
 
     const response = await fetch(url, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        contents: [{ parts: [{ text: systemPrompt + "\n\nUsuario: " + message }] }],
-        safetySettings: [
-          { category: "HARM_CATEGORY_DANGEROUS_CONTENT", threshold: "BLOCK_NONE" },
-          { category: "HARM_CATEGORY_HARASSMENT", threshold: "BLOCK_NONE" }
-        ],
-        generationConfig: { temperature: 0.1, maxOutputTokens: 2048 }
+        contents: [{ parts: [{ text: systemPrompt + "\n\nPregunta: " + message }] }],
+        generationConfig: { temperature: 0.1, maxOutputTokens: 2500 }
       })
     });
 
     const data = await response.json();
-    
+
     if (data.candidates && data.candidates[0]?.content) {
-        return NextResponse.json({ reply: data.candidates[0].content.parts[0].text });
+        const reply = data.candidates[0].content.parts[0].text;
+        
+        await prisma.interaction.create({
+            data: { chatbotId: chatbot.id, query: message, response: reply }
+        }).catch(() => {});
+
+        return NextResponse.json({ reply });
     }
 
-    // SI ALGO FALLA CON GOOGLE, DAMOS UN MENSAJE ÚTIL
-    const errorMsg = data.error?.message || "Google no devolvió respuesta. Reintenta en unos segundos.";
-    return NextResponse.json({ reply: `⚠️ Error técnico: ${errorMsg}` });
+    // SI LA PRODUCCIÓN V1 DA ERROR, SALTAMOS AL LITE AUTOMÁTICAMENTE
+    console.warn("V1 en pausa, intentando ruta alternativa...");
+    const altUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key=${apiKey}`;
+    const altRes = await fetch(altUrl, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ contents: [{ parts: [{ text: message }] }] })
+    });
+    const altData = await altRes.json();
+    return NextResponse.json({ reply: altData.candidates[0].content.parts[0].text });
 
   } catch (error: any) {
-    return NextResponse.json({ error: "Sincronizando: " + error.message }, { status: 500 });
+    return NextResponse.json({ error: "Saturación temporal de Google. Reintenta en unos segundos." }, { status: 500 });
   }
 }
