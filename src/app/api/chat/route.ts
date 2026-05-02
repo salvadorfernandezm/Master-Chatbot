@@ -8,71 +8,69 @@ export async function POST(req: Request) {
     const { message, token } = body;
     const apiKey = process.env.GEMINI_API_KEY;
 
-    // 1. IDENTIFICAR CHATBOT Y SU BASE
+    // 1. LOCALIZAR EL CHATBOT
     const chatbot = await prisma.chatbot.findUnique({
       where: { token, isActive: true }
     });
-
     if (!chatbot) return NextResponse.json({ error: "Chatbot no encontrado" }, { status: 404 });
 
-    // 2. LECTURA DIRECTA DE SUPABASE (BYPASS DE VECTORES)
-    // Buscamos TODOS los fragmentos que pertenezcan a la base de este chatbot
+    // 2. LEER DATOS (Solo los 15 más relevantes para no saturar)
+    // Buscamos fragmentos que contengan palabras de la pregunta
+    const words = message.toLowerCase().split(' ').filter(w => w.length > 3);
     const chunks = await prisma.documentChunk.findMany({
-      where: { knowledgeBaseId: chatbot.knowledgeBaseId },
-      select: { content: true } // Solo nos interesa el texto
+      where: {
+        knowledgeBaseId: chatbot.knowledgeBaseId,
+        OR: words.length > 0 ? words.map(w => ({ content: { contains: w, mode: 'insensitive' } })) : undefined
+      },
+      take: 15
     });
 
-    // Unimos todo el conocimiento en un solo bloque de texto
-    const allKnowledge = chunks.map(c => c.content).join("\n\n---\n\n");
+    // Si la búsqueda por palabra falla, traemos los primeros 10 de esa base
+    const finalChunks = chunks.length > 0 ? chunks : await prisma.documentChunk.findMany({
+      where: { knowledgeBaseId: chatbot.knowledgeBaseId },
+      take: 10
+    });
 
-    console.log(`📚 Sistema cargado con ${chunks.length} fragmentos de la base: ${chatbot.knowledgeBaseId}`);
+    const contextText = finalChunks.map(c => c.content).join("\n\n---\n\n");
 
-    // 3. PROMPT DE MAESTRÍA
-    const systemPrompt = `Eres el asistente académico del Profesor Salvador. 
-    ESTA ES TU FUENTE DE VERDAD ABSOLUTA PARA ESTE CHAT:
-    
-    ${allKnowledge || "AVISO: No se encontraron documentos cargados para este chat."}
+    // 3. PREPARAR EL MENSAJE
+    const systemPrompt = `Eres un asistente académico. Responde usando este CONTEXTO:\n${contextText}\n
+    REGLA: Sé directo y pedagógico. Si es sobre notas, calcúla el promedio normalizado.`;
 
-    INSTRUCCIONES:
-    - Responde únicamente basado en el texto de arriba. 
-    - Si preguntan por Dr. Xabier Etxeberria, usa la sabiduría de la trascripción.
-    - Si preguntan por notas, busca al alumno y aplica la normalización (Base 12 divide entre 1.2).
-    - NUNCA pidas correo ni nombre si la pregunta es teórica (como "¿Qué es la moral?").
-    - Si la fuente está arriba, DEBES responder con detalle. No digas que no tienes acceso.`;
-
-    // 4. LLAMADA A GEMINI (OFICINA V1BETA PARA TU CUENTA 2.0)
-    const modelName = "gemini-2.0-flash-lite"; 
+    // 4. LLAMADA A GOOGLE (USANDO EL NOMBRE "LATEST" QUE ES EL MÁS ESTABLE)
+    const modelName = "gemini-1.5-flash-latest"; 
     const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${apiKey}`;
 
     const response = await fetch(url, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        contents: [{ parts: [{ text: systemPrompt + "\n\nConsulta del Estudiante: " + message }] }],
+        contents: [{ parts: [{ text: systemPrompt + "\n\nPregunta: " + message }] }],
         safetySettings: [
-          { category: "HARM_CATEGORY_DANGEROUS_CONTENT", threshold: "BLOCK_NONE" }
+          { category: "HARM_CATEGORY_DANGEROUS_CONTENT", threshold: "BLOCK_NONE" },
+          { category: "HARM_CATEGORY_HARASSMENT", threshold: "BLOCK_NONE" }
         ],
-        generationConfig: { temperature: 0.1, maxOutputTokens: 2048 }
+        generationConfig: { temperature: 0.2, maxOutputTokens: 1000 }
       })
     });
 
     const data = await response.json();
-    
-    if (data.candidates && data.candidates[0]?.content) {
+
+    // 5. DETECTOR DE VERDAD
+    if (data.candidates && data.candidates[0]?.content?.parts?.[0]?.text) {
         const reply = data.candidates[0].content.parts[0].text;
-        
-        // Guardar para tus maravillosas analíticas
+        // Guardamos analíticas
         await prisma.interaction.create({
             data: { chatbotId: chatbot.id, query: message, response: reply }
         }).catch(() => {});
-
         return NextResponse.json({ reply });
-    }
+    } 
 
-    return NextResponse.json({ reply: "Lo siento, tuve un problema al procesar la sabiduría de los textos. ¿Podrías repetir tu pregunta?" });
+    // SI GOOGLE DA ERROR, LO MOSTRAMOS
+    const googleError = data.error?.message || "Google bloqueó la respuesta por seguridad de contenido.";
+    return NextResponse.json({ reply: `⚠️ Error de Google: ${googleError}` });
 
   } catch (error: any) {
-    console.error("❌ ERROR EN RUTA:", error.message);
-    return NextResponse.json({ error: "Sincronizando con la nube... intenta de nuevo." }, { status: 500 });
+    return NextResponse.json({ error: "Sincronizando con el servidor..." }, { status: 500 });
   }
 }
