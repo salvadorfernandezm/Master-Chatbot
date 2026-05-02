@@ -9,7 +9,8 @@ export async function POST(req: Request) {
     const { message, token } = body;
     const apiKey = process.env.GEMINI_API_KEY;
 
-    // 1. IDENTIFICAR AL CHATBOT
+    if (!apiKey) return NextResponse.json({ error: "Falta API Key" }, { status: 500 });
+
     const chatbot = await prisma.chatbot.findUnique({
       where: { token, isActive: true },
       include: { knowledgeBase: true }
@@ -17,26 +18,23 @@ export async function POST(req: Request) {
 
     if (!chatbot) return NextResponse.json({ error: "Chatbot no encontrado" }, { status: 404 });
 
-    // 2. CARGAR TODO EL CONTEXTO (Usamos tu modo "Visión Total" de ayer)
+    // CARGAMOS TODO EL CONTEXTO
     await loadStoreFromDB(chatbot.knowledgeBaseId, prisma);
-    const vectorContexts = await searchVectorStore(message, chatbot.knowledgeBaseId, 30);
+    const vectorContexts = await searchVectorStore(message, chatbot.knowledgeBaseId, 40); // Más fragmentos para no fallar
     const contextText = vectorContexts.map((v: any) => v.pageContent).join("\n\n---\n\n");
 
-    // 3. PROMPT DINÁMICO (Identifica si busca Notas o Contenido)
-    const systemPrompt = `Eres "${chatbot.name}", el asistente oficial del Profesor Salvador.
-    TU BASE DE DATOS ES ESTA (Contiene Manual APA, Ética de Etxeberria y Calificaciones):
+    const systemPrompt = `Eres el asistente oficial del Profesor Salvador. 
+    A CONTINUACIÓN TIENES LA BASE DE DATOS (LECTURAS, APA Y CALIFICACIONES):
     ${contextText}
 
-    MODO DE RESPUESTA:
-    A) SI LA PREGUNTA ES ACADÉMICA (Moral, Cursivas, Autores, APA):
-       - Responde de forma detallada y pedagógica usando el texto de arriba. 
-       - ¡NO pidas correos ni apellidos en este modo! Explica el concepto y ya.
-    
-    B) SI LA PREGUNTA ES SOBRE CALIFICACIONES O PROMEDIOS:
-       - Solo entonces, busca al alumno por nombre o correo. 
-       - Si no encuentras al alumno en los fragmentos de arriba, di: "No localizo tu registro en los documentos actuales. ¿Podrías verificar tu nombre o correo?"
-    
-    C) REGLA GENERAL: Responde siempre con profesionalismo y cita el documento o autor si aparece arriba.`;
+    IDENTIFICA TU MISIÓN:
+    1. SI preguntan por CALIFICACIONES (notas, promedios, nombres de alumnos):
+       - Solo entonces pide nombre o correo. 
+       - Si lo tienes, normaliza la nota (Base 12 / 1.2 o Base 5 * 2) y da el promedio.
+    2. SI preguntan por FILOSOFÍA O APA (Etxeberria, Moral, Citas, etc):
+       - Responde como un profesor experto basándote en los textos de arriba. 
+       - ¡PROHIBIDO pedir nombre o correo en este modo teórico!
+    3. REGLA DE ORO: No digas que no tienes acceso. Si no ves el dato exacto, resume lo más parecido que encuentres.`;
 
     const modelName = "gemini-2.0-flash-lite"; 
     const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${apiKey}`;
@@ -46,17 +44,17 @@ export async function POST(req: Request) {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         contents: [{ parts: [{ text: systemPrompt + "\n\nPregunta: " + message }] }],
-        generationConfig: { temperature: 0.1 }
+        safetySettings: [
+          { category: "HARM_CATEGORY_DANGEROUS_CONTENT", threshold: "BLOCK_NONE" }
+        ],
+        generationConfig: { temperature: 0.2, maxOutputTokens: 2500 }
       })
     });
 
     const data = await response.json();
-    
-    if (data.candidates && data.candidates[0].content) {
-        return NextResponse.json({ reply: data.candidates[0].content.parts[0].text });
-    } 
+    const reply = data.candidates?.[0]?.content?.parts?.[0]?.text || "Lo siento, tuve un problema al procesar los archivos. Por favor, sé más específico con tu pregunta.";
 
-    return NextResponse.json({ reply: "Lo siento, tuve un problema al consultar los archivos. ¿Puedes intentar de nuevo?" });
+    return NextResponse.json({ reply });
 
   } catch (error: any) {
     return NextResponse.json({ error: "Sincronizando: " + error.message }, { status: 500 });

@@ -14,14 +14,14 @@ let localDocs: any[] = [];
 
 export async function loadStoreFromDB(knowledgeBaseId: string, prisma: any) {
   try {
-    const chunks = await prisma.documentChunk.findMany(); // Trae todo lo de tu cuenta
+    const chunks = await prisma.documentChunk.findMany(); // Traemos todo para no fallar por IDs
     localDocs = chunks.map((chunk) => ({
       pageContent: chunk.content,
       metadata: typeof chunk.metadata === 'string' ? JSON.parse(chunk.metadata) : chunk.metadata,
     }));
-    console.log(`✅ ${localDocs.length} datos listos.`);
+    console.log(`✅ ${localDocs.length} fragmentos listos para consulta.`);
   } catch (error) {
-    console.error("Error:", error.message);
+    console.error("Error cargando base de datos:", error.message);
   }
 }
 
@@ -29,14 +29,18 @@ export async function searchVectorStore(query: string, knowledgeBaseId: string, 
   if (localDocs.length === 0) return [];
   const searchText = query.toLowerCase();
 
-  // FILTRO INTELIGENTE MANUAL:
-  // Buscamos fragmentos que contengan al menos una palabra clave de la pregunta del alumno
+  // BUSCADOR FLEXIBLE: Busca palabras clave de más de 3 letras
   const words = searchText.split(' ').filter(w => w.length > 3);
   
-  const results = localDocs.filter(doc => {
-    return words.some(word => doc.pageContent.toLowerCase().includes(word));
-  });
+  let matches = localDocs.filter(doc => 
+    words.some(word => doc.pageContent.toLowerCase().includes(word))
+  );
 
-  // Si no hay coincidencias exactas, le mandamos una mezcla aleatoria (así pillamos el APA o Etxeberria)
-  return results.length > 0 ? results.slice(0, limit) : localDocs.slice(0, limit);
+  // Si no hay coincidencias (preguntas muy generales), enviamos los fragmentos más recientes
+  // para que Gemini tenga material de donde sacar información
+  if (matches.length === 0) {
+    return localDocs.slice(-limit); 
+  }
+
+  return matches.slice(0, limit);
 }
