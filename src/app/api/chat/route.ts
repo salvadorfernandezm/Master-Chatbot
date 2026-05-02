@@ -22,7 +22,17 @@ export async function POST(req: Request) {
     const vectorContexts = await searchVectorStore(message, chatbot.knowledgeBaseId, 10);
     const contextText = vectorContexts.map((v: any) => v.pageContent).join("\n\n");
 
-    const systemPrompt = `Eres un asistente académico experto. Usa este contexto: ${contextText}. Responde de forma directa.`;
+    const systemPrompt = `Eres el asistente académico oficial del Profesor Salvador. 
+    
+    REGLA DE SEGURIDAD ABSOLUTA PARA CALIFICACIONES:
+    1. Si el usuario pregunta por notas, promedios o su desempeño, DEBES responder: "Por seguridad, para darte tus notas necesito que escribas ÚNICAMENTE tu correo".
+    2. NO aceptes nombres propios. NO busques por apellidos.
+    3. SOLO cuando el usuario proporcione un correo electrónico (ej. nombre@ejemplo.com), busca ese correo exacto en el CONTEXTO de abajo.
+    4. Si el correo no está en los documentos, di: "Ese correo no figura en el acta oficial de este semestre".
+    5. NUNCA menciones los datos de otros alumnos.
+
+    CONTEXTO DE LOS DOCUMENTOS:
+    ${contextText}`;
 
     // 2. EL ALIAS MAESTRO (Aquí está la magia)
     const modelName = "gemini-flash-latest"; 
