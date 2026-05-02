@@ -16,7 +16,6 @@ import { Document } from "@langchain/core/documents";
 import { RecursiveCharacterTextSplitter } from "@langchain/textsplitters";
 import { prisma } from "./prisma";
 
-// Importación robusta de PDF
 const pdfLib = require("pdf-parse");
 
 const textSplitter = new RecursiveCharacterTextSplitter({
@@ -35,6 +34,8 @@ export async function processFile(
   const { getEmbeddingsForTexts } = require("./vectorStore");
   const fileExtension = filename.split('.').pop()?.toUpperCase();
 
+  console.log(`📂 Iniciando procesamiento: ${filename} (${fileExtension})`);
+
   try {
     // --- LÓGICA PARA PDF ---
     if (fileExtension === "PDF") {
@@ -49,14 +50,28 @@ export async function processFile(
       const result = await mammoth.extractRawText({ buffer });
       if (result.value) chunks = await textSplitter.createDocuments([result.value], [{ source: filename, knowledgeBaseId, documentId }]);
     }
-    // --- LÓGICA PARA EXCEL ---
+    // --- LÓGICA PARA EXCEL (RESTAURADA VERSIÓN DE ALTA PRECISIÓN) ---
     else if (fileExtension === "XLSX" || fileExtension === "XLS") {
       const workbook = XLSX.read(buffer, { type: 'buffer' });
-      let excelText = "";
-      workbook.SheetNames.forEach(sheet => {
-        excelText += XLSX.utils.sheet_to_csv(workbook.Sheets[sheet]);
+      const excelBlocks: string[] = [];
+
+      workbook.SheetNames.forEach(sheetName => {
+        const worksheet = workbook.Sheets[sheetName];
+        const jsonData = XLSX.utils.sheet_to_json(worksheet, { defval: "" });
+        
+        jsonData.forEach((row: any) => {
+          // Convertimos cada fila en una ficha súper clara
+          let rowString = `FICHA DE CALIFICACIÓN OFICIAL\n`;
+          Object.entries(row).forEach(([key, value]) => {
+            rowString += `${key}: ${value}\n`; // Usamos saltos de línea para que Gemini lo lea mejor
+          });
+          excelBlocks.push(rowString);
+        });
       });
-      chunks = await textSplitter.createDocuments([excelText], [{ source: filename, knowledgeBaseId, documentId }]);
+
+      // Creamos un documento por cada ficha de alumno
+      chunks = await textSplitter.createDocuments(excelBlocks, [{ source: filename, knowledgeBaseId, documentId }]);
+      console.log(`✅ Excel transformado en ${chunks.length} fichas individuales.`);
     }
     // --- LÓGICA PARA TXT ---
     else if (fileExtension === "TXT") {
@@ -65,7 +80,7 @@ export async function processFile(
 
     if (chunks.length === 0) return 0;
 
-    console.log(`💾 Indexando ${chunks.length} fragmentos...`);
+    console.log(`💾 Indexando ${chunks.length} fragmentos en la Base de Datos...`);
     const BATCH_SIZE = 50; 
     for (let i = 0; i < chunks.length; i += BATCH_SIZE) {
       const batch = chunks.slice(i, i + BATCH_SIZE);
