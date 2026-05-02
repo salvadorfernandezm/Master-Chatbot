@@ -9,69 +9,41 @@ export async function POST(req: Request) {
     const { message, token } = body;
     const apiKey = process.env.GEMINI_API_KEY;
 
-    if (!apiKey) return NextResponse.json({ error: "Falta API Key" }, { status: 500 });
+    const chatbot = await prisma.chatbot.findUnique({ where: { token, isActive: true } });
+    if (!chatbot) return NextResponse.json({ error: "No hay chatbot" }, { status: 404 });
 
-    const chatbot = await prisma.chatbot.findUnique({
-      where: { token, isActive: true },
-    });
-
-    if (!chatbot) return NextResponse.json({ error: "Chatbot no encontrado" }, { status: 404 });
-
-    // 1. CARGA DE CONTEXTO (Mantenemos la optimización de velocidad)
     await loadStoreFromDB(chatbot.knowledgeBaseId, prisma);
-     const vectorContexts = await searchVectorStore(message, chatbot.knowledgeBaseId, 30);
-    const contextText = vectorContexts.map((v: any) => v.pageContent).join("\n\n");
+    const vectorContexts = await searchVectorStore(message, chatbot.knowledgeBaseId, 30);
+    const contextText = vectorContexts.map((v: any) => v.pageContent).join("\n\n---\n\n");
 
-    const systemPrompt = `Eres el asistente académico oficial del Profesor Salvador. 
-    
-    REGLA DE SEGURIDAD ABSOLUTA PARA CALIFICACIONES:
-    1. Si el usuario pregunta por notas, promedios o su desempeño, DEBES responder: "Por seguridad, para darte tus notas necesito que escribas ÚNICAMENTE tu correo".
-    2. NO aceptes nombres propios. NO busques por apellidos.
-    3. SOLO cuando el usuario proporcione un correo electrónico (ej. nombre@ejemplo.com), busca ese correo exacto en el CONTEXTO de abajo.
-    4. Si el correo no está en los documentos, di: "Ese correo no figura en el acta oficial de este semestre".
-    5. NUNCA menciones los datos de otros alumnos.
+    const systemPrompt = `Eres el asistente oficial del Profesor Salvador Fernández.
+    TU ÚNICA FUENTE DE DATOS (RECIÉN EXTRAÍDOS):
+    ${contextText}
 
-    CONTEXTO DE LOS DOCUMENTOS:
-    ${contextText}`;
+    INSTRUCCIONES DE SEGURIDAD:
+    - Solo da notas si ves un CORREO en la pregunta y ese correo está en los datos.
+    - Los datos vienen en formato: "REGISTRO ACADÉMICO - FILA X: Nombre, Correo, Notas..."
+    - Si el correo coincide, di la nota de cada actividad de forma literal.
+    - REGLA DE ORO: No digas que no tienes acceso. El texto de arriba SON los archivos.`;
 
-    // 2. EL ALIAS MAESTRO (Aquí está la magia)
-    const modelName = "gemini-flash-latest"; 
+    const modelName = "gemini-flash-latest"; // Usamos el alias más potente
     const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${apiKey}`;
-
-    console.log(`📡 Solicitando acceso a Google vía: ${modelName}`);
 
     const response = await fetch(url, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         contents: [{ parts: [{ text: systemPrompt + "\n\nPregunta: " + message }] }],
-        generationConfig: { temperature: 0.2, maxOutputTokens: 2000 }
+        safetySettings: [{ category: "HARM_CATEGORY_DANGEROUS_CONTENT", threshold: "BLOCK_NONE" }]
       })
     });
 
     const data = await response.json();
-
-    if (!response.ok) {
-        console.error("❌ ERROR DETECTADO EN GOOGLE:", data.error?.message);
-        throw new Error(data.error?.message || "Saturación");
-    }
-
-    const reply = data.candidates[0].content.parts[0].text;
-
-    // 3. GUARDAR ANALÍTICAS
-    await prisma.interaction.create({
-      data: { 
-        chatbotId: chatbot.id, 
-        query: message.substring(0, 500), 
-        response: reply.substring(0, 2000) 
-      }
-    }).catch(() => {});
+    const reply = data.candidates?.[0]?.content?.parts?.[0]?.text || "Lo siento, no pude procesar la respuesta. Intenta con tu nombre o correo otra vez.";
 
     return NextResponse.json({ reply });
 
   } catch (error: any) {
-    console.error("❌ FALLO EN LA COMUNICACIÓN:", error.message);
-    // Devolvemos el error real para que el traductor del ChatClient haga su magia
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
