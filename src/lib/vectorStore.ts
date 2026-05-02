@@ -10,33 +10,41 @@ export async function getEmbeddingsForTexts(texts: string[]) {
   return await embeddings.embedDocuments(texts);
 }
 
-let localDocs: any[] = [];
+// ALMACÉN TEMPORAL (Solo de la base actual)
+let currentDocs: any[] = [];
 
 export async function loadStoreFromDB(knowledgeBaseId: string, prisma: any) {
   try {
-    // Subimos a 3000 para que nunca se quede nada fuera
-    const chunks = await prisma.documentChunk.findMany({ take: 3000 });
-    localDocs = chunks.map((chunk) => ({
+    // FILTRO CRÍTICO: Solo traemos fragmentos que pertenezcan a este chatbot
+    const chunks = await prisma.documentChunk.findMany({
+      where: { knowledgeBaseId: knowledgeBaseId }
+    });
+
+    currentDocs = chunks.map((chunk) => ({
       pageContent: chunk.content,
       metadata: typeof chunk.metadata === 'string' ? JSON.parse(chunk.metadata) : chunk.metadata,
     }));
-    console.log(`✅ Base de datos cargada: ${localDocs.length} fragmentos.`);
+    
+    console.log(`✅ Base de Conocimiento [${knowledgeBaseId}] cargada con ${currentDocs.length} datos.`);
   } catch (error) {
-    console.error("Error en DB:", error.message);
+    console.error("❌ Error cargando base de datos:", error.message);
   }
 }
 
 export async function searchVectorStore(query: string, knowledgeBaseId: string, limit: number = 30) {
-  if (localDocs.length === 0) return [];
+  if (currentDocs.length === 0) return [];
   const searchText = query.toLowerCase();
   
-  // SEPARAR NOMBRE POR PALABRAS (Ej: "Alondra Casas" -> ["alondra", "casas"])
+  // Separamos el nombre por palabras (ej. Alondra Casas)
   const words = searchText.split(' ').filter(w => w.length > 2);
   
-  // Buscar filas que tengan las palabras del nombre O el correo
-  const matches = localDocs.filter(doc => 
+  // 1. Buscamos filas que tengan TODAS las palabras (Máxima precisión)
+  const matches = currentDocs.filter(doc => 
     words.every(word => doc.pageContent.toLowerCase().includes(word))
   );
 
-  return matches.length > 0 ? matches : localDocs.slice(0, limit);
+  if (matches.length > 0) return matches;
+
+  // 2. Si no hay coincidencia exacta, devolvemos una muestra solo de esta base
+  return currentDocs.slice(0, limit);
 }
