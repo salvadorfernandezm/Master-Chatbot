@@ -9,7 +9,7 @@ import { Document } from "@langchain/core/documents";
 import { RecursiveCharacterTextSplitter } from "@langchain/textsplitters";
 import { prisma } from "./prisma";
 
-// CARGA MANUAL DE LIBRERÍA
+// Importación de librería PDF
 const pdfLib = require("pdf-parse");
 
 const textSplitter = new RecursiveCharacterTextSplitter({
@@ -27,6 +27,8 @@ export async function processFile(
   let chunks: Document[] = [];
   const { getEmbeddingsForTexts } = require("./vectorStore");
   const fileExtension = filename.split('.').pop()?.toUpperCase();
+
+  console.log(`📂 Misión: Procesar ${filename} (${fileExtension})`);
 
   try {
     if (fileExtension === "PDF") {
@@ -55,10 +57,10 @@ export async function processFile(
 
     if (chunks.length === 0) return 0;
 
+    console.log(`💾 Indexando ${chunks.length} fragmentos...`);
     const BATCH_SIZE = 50; 
     for (let i = 0; i < chunks.length; i += BATCH_SIZE) {
       const batch = chunks.slice(i, i + BATCH_SIZE);
-      const { getEmbeddingsForTexts } = require("./vectorStore");
       const embeddings = await getEmbeddingsForTexts(batch.map(c => c.pageContent));
       await prisma.documentChunk.createMany({
         data: batch.map((c, idx) => ({
@@ -77,4 +79,8 @@ export async function processFile(
   }
 }
 
-export async function processUrl() { return 0; }
+// CORRECCIÓN: Ahora la función acepta los 3 argumentos requeridos por admin.ts
+export async function processUrl(url: string, knowledgeBaseId: string, documentId: string) {
+    console.log(`🌐 Procesando URL: ${url}`);
+    return 0; 
+}
