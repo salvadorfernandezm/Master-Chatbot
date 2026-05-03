@@ -7,77 +7,62 @@ export async function POST(req: Request) {
   try {
     const body = await req.json();
     const { message, token } = body;
-    const apiKey = process.env.GEMINI_API_KEY;
-
-    if (!apiKey) return NextResponse.json({ error: "Falta API Key" }, { status: 500 });
+    
+    // TRUCO DE LAS DOS LLAVES: Si una no está, intenta la otra
+    const apiKeys = [process.env.GEMINI_API_KEY, process.env.GEMINI_API_KEY_2].filter(Boolean);
+    
+    if (apiKeys.length === 0) return NextResponse.json({ error: "Faltan llaves en Vercel" }, { status: 500 });
 
     const chatbot = await prisma.chatbot.findUnique({
       where: { token, isActive: true },
-      include: { knowledgeBase: true }
     });
 
-    if (!chatbot) return NextResponse.json({ error: "Chatbot no encontrado" }, { status: 404 });
+    if (!chatbot) return NextResponse.json({ error: "Chatbot apagado por examen o inactivo" }, { status: 404 });
 
-    // 1. CARGAR MEMORIA (RAG)
+    // CARGAR CONTEXTO
     await loadStoreFromDB(chatbot.knowledgeBaseId, prisma);
-    const vectorContexts = await searchVectorStore(message, chatbot.knowledgeBaseId, 15);
+    const vectorContexts = await searchVectorStore(message, chatbot.knowledgeBaseId, 20);
     const contextText = vectorContexts.map((v: any) => v.pageContent).join("\n\n---\n\n");
 
-    // 2. INSTRUCCIONES SEGÚN EL TIPO DE CHAT (Lógica salvada de ayer)
-    const isGradesChat = chatbot.knowledgeBase.name.toLowerCase().includes("califica") || 
-                         chatbot.name.toLowerCase().includes("nota");
+    const systemPrompt = `ATENCIÓN ASISTENTE: Eres el clon del Prof. Salvador. 
+    A CONTINUACIÓN TIENES LA INFORMACIÓN REAL QUE DEBES USAR:
+    ${contextText || "AVISO: No se encontraron documentos."}
+    
+    INSTRUCCIONES:
+    1. NO digas que no tienes acceso. Si hay texto arriba, ESA ES TU BASE DE DATOS.
+    2. Si preguntan por notas, busca al alumno por correo o nombre y di los valores. 
+    3. Si es teoría o APA, sé pedagógico.`;
 
-    const systemPrompt = `Eres el asistente académico del Profesor Salvador. 
-    USA ESTE CONTEXTO:
-    ${contextText}
-
-    MODO:
-    ${isGradesChat ? 
-      '- MODO NOTAS: Busca al alumno, normaliza (Base 12 / 1.2), da el promedio.' : 
-      '- MODO TEÓRICO: Explica con detalle pedagógico. No pidas correos.'
-    }
-    REGLA: Responde siempre de forma completa.`;
-
-    // 3. LA BALA DE PLATA: USAMOS LA PUERTA DE PRODUCCIÓN V1 (1,500 MENSAJES)
-    // El modelo gemini-1.5-flash por la oficina /v1/ es el que no falla con el límite.
-    const modelName = "gemini-1.5-flash"; 
-    const url = `https://generativelanguage.googleapis.com/v1/models/${modelName}:generateContent?key=${apiKey}`;
-
-    console.log(`📡 Cambiando a canal de producción estable: ${modelName}`);
-
-    const response = await fetch(url, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        contents: [{ parts: [{ text: systemPrompt + "\n\nPregunta: " + message }] }],
-        generationConfig: { temperature: 0.1, maxOutputTokens: 2500 }
-      })
-    });
-
-    const data = await response.json();
-
-    if (data.candidates && data.candidates[0]?.content) {
-        const reply = data.candidates[0].content.parts[0].text;
-        
-        await prisma.interaction.create({
-            data: { chatbotId: chatbot.id, query: message, response: reply }
-        }).catch(() => {});
-
-        return NextResponse.json({ reply });
-    }
-
-    // SI LA PRODUCCIÓN V1 DA ERROR, SALTAMOS AL LITE AUTOMÁTICAMENTE
-    console.warn("V1 en pausa, intentando ruta alternativa...");
-    const altUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key=${apiKey}`;
-    const altRes = await fetch(altUrl, {
+    // INTENTO DOBLE CON LLAVES
+    let lastError = "";
+    for (const key of apiKeys) {
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-lite:generateContent?key=${key}`;
+      
+      const response = await fetch(url, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ contents: [{ parts: [{ text: message }] }] })
-    });
-    const altData = await altRes.json();
-    return NextResponse.json({ reply: altData.candidates[0].content.parts[0].text });
+        body: JSON.stringify({
+          contents: [{ parts: [{ text: systemPrompt + "\n\nUsuario: " + message }] }],
+          generationConfig: { temperature: 0.1, maxOutputTokens: 2000 }
+        })
+      });
+
+      const data = await response.json();
+      if (response.ok && data.candidates?.[0]?.content) {
+          const reply = data.candidates[0].content.parts[0].text;
+          // Guardar analíticas
+          await prisma.interaction.create({
+            data: { chatbotId: chatbot.id, query: message, response: reply }
+          }).catch(() => {});
+          return NextResponse.json({ reply });
+      }
+      lastError = data.error?.message || "Fallo técnico";
+    }
+
+    throw new Error(lastError);
 
   } catch (error: any) {
-    return NextResponse.json({ error: "Saturación temporal de Google. Reintenta en unos segundos." }, { status: 500 });
+    console.error("❌ FALLO:", error.message);
+    return NextResponse.json({ error: "Saturación. Por favor, reintenta en 15 segundos." }, { status: 500 });
   }
 }
