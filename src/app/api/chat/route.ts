@@ -7,67 +7,55 @@ export async function POST(req: Request) {
   try {
     const body = await req.json();
     const { message, token } = body;
-    
-    // Filtramos las llaves para asegurar que solo queden las que tienen texto
-    const apiKeys = [process.env.GEMINI_API_KEY, process.env.GEMINI_API_KEY_2].filter((k): k is string => !!k);
-    
-    if (apiKeys.length === 0) return NextResponse.json({ error: "Faltan llaves" }, { status: 500 });
 
-    const chatbot = await prisma.chatbot.findUnique({
-      where: { token, isActive: true },
-      include: { knowledgeBase: true }
-    });
-    if (!chatbot) return NextResponse.json({ error: "Chatbot inactivo" }, { status: 404 });
+    // Detectar qué llaves hay
+    const key1 = process.env.GEMINI_API_KEY;
+    const key2 = process.env.GEMINI_API_KEY_2;
+    
+    if (!key1 && !key2) return NextResponse.json({ reply: "❌ No hay ninguna API KEY configurada en Vercel." });
 
+    const chatbot = await prisma.chatbot.findUnique({ where: { token, isActive: true } });
+    if (!chatbot) return NextResponse.json({ reply: "❌ Chatbot no encontrado." });
+
+    // CARGAR CONTEXTO
     await loadStoreFromDB(chatbot.knowledgeBaseId, prisma);
-    const vectorContexts = await searchVectorStore(message, chatbot.knowledgeBaseId, 15);
-    const contextText = vectorContexts.map((v: any) => v.pageContent).join("\n\n---\n\n");
+    const vectorContexts = await searchVectorStore(message, chatbot.knowledgeBaseId, 10);
+    const contextText = vectorContexts.map((v: any) => v.pageContent).join("\n\n");
 
-    const systemPrompt = `Eres el asistente oficial del Prof. Salvador. Usa este CONTEXTO:
-    ${contextText}
-    REGLA: Busca el registro exacto. No inventes datos.`;
+    const systemPrompt = `Eres un asistente. Contexto: ${contextText}`;
 
-    const modelsToTry = ["gemini-1.5-flash", "gemini-2.0-flash-lite"];
+    // --- EL MOMENTO DE LA VERDAD: UN SOLO DISPARO DIRECTO ---
+    // Usaremos el modelo más seguro y estable (1.5 Flash)
+    // Usando la cuenta nueva (key1)
+    const activeKey = key1 || key2 || "";
+    const modelName = "gemini-1.5-flash"; 
     
-    // --- EL CICLO DEL GUERRERO REFORZADO ---
-    for (const key of apiKeys) {
-        for (const model of modelsToTry) {
-            // Ponemos una protección extra para que TypeScript no proteste
-            if (!key) continue;
+    // Cambiamos a la URL /v1/ que es la comercial, la que no tiene límites raros
+    const url = `https://generativelanguage.googleapis.com/v1/models/${modelName}:generateContent?key=${activeKey}`;
 
-            console.log(`📡 Probando modelo ${model} con llave.`);
-            const url = `https://generativelanguage.googleapis.com/v1/models/${model}:generateContent?key=${key}`;
-            
-            try {
-                const response = await fetch(url, {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({
-                        contents: [{ parts: [{ text: systemPrompt + "\n\nPregunta: " + message }] }],
-                        generationConfig: { temperature: 0.1, maxOutputTokens: 2000 }
-                    })
-                });
+    console.log(`📡 Disparando a Google V1 con llave ${activeKey.substring(0, 6)}...`);
 
-                const data = await response.json();
+    const response = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        contents: [{ parts: [{ text: systemPrompt + "\n\n" + message }] }]
+      })
+    });
 
-                if (response.ok && data.candidates?.[0]?.content) {
-                    const reply = data.candidates[0].content.parts[0].text;
-                    
-                    await prisma.interaction.create({
-                        data: { chatbotId: chatbot.id, query: message.substring(0, 500), response: reply.substring(0, 2000) }
-                    }).catch(() => {});
-                    
-                    return NextResponse.json({ reply });
-                }
-            } catch (e) {
-                console.error("Error en intento:", e);
-            }
-        }
+    const data = await response.json();
+
+    if (response.ok) {
+      const reply = data.candidates[0].content.parts[0].text;
+      return NextResponse.json({ reply });
+    } else {
+      // SI FALLA, LE MOSTRAMOS EL MENSAJE REAL DE GOOGLE A SALVADOR
+      return NextResponse.json({ 
+        reply: `🚫 ERROR DE GOOGLE:\nCódigo: ${data.error?.code}\nMensaje: ${data.error?.message}\nLlave usada: ${activeKey.substring(0, 6)}...`
+      });
     }
 
-    return NextResponse.json({ reply: "⚠️ El sistema de Google está muy saturado hoy. Por favor, intenta de nuevo en 30 segundos." });
-
   } catch (error: any) {
-    return NextResponse.json({ error: "Reintentando... " + error.message }, { status: 500 });
+    return NextResponse.json({ reply: `❌ FALLO TÉCNICO: ${error.message}` });
   }
 }
