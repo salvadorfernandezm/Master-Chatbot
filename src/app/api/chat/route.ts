@@ -9,10 +9,6 @@ export async function POST(req: Request) {
     const { message, token } = body;
     const apiKey = process.env.GEMINI_API_KEY;
 
-    console.log("-----------------------------------------");
-    console.log("🚀 EJECUTANDO VERSIÓN DE PRODUCCIÓN ESTABLE /v1/");
-    console.log("-----------------------------------------");
-
     if (!apiKey) return NextResponse.json({ error: "Falta API Key" }, { status: 500 });
 
     const chatbot = await prisma.chatbot.findUnique({
@@ -27,53 +23,65 @@ export async function POST(req: Request) {
 
     const systemPrompt = `Eres un asistente académico. Usa este contexto: ${contextText}. Responde directo y pedagógico.`;
 
-    // --- EL MOMENTO DE LA VERDAD ---
-    // Usamos el endpoint /v1/ (Estable) y el modelo 1.5 Flash.
-    // Esta combinación es la que da los 1,500 mensajes gratuitos.
-    const modelName = "gemini-1.5-flash"; 
-    const url = `https://generativelanguage.googleapis.com/v1/models/${modelName}:generateContent?key=${apiKey}`;
+    // --- EL BUSCADOR DE MODELOS (PLAN DE RESCATE FINAL) ---
+    // Probaremos estos nombres que salieron en tu terminal, 
+    // en orden de los que más probabilidad tienen de tener cuota abierta.
+    const modelsToTry = [
+      "gemini-2.0-flash-lite", 
+      "gemini-1.5-flash-8b", // El modelo "ligero" con más cuota
+      "gemini-flash-latest",  // El alias universal
+      "gemini-2.5-flash-lite"
+    ];
 
-    console.log(`📡 Intentando conectar a la Oficina de Producción: ${modelName}`);
+    let reply = "";
+    let success = false;
+    let lastError = "";
 
-    const response = await fetch(url, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        contents: [{ parts: [{ text: systemPrompt + "\n\nPregunta: " + message }] }]
-      })
-    });
-
-    const data = await response.json();
-
-    if (!response.ok) {
-        // Si el 1.5 sigue bloqueado, probaremos con el modelo gemini-pro original
-        console.warn("Falla 1.5 en V1, probando modelo pro...");
-        const fallbackUrl = `https://generativelanguage.googleapis.com/v1/models/gemini-pro:generateContent?key=${apiKey}`;
-        const res2 = await fetch(fallbackUrl, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ contents: [{ parts: [{ text: message }] }] })
-        });
-        const data2 = await res2.json();
+    for (const name of modelsToTry) {
+        if (success) break;
+        console.log(`📡 Probando "Llave" en el modelo: ${name}...`);
         
-        if (!res2.ok) {
-            console.error("❌ FALLO TOTAL:", JSON.stringify(data2));
-            throw new Error(data2.error?.message || "Google sigue restringiendo el acceso.");
+        // Volvemos a v1beta porque v1 te da 404
+        const url = `https://generativelanguage.googleapis.com/v1beta/models/${name}:generateContent?key=${apiKey}`;
+
+        try {
+            const response = await fetch(url, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    contents: [{ parts: [{ text: systemPrompt + "\n\nPregunta: " + message }] }]
+                })
+            });
+
+            const data = await response.json();
+
+            if (response.ok && data.candidates?.[0]?.content) {
+                reply = data.candidates[0].content.parts[0].text;
+                console.log(`✅ ¡ÉXITO! Google respondió con el modelo: ${name}`);
+                success = true;
+            } else {
+                lastError = data.error?.message || "Sin respuesta";
+                console.warn(`❌ El modelo ${name} dijo: ${lastError}`);
+            }
+        } catch (err: any) {
+            console.warn(`⚠️ Error conectando a ${name}: ${err.message}`);
         }
-        return NextResponse.json({ reply: data2.candidates[0].content.parts[0].text });
     }
 
-    const reply = data.candidates[0].content.parts[0].text;
-    
-    // Guardamos la interacción para tus gráficas
+    if (!success) {
+        throw new Error(`Google está limitando el acceso hoy. (Último reporte: ${lastError})`);
+    }
+
+    // Guardamos analíticas del éxito
     await prisma.interaction.create({
       data: { chatbotId: chatbot.id, query: message.substring(0,500), response: reply.substring(0,2000) }
-    }).catch(() => {});
+    }).catch(e => console.error("Error analíticas:", e));
 
     return NextResponse.json({ reply });
 
   } catch (error: any) {
-    console.error("❌ ERROR DETECTADO:", error.message);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    console.error("❌ FALLO TOTAL:", error.message);
+    // Mensaje amable para tus colegas si todo Google falla
+    return NextResponse.json({ error: "Saturación temporal de Google. Reintenta tu pregunta en 15 segundos." }, { status: 500 });
   }
 }
