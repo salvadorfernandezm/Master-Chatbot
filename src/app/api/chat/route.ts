@@ -8,54 +8,53 @@ export async function POST(req: Request) {
     const body = await req.json();
     const { message, token } = body;
 
-    // Detectar qué llaves hay
-    const key1 = process.env.GEMINI_API_KEY;
-    const key2 = process.env.GEMINI_API_KEY_2;
-    
-    if (!key1 && !key2) return NextResponse.json({ reply: "❌ No hay ninguna API KEY configurada en Vercel." });
+    // --- AQUÍ SACAMOS LA LLAVE DEL CAJÓN (Lo que faltaba) ---
+    const apiKey = process.env.GEMINI_API_KEY;
+
+    console.log("-----------------------------------------!!!!!!!");
+    console.log("🚀 EJECUTANDO VERSION ULTRA FINAL DE PRUEBA");
+    console.log(`🔑 Probando llave con prefijo: ${apiKey?.substring(0, 7)}`);
+    console.log("-----------------------------------------!!!!!!!");
+
+    if (!apiKey) {
+      return NextResponse.json({ reply: "❌ No hay GEMINI_API_KEY configurada en el panel de Vercel." });
+    }
 
     const chatbot = await prisma.chatbot.findUnique({ where: { token, isActive: true } });
-    if (!chatbot) return NextResponse.json({ reply: "❌ Chatbot no encontrado." });
+    if (!chatbot) return NextResponse.json({ reply: "❌ Chatbot no encontrado o inactivo." });
 
-    // CARGAR CONTEXTO
+    // Cargar datos de Supabase
     await loadStoreFromDB(chatbot.knowledgeBaseId, prisma);
-    const vectorContexts = await searchVectorStore(message, chatbot.knowledgeBaseId, 10);
-    const contextText = vectorContexts.map((v: any) => v.pageContent).join("\n\n");
+    const vectorContexts = await searchVectorStore(message, chatbot.knowledgeBaseId, 12);
+    const contextText = vectorContexts.map((v: any) => v.pageContent).join("\n\n---\n\n");
 
     const systemPrompt = `Eres un asistente. Contexto: ${contextText}`;
 
-    // --- EL MOMENTO DE LA VERDAD: UN SOLO DISPARO DIRECTO ---
-    // Usaremos el modelo más seguro y estable (1.5 Flash)
-    // Usando la cuenta nueva (key1)
-    const activeKey = key1 || key2 || "";
+    // USAMOS EL MODELO QUE TU CUENTA SÍ TIENE
     const modelName = "gemini-2.0-flash-lite"; 
-const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${apiKey}`;
-
-    console.log("-----------------------------------------!!!!!!!");
-console.log("🚀 EJECUTANDO VERSION ULTRA FINAL DE PRUEBA");
-console.log("-----------------------------------------!!!!!!!");
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${apiKey}`;
 
     const response = await fetch(url, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        contents: [{ parts: [{ text: systemPrompt + "\n\n" + message }] }]
+        contents: [{ parts: [{ text: systemPrompt + "\n\nUsuario: " + message }] }]
       })
     });
 
     const data = await response.json();
 
     if (response.ok) {
-      const reply = data.candidates[0].content.parts[0].text;
+      const reply = data.candidates?.[0]?.content?.parts?.[0]?.text || "No obtuve una respuesta clara.";
       return NextResponse.json({ reply });
     } else {
-      // SI FALLA, LE MOSTRAMOS EL MENSAJE REAL DE GOOGLE A SALVADOR
-      return NextResponse.json({ 
-        reply: `🚫 ERROR DE GOOGLE:\nCódigo: ${data.error?.code}\nMensaje: ${data.error?.message}\nLlave usada: ${activeKey.substring(0, 6)}...`
-      });
+      // SI GOOGLE RECHAZA, MOSTRAMOS LA RAZÓN REAL
+      const errorMsg = data.error?.message || "Error desconocido";
+      const errorCode = data.error?.code || "S/N";
+      return NextResponse.json({ reply: `🚫 GOOGLE DIJO: ${errorMsg} (Código: ${errorCode})` });
     }
 
   } catch (error: any) {
-    return NextResponse.json({ reply: `❌ FALLO TÉCNICO: ${error.message}` });
+    return NextResponse.json({ reply: `❌ FALLO TÉCNICO EN SERVIDOR: ${error.message}` });
   }
 }
