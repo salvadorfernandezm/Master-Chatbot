@@ -33,7 +33,9 @@ export async function POST(req: Request) {
     // Cambiamos a la URL /v1/ que es la comercial, la que no tiene límites raros
     const url = `https://generativelanguage.googleapis.com/v1/models/${modelName}:generateContent?key=${activeKey}`;
 
-    console.log(`📡 Disparando a Google V1 con llave ${activeKey.substring(0, 6)}...`);
+    console.log("-----------------------------------------!!!!!!!");
+console.log("🚀 EJECUTANDO VERSION ULTRA FINAL DE PRUEBA");
+console.log("-----------------------------------------!!!!!!!");
 
     const response = await fetch(url, {
       method: "POST",
