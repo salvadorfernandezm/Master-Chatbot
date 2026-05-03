@@ -9,54 +9,71 @@ export async function POST(req: Request) {
     const { message, token } = body;
     const apiKey = process.env.GEMINI_API_KEY;
 
-    // ESTO SALDRÁ EN TUS LOGS SI LOGRAS VERLOS
-    console.log("--- INICIANDO RASTREO DE MODELO CON GASOLINA ---");
+    console.log("-----------------------------------------");
+    console.log("🚀 EJECUTANDO VERSIÓN DE PRODUCCIÓN ESTABLE /v1/");
+    console.log("-----------------------------------------");
 
-    if (!apiKey) return NextResponse.json({ reply: "Falta la llave en Vercel." });
+    if (!apiKey) return NextResponse.json({ error: "Falta API Key" }, { status: 500 });
 
-    const chatbot = await prisma.chatbot.findUnique({ where: { token, isActive: true } });
-    if (!chatbot) return NextResponse.json({ reply: "Chatbot no activo." });
+    const chatbot = await prisma.chatbot.findUnique({
+      where: { token, isActive: true },
+    });
+    if (!chatbot) return NextResponse.json({ error: "Chatbot no encontrado" }, { status: 404 });
 
+    // CARGAR CONTEXTO
     await loadStoreFromDB(chatbot.knowledgeBaseId, prisma);
-    const vectorContexts = await searchVectorStore(message, chatbot.knowledgeBaseId, 10);
-    const contextText = vectorContexts.map((v: any) => v.pageContent).join("\n\n");
+    const vectorContexts = await searchVectorStore(message, chatbot.knowledgeBaseId, 15);
+    const contextText = vectorContexts.map((v: any) => v.pageContent).join("\n\n---\n\n");
 
-    const systemPrompt = `Eres un asistente. Contexto: ${contextText}`;
+    const systemPrompt = `Eres un asistente académico. Usa este contexto: ${contextText}. Responde directo y pedagógico.`;
 
-    // --- LA LISTA DE LOS MODELOS (Probaremos hasta que uno abra) ---
-    const modelNames = [
-        "gemini-1.5-flash",       // El caballo de batalla
-        "gemini-1.5-flash-latest", // El alias de emergencia
-        "gemini-2.0-flash-lite",   // El moderno ligero
-        "gemini-pro"              // El clásico universal
-    ];
+    // --- EL MOMENTO DE LA VERDAD ---
+    // Usamos el endpoint /v1/ (Estable) y el modelo 1.5 Flash.
+    // Esta combinación es la que da los 1,500 mensajes gratuitos.
+    const modelName = "gemini-1.5-flash"; 
+    const url = `https://generativelanguage.googleapis.com/v1/models/${modelName}:generateContent?key=${apiKey}`;
 
-    for (const name of modelNames) {
-        console.log(`📡 Probando con: ${name}`);
-        const url = `https://generativelanguage.googleapis.com/v1beta/models/${name}:generateContent?key=${apiKey}`;
-        
-        const response = await fetch(url, {
+    console.log(`📡 Intentando conectar a la Oficina de Producción: ${modelName}`);
+
+    const response = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        contents: [{ parts: [{ text: systemPrompt + "\n\nPregunta: " + message }] }]
+      })
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+        // Si el 1.5 sigue bloqueado, probaremos con el modelo gemini-pro original
+        console.warn("Falla 1.5 en V1, probando modelo pro...");
+        const fallbackUrl = `https://generativelanguage.googleapis.com/v1/models/gemini-pro:generateContent?key=${apiKey}`;
+        const res2 = await fetch(fallbackUrl, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-                contents: [{ parts: [{ text: systemPrompt + "\n\nUsuario: " + message }] }]
-            })
+            body: JSON.stringify({ contents: [{ parts: [{ text: message }] }] })
         });
-
-        const data = await response.json();
-
-        // SI GOOGLE RESPONDE BIEN (OK), PARAMOS Y MANDAMOS LA RESPUESTA
-        if (response.ok && data.candidates?.[0]?.content) {
-            console.log(`✅ ¡ÉXITO CON EL MODELO ${name}!`);
-            return NextResponse.json({ reply: data.candidates[0].content.parts[0].text });
-        }
+        const data2 = await res2.json();
         
-        console.warn(`❌ Falló ${name} por: ${data.error?.message}`);
+        if (!res2.ok) {
+            console.error("❌ FALLO TOTAL:", JSON.stringify(data2));
+            throw new Error(data2.error?.message || "Google sigue restringiendo el acceso.");
+        }
+        return NextResponse.json({ reply: data2.candidates[0].content.parts[0].text });
     }
 
-    return NextResponse.json({ reply: "🚫 Todos los modelos de Google están saturados en tu región ahora mismo. Por favor, reintenta en un par de minutos." });
+    const reply = data.candidates[0].content.parts[0].text;
+    
+    // Guardamos la interacción para tus gráficas
+    await prisma.interaction.create({
+      data: { chatbotId: chatbot.id, query: message.substring(0,500), response: reply.substring(0,2000) }
+    }).catch(() => {});
+
+    return NextResponse.json({ reply });
 
   } catch (error: any) {
-    return NextResponse.json({ reply: `❌ Error de sistema: ${error.message}` });
+    console.error("❌ ERROR DETECTADO:", error.message);
+    return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
