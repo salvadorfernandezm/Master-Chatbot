@@ -28,10 +28,8 @@ export async function POST(req: Request) {
     // Usaremos el modelo más seguro y estable (1.5 Flash)
     // Usando la cuenta nueva (key1)
     const activeKey = key1 || key2 || "";
-    const modelName = "gemini-1.5-flash"; 
-    
-    // Cambiamos a la URL /v1/ que es la comercial, la que no tiene límites raros
-    const url = `https://generativelanguage.googleapis.com/v1/models/${modelName}:generateContent?key=${activeKey}`;
+    const modelName = "gemini-2.0-flash-lite"; 
+const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${apiKey}`;
 
     console.log("-----------------------------------------!!!!!!!");
 console.log("🚀 EJECUTANDO VERSION ULTRA FINAL DE PRUEBA");
