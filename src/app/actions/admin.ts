@@ -189,3 +189,50 @@ export async function deleteDocument(id: string, knowledgeBaseId: string) {
   await prisma.document.delete({ where: { id } });
   revalidatePath(`/admin/knowledge/${knowledgeBaseId}`);
 }
+
+// --- FUNCIÓN DE EXPORTACIÓN (Para descargar) ---
+export async function exportFullBackup() {
+  const [groups, chatbots, kbs, docs] = await Promise.all([
+    prisma.group.findMany(),
+    prisma.chatbot.findMany(),
+    prisma.knowledgeBase.findMany(),
+    prisma.document.findMany(),
+  ]);
+
+  return {
+    version: "2.0",
+    date: new Date().toISOString(),
+    data: { groups, chatbots, kbs, docs }
+  };
+}
+
+// --- FUNCIÓN DE IMPORTACIÓN (El búnker de rescate) ---
+export async function importFullBackup(jsonData: string) {
+  try {
+    const backup = JSON.parse(jsonData);
+    const { groups, chatbots, kbs, docs } = backup.data;
+
+    // 1. Limpieza rápida (Opcional, pero recomendada para evitar duplicados)
+    // ADVERTENCIA: Esto borra los datos actuales antes de poner los del respaldo
+    await prisma.$transaction([
+      prisma.interaction.deleteMany(),
+      prisma.documentChunk.deleteMany(),
+      prisma.document.deleteMany(),
+      prisma.chatbot.deleteMany(),
+      prisma.knowledgeBase.deleteMany(),
+      prisma.group.deleteMany(),
+    ]);
+
+    // 2. Reconstrucción en orden (Primero Grupos y Bases, luego Chatbots y Documentos)
+    if (groups.length) await prisma.group.createMany({ data: groups });
+    if (kbs.length) await prisma.knowledgeBase.createMany({ data: kbs });
+    if (chatbots.length) await prisma.chatbot.createMany({ data: chatbots });
+    if (docs.length) await prisma.document.createMany({ data: docs });
+
+    revalidatePath("/admin");
+    return { success: true };
+  } catch (error) {
+    console.error("Error en restauración:", error);
+    return { success: false, error: error.message };
+  }
+}

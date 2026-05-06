@@ -1,3 +1,4 @@
+import BackupControl from "@/components/BackupControl";
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
@@ -35,13 +36,36 @@ export default async function AdminDashboard() {
           </p>
         </div>
         
-        {/* BOTÓN DE RESPALDO (Placeholder funcional) */}
-        <div className="flex gap-3">
-            <button className="px-4 py-2 bg-slate-800 text-white rounded-xl text-sm font-bold hover:bg-black transition-all flex items-center gap-2 shadow-lg shadow-slate-200">
-                <span>💾</span> Descargar Respaldo JSON
-            </button>
+      // ... tus otros imports de arriba (prisma, Link, etc.)
+import BackupControl from "@/components/BackupControl"; // <--- NO OLVIDES ESTA LÍNEA
+
+export default async function AdminDashboard() {
+  // ... tu lógica de conteo (const [groupsCount, ...])
+
+  return (
+    <div className="space-y-8">
+      {/* Encabezado con Estado de Conexión */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-6 rounded-2xl border border-slate-100 shadow-sm">
+        <div>
+          <h1 className="text-2xl font-black text-slate-800 uppercase tracking-tight">Monitor del Sistema</h1>
+          <p className="text-slate-500 flex items-center gap-2">
+            <span className="relative flex h-2 w-2">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
+            </span>
+            Sincronizado con Supabase Cloud
+          </p>
         </div>
+        
+        {/* SUSTITUIMOS EL BLOQUE VIEJO POR EL NUEVO CONTROL */}
+        <BackupControl /> 
+        
       </div>
+
+      {/* ... El resto de tus gráficas y tarjetas de abajo siguen igual ... */}
+    </div>
+  );
+}
 
       {/* Rejilla de Estadísticas */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
