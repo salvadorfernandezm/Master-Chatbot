@@ -206,14 +206,12 @@ export async function exportFullBackup() {
   };
 }
 
-// --- FUNCIÓN DE IMPORTACIÓN (El búnker de rescate) ---
+// --- FUNCIÓN DE IMPORTACIÓN (Corregida para TypeScript) ---
 export async function importFullBackup(jsonData: string) {
   try {
     const backup = JSON.parse(jsonData);
     const { groups, chatbots, kbs, docs } = backup.data;
 
-    // 1. Limpieza rápida (Opcional, pero recomendada para evitar duplicados)
-    // ADVERTENCIA: Esto borra los datos actuales antes de poner los del respaldo
     await prisma.$transaction([
       prisma.interaction.deleteMany(),
       prisma.documentChunk.deleteMany(),
@@ -223,7 +221,6 @@ export async function importFullBackup(jsonData: string) {
       prisma.group.deleteMany(),
     ]);
 
-    // 2. Reconstrucción en orden (Primero Grupos y Bases, luego Chatbots y Documentos)
     if (groups.length) await prisma.group.createMany({ data: groups });
     if (kbs.length) await prisma.knowledgeBase.createMany({ data: kbs });
     if (chatbots.length) await prisma.chatbot.createMany({ data: chatbots });
@@ -231,8 +228,8 @@ export async function importFullBackup(jsonData: string) {
 
     revalidatePath("/admin");
     return { success: true };
-  } catch (error) {
+  } catch (error: any) { // <--- EL TRUCO ESTÁ EN ESTE ": any"
     console.error("Error en restauración:", error);
-    return { success: false, error: error.message };
+    return { success: false, error: error.message || "Error desconocido" };
   }
 }
