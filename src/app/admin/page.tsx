@@ -74,4 +74,16 @@ export default async function AdminDashboard() {
         <div className="bg-white p-8 rounded-3xl border border-slate-100 shadow-sm">
             <h3 className="text-xl font-bold text-slate-800 mb-4">Actividad Reciente</h3>
             <div className="space-y-4">
-                <div className="
+                <div className="flex items-center gap-4 p-3 rounded-xl bg-slate-50 border border-slate-100">
+                    <span className="text-2xl">✨</span>
+                    <div>
+                        <p className="text-sm font-bold text-slate-700">Búnkeres Listos</p>
+                        <p className="text-xs text-slate-500 italic">Sincronización multidispositivo activada para Salvador.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+      </div>
+    </div>
+  );
+}
