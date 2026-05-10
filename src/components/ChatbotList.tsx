@@ -54,7 +54,7 @@ function ChatbotCard({ bot }: { bot: Chatbot }) {
   };
 
   return (
-    <div className={`bg-white border-2 rounded-3xl shadow-md hover:shadow-xl transition-all overflow-hidden mb-6 ${!bot.isActive ? 'opacity-60 border-slate-200' : 'border-slate-300'}`}>
+    <div className={`bg-white border-2 rounded-3xl shadow-md hover:shadow-xl transition-all overflow-hidden mb-6 ${!bot.isActive ? 'opacity-60 border-slate-200' : 'border-slate-500'}`}>
       <div className="p-6">
         <div className="flex justify-between items-start mb-4">
           <div className="flex-1">
@@ -80,7 +80,7 @@ function ChatbotCard({ bot }: { bot: Chatbot }) {
         </div>
 
         {/* LINK DIRECTO PARA EL PROFESOR (Lo que pediste) */}
-        <div className="mt-4 p-4 bg-slate-50 rounded-2xl border border-dashed border-slate-300">
+        <div className="mt-4 p-4 bg-slate-50 rounded-2xl border border-dashed border-slate-500">
            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Acceso Académico (Token: {bot.token})</p>
            <div className="flex items-center justify-between">
               <a href={`/chat/${bot.token}`} target="_blank" className="text-sm font-black text-purple-600 hover:underline">/chat/{bot.token} ↗</a>
@@ -90,7 +90,7 @@ function ChatbotCard({ bot }: { bot: Chatbot }) {
       </div>
 
       {editingId && (
-        <div className="p-6 bg-slate-50 border-t border-slate-300">
+        <div className="p-6 bg-slate-50 border-t border-slate-500">
           <form action={updateChatbot} onSubmit={() => setEditingId(false)} className="space-y-4">
             <input type="hidden" name="id" value={bot.id} />
             <div>

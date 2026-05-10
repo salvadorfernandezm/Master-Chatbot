@@ -35,7 +35,7 @@ function GroupCard({ group }: { group: Group }) {
   };
 
   return (
-    <div className="bg-white border border-slate-300 rounded-2xl shadow-md hover:shadow-md transition-all overflow-hidden">
+    <div className="bg-white border border-slate-500 rounded-2xl shadow-md hover:shadow-md transition-all overflow-hidden">
       {!editing ? (
         <div className="p-6 flex justify-between items-center">
           <div>
@@ -95,7 +95,7 @@ export function GroupList({ groups }: { groups: Group[] }) {
 
 export function CreateGroupForm() {
   return (
-    <div className="bg-white rounded-2xl p-6 shadow-xl shadow-slate-200/50 border border-slate-300 h-fit sticky top-24">
+    <div className="bg-white rounded-2xl p-6 shadow-xl shadow-slate-200/50 border border-slate-500 h-fit sticky top-24">
       <h2 className="text-lg font-bold text-slate-700 mb-4">Crear Nuevo Grupo</h2>
       <form action={createGroup} className="space-y-4">
         <div>

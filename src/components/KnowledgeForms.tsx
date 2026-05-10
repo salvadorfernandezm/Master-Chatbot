@@ -68,7 +68,7 @@ export function UploadDocumentForm({
           name="skipPages" 
           placeholder="0" 
           min="0"
-          className="w-16 px-2 py-1 text-xs border border-slate-300 rounded-lg text-center font-bold focus:ring-2 focus:ring-purple-500"
+          className="w-16 px-2 py-1 text-xs border border-slate-500 rounded-lg text-center font-bold focus:ring-2 focus:ring-purple-500"
         />
       </div>
       <SubmitButton 

@@ -11,7 +11,7 @@ export default function ChatbotFormWrapper({ groups, knowledgeBases }: ChatbotFo
   const [isOpen, setIsOpen] = useState(false);
 
   return (
-    <div className="bg-white rounded-2xl p-6 shadow-xl shadow-slate-200/50 border border-slate-300 h-fit lg:sticky lg:top-24">
+    <div className="bg-white rounded-2xl p-6 shadow-xl shadow-slate-200/50 border border-slate-500 h-fit lg:sticky lg:top-24">
       <div className="flex justify-between items-center mb-4">
         <h2 className="text-lg font-bold text-slate-700">Nuevo Chatbot</h2>
         <button onClick={() => setIsOpen(!isOpen)} className="lg:hidden text-purple-600 font-bold text-sm">

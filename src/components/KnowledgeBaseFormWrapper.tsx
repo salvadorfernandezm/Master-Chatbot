@@ -6,7 +6,7 @@ export default function KnowledgeBaseFormWrapper() {
   const [isOpen, setIsOpen] = useState(false);
 
   return (
-    <div className="bg-white rounded-2xl p-6 shadow-xl shadow-slate-200/50 border border-slate-300 h-fit lg:sticky lg:top-24">
+    <div className="bg-white rounded-2xl p-6 shadow-xl shadow-slate-200/50 border border-slate-500 h-fit lg:sticky lg:top-24">
       <div className="flex justify-between items-center mb-4 lg:mb-4">
         <h2 className="text-lg font-bold text-slate-700">Nueva Base</h2>
         {/* Botón que solo se ve en móvil para abrir/cerrar */}

@@ -36,7 +36,7 @@ function KBCard({ kb }: { kb: KnowledgeBase }) {
   };
 
   return (
-    <div className="bg-white border border-slate-300 rounded-2xl shadow-md hover:shadow-md transition-all overflow-hidden">
+    <div className="bg-white border border-slate-500 rounded-2xl shadow-md hover:shadow-md transition-all overflow-hidden">
       {!editing ? (
         <div className="p-6 flex justify-between items-start">
           <div className="flex-1">
