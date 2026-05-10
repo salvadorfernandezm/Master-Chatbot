@@ -235,3 +235,31 @@ export async function importFullBackup(jsonData: string) {
     return { success: false, error: error.message || "Error desconocido" };
   }
 }
+
+// --- ACCIÓN PARA EL BUZÓN INTELIGENTE ---
+export async function createTicket(formData: FormData) {
+  const type = formData.get("type") as string;
+  const content = formData.get("content") as string;
+  const studentName = formData.get("studentName") as string;
+
+  if (!content || !type) return;
+
+  try {
+    await prisma.ticket.create({
+      data: {
+        type,
+        content,
+        studentName: studentName || "Anónimo",
+        status: "PENDIENTE",
+      },
+    });
+
+    // Recargamos la ruta del administrador para que veas el nuevo ticket
+    revalidatePath("/admin");
+    
+    // Aquí podrías redirigir a una página de "Gracias", 
+    // pero por ahora dejémoslo que recargue el buzón.
+  } catch (error) {
+    console.error("Error al enviar ticket:", error);
+  }
+}
