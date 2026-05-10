@@ -83,7 +83,9 @@ export async function updateChatbot(formData: FormData) {
   if (!id) return;
 
   const updateData: any = {};
-  const fields = ["name", "welcomeMessage", "systemInstructions", "inputPlaceholder", "fallbackMessage"];
+  // AÑADIMOS 'infoMessage' a la lista de abajo:
+  const fields = ["name", "welcomeMessage", "infoMessage", "systemInstructions", "inputPlaceholder", "fallbackMessage"];
+  
   fields.forEach(field => {
     const value = formData.get(field);
     if (value !== null) updateData[field] = value as string;
@@ -231,5 +233,33 @@ export async function importFullBackup(jsonData: string) {
   } catch (error: any) { // <--- EL TRUCO ESTÁ EN ESTE ": any"
     console.error("Error en restauración:", error);
     return { success: false, error: error.message || "Error desconocido" };
+  }
+}
+
+// --- ACCIÓN PARA EL BUZÓN INTELIGENTE ---
+export async function createTicket(formData: FormData) {
+  const type = formData.get("type") as string;
+  const content = formData.get("content") as string;
+  const studentName = formData.get("studentName") as string;
+
+  if (!content || !type) return;
+
+  try {
+    await prisma.ticket.create({
+      data: {
+        type,
+        content,
+        studentName: studentName || "Anónimo",
+        status: "PENDIENTE",
+      },
+    });
+
+    // Recargamos la ruta del administrador para que veas el nuevo ticket
+    revalidatePath("/admin");
+    
+    // Aquí podrías redirigir a una página de "Gracias", 
+    // pero por ahora dejémoslo que recargue el buzón.
+  } catch (error) {
+    console.error("Error al enviar ticket:", error);
   }
 }

@@ -5,7 +5,13 @@ import ChatbotFormWrapper from "@/components/ChatbotFormWrapper";
 
 export default async function ChatbotsPage() {
   const [chatbots, groups, kbs] = await Promise.all([
-    prisma.chatbot.findMany({ include: { group: true, knowledgeBase: true } }),
+    prisma.chatbot.findMany({ 
+      orderBy: [
+        { isActive: 'desc' }, // Primero los En Línea (true)
+        { name: 'asc' }       // Luego por orden alfabético
+      ],
+      include: { group: true, knowledgeBase: true } 
+    }),
     prisma.group.findMany(),
     prisma.knowledgeBase.findMany()
   ]);

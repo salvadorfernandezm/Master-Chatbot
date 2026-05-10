@@ -3,8 +3,11 @@ import { prisma } from "@/lib/prisma";
 import AdminLayoutClient from "@/components/AdminLayoutClient";
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
+  // Buscamos los ajustes en la base de datos
   const settings = await prisma.settings.findFirst();
-  const orgName = settings?.organizationName || "Master Chatbot IA";
+
+  // Nombres de columnas según tu base de datos actual
+  const orgName = settings?.organizationName || "Master Chatbot";
   const orgLogo = settings?.organizationLogo;
 
   return (
