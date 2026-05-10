@@ -4,11 +4,13 @@ import { ChatbotList } from "@/components/ChatbotList";
 import ChatbotFormWrapper from "@/components/ChatbotFormWrapper";
 
 export default async function ChatbotsPage() {
-  const [chatbots, groups, kbs] = await Promise.all([
-    prisma.chatbot.findMany({ include: { group: true, knowledgeBase: true } }),
-    prisma.group.findMany(),
-    prisma.knowledgeBase.findMany()
-  ]);
+  const chatbots = await prisma.chatbot.findMany({
+  orderBy: [
+    { isActive: 'desc' }, // Los "En Línea" siempre aparecen primero
+    { name: 'asc' }       // Y luego por orden alfabético
+  ],
+  include: { group: true, knowledgeBase: true }
+});
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">

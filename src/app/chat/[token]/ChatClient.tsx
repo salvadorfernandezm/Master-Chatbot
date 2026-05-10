@@ -75,15 +75,22 @@ export default function ChatClient({ token, name, welcomeMessage, infoMessage, i
           </div>
         </div>
 
-        {infoMessage && (
-          <button 
-            onClick={() => setIsInfoOpen(true)}
-            className="h-9 w-9 rounded-full bg-slate-50 border border-slate-200 text-slate-900 flex items-center justify-center font-serif italic text-lg hover:bg-purple-600 hover:text-white transition-all shadow-sm active:scale-90"
-          >
-            i
-          </button>
-        )}
-      </header>
+        {/* BOTÓN DE INFORMACIÓN "i" REFORZADO */}
+{infoMessage && (
+  <div className="flex items-center gap-2">
+    {/* Cartelito de aviso para alumnos despistados */}
+    <span className="hidden sm:block text-[10px] font-black text-lime-600 uppercase tracking-tighter bg-lime-50 px-2 py-1 rounded-md border border-lime-100 animate-pulse">
+      Avisos del Profe
+    </span>
+    <button 
+      onClick={() => setIsInfoOpen(true)}
+      className="h-10 w-10 rounded-full bg-lime-500 text-white flex items-center justify-center font-serif italic text-xl hover:bg-lime-600 transition-all shadow-lg shadow-lime-200 active:scale-90 ring-4 ring-white"
+      title="Información importante"
+    >
+      i
+    </button>
+  </div>
+)}
 
       {/* VENTANA EMERGENTE (MODAL i) */}
       {isInfoOpen && (

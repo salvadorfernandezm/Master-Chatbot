@@ -54,7 +54,7 @@ function ChatbotCard({ bot }: { bot: Chatbot }) {
   };
 
   return (
-    <div className={`bg-white border-2 rounded-3xl shadow-sm hover:shadow-xl transition-all overflow-hidden mb-6 ${!bot.isActive ? 'opacity-60 border-slate-200' : 'border-purple-50'}`}>
+    <div className={`bg-white border-2 rounded-3xl shadow-md hover:shadow-xl transition-all overflow-hidden mb-6 ${!bot.isActive ? 'opacity-60 border-slate-200' : 'border-slate-300'}`}>
       <div className="p-6">
         <div className="flex justify-between items-start mb-4">
           <div className="flex-1">
@@ -72,7 +72,7 @@ function ChatbotCard({ bot }: { bot: Chatbot }) {
           </div>
           
           <div className="flex gap-2">
-            <button onClick={() => setEditingId(!editingId)} className="p-2.5 bg-slate-100 text-slate-600 rounded-2xl hover:bg-purple-600 hover:text-white transition-all shadow-sm">
+            <button onClick={() => setEditingId(!editingId)} className="p-2.5 bg-slate-100 text-slate-600 rounded-2xl hover:bg-purple-600 hover:text-white transition-all shadow-md">
                 <PencilIcon />
             </button>
             <button onClick={() => deleteChatbot(bot.id)} className="p-2.5 bg-slate-100 text-slate-400 rounded-2xl hover:bg-red-500 hover:text-white transition-all"><TrashIcon /></button>
@@ -90,7 +90,7 @@ function ChatbotCard({ bot }: { bot: Chatbot }) {
       </div>
 
       {editingId && (
-        <div className="p-6 bg-slate-50 border-t border-slate-100">
+        <div className="p-6 bg-slate-50 border-t border-slate-300">
           <form action={updateChatbot} onSubmit={() => setEditingId(false)} className="space-y-4">
             <input type="hidden" name="id" value={bot.id} />
             <div>
