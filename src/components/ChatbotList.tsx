@@ -9,7 +9,7 @@ interface Chatbot {
   token: string;
   isActive: boolean;
   welcomeMessage: string | null;
-  infoMessage: string | null; // <--- Añadido para el botón de info
+  infoMessage: string | null;
   systemInstructions: string | null;
   fallbackMessage: string | null;
   inputPlaceholder: string | null;
@@ -47,7 +47,7 @@ function ChatbotCard({ bot }: { bot: Chatbot }) {
   const [isToggling, setIsToggling] = useState(false);
 
   const handleDelete = async () => {
-    if (!confirm(`¿Estás seguro de que deseas eliminar el chatbot "${bot.name}"?\n⚠️ Los alumnos ya no podrán acceder a su enlace.`)) return;
+    if (!confirm(`¿Eliminar "${bot.name}"?\n⚠️ Los alumnos ya no podrán entrar.`)) return;
     await deleteChatbot(bot.id);
   };
 
@@ -70,59 +70,93 @@ function ChatbotCard({ bot }: { bot: Chatbot }) {
 
   const handleCopyWhatsApp = () => {
     const url = `${window.location.origin}/chat/${bot.token}`;
-    const message = `🎓 *${bot.name}* — Tu Tutor IA\n\nAccede aquí: ${url}`;
+    const message = `🎓 *${bot.name}*\nAccede aquí: ${url}`;
     navigator.clipboard.writeText(message);
     setCopied("whatsapp");
     setTimeout(() => setCopied(null), 2500);
   };
 
   return (
-    <div className={`bg-white border rounded-2xl shadow-sm hover:shadow-md transition-all overflow-hidden ${!bot.isActive ? 'opacity-60 grayscale-[0.5] border-slate-200' : 'border-slate-100'}`}>
+    <div className={`bg-white border rounded-2xl shadow-sm hover:shadow-md transition-all overflow-hidden ${!bot.isActive ? 'opacity-60 grayscale-[0.5]' : ''}`}>
       <div className="p-6 flex flex-wrap justify-between items-center gap-4">
         <div className="flex-1">
           <div className="flex items-center gap-3 flex-wrap">
             <h3 className="font-bold text-slate-800 text-lg">{bot.name}</h3>
-            <button onClick={handleToggleActive} disabled={isToggling} className={`flex items-center gap-2 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider transition-all ${bot.isActive ? 'bg-green-500 text-white' : 'bg-slate-400 text-white'}`}>
-              <div className={`w-2 h-2 rounded-full bg-white ${bot.isActive ? 'animate-pulse' : ''}`}></div>
-              {isToggling ? '...' : (bot.isActive ? 'En Línea' : 'Apagado')}
+            <button onClick={handleToggleActive} disabled={isToggling} className={`px-3 py-1 rounded-full text-[10px] font-black uppercase ${bot.isActive ? 'bg-green-500 text-white' : 'bg-slate-400 text-white'}`}>
+              {bot.isActive ? 'En Línea' : 'Apagado'}
             </button>
           </div>
-          <div className="grid grid-cols-2 gap-4 mt-3 text-sm">
-            <div className="px-3 py-2 bg-slate-50 rounded-xl">
-              <p className="text-slate-400 text-[10px] font-bold uppercase">Grupo</p>
-              <p className="font-semibold text-slate-700">{bot.group.name}</p>
-            </div>
-            <div className="px-3 py-2 bg-purple-50 rounded-xl">
-              <p className="text-purple-400 text-[10px] font-bold uppercase">Base IA</p>
-              <p className="font-semibold text-purple-700 truncate">{bot.knowledgeBase.name}</p>
-            </div>
+          <div className="grid grid-cols-2 gap-4 mt-3 text-sm font-semibold">
+            <div className="p-2 bg-slate-50 rounded-xl">{bot.group.name}</div>
+            <div className="p-2 bg-purple-50 rounded-xl text-purple-700 truncate">{bot.knowledgeBase.name}</div>
           </div>
           {bot.isActive && (
             <div className="mt-4 flex gap-2">
               <button onClick={handleCopyLink} className="flex-1 px-3 py-1.5 rounded-lg text-xs font-bold border border-slate-200 text-slate-600 hover:bg-slate-50 flex items-center justify-center gap-2">
                 <CopyIcon /> {copied === "link" ? "Copiado" : "Link"}
               </button>
-              <button onClick={handleCopyWhatsApp} className="flex-1 px-3 py-1.5 rounded-lg text-xs font-bold bg-green-600 text-white hover:bg-green-700 flex items-center justify-center gap-2">
-                <span>📱</span> {copied === "whatsapp" ? "Listo" : "WhatsApp"}
-              </button>
             </div>
           )}
         </div>
         <div className="flex items-center gap-2 self-start mt-1">
-          <button onClick={() => setEditingId(!editingId)} className={`flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-bold transition-all ${editingId ? 'bg-slate-200 text-slate-700' : 'bg-purple-100 text-purple-700'}`}>
+          <button onClick={() => setEditingId(!editingId)} className={`flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-bold transition-all ${editingId ? 'bg-slate-200' : 'bg-purple-100 text-purple-700'}`}>
             <PencilIcon /> {editingId ? 'Cerrar' : 'Config.'}
           </button>
-          <button onClick={handleDelete} className="p-2 text-slate-300 hover:text-red-500 rounded-xl transition-all"><TrashIcon /></button>
+          <button onClick={handleDelete} className="p-2 text-slate-300 hover:text-red-500"><TrashIcon /></button>
         </div>
       </div>
 
       {editingId && (
         <div className="px-6 pb-6 pt-2 border-t border-slate-100 bg-slate-50/50">
-          <p className="text-xs font-black text-purple-500 uppercase tracking-widest mt-4 mb-4">⚙️ Personalidad del Tutor</p>
+          <p className="text-xs font-black text-purple-500 uppercase tracking-widest mt-4 mb-4">⚙️ Personalidad</p>
           <form action={updateChatbot} onSubmit={() => setEditingId(false)} className="space-y-4">
             <input type="hidden" name="id" value={bot.id} />
             <input type="hidden" name="isActive" value={String(bot.isActive)} />
 
             <div>
-              <label className="text-[11px] font-bold text-slate-500 uppercase ml-1">Nombre</label>
-              <input name="name" defaultValue={bot.name} req
+              <label className="text-[11px] font-bold text-slate-500 uppercase">Nombre</label>
+              <input name="name" defaultValue={bot.name} required className="w-full px-4 py-2 text-sm border border-purple-200 rounded-xl focus:ring-2 focus:ring-purple-500 outline-none" />
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="text-[11px] font-bold text-slate-500 uppercase">Mensaje Bienvenida</label>
+                <textarea name="welcomeMessage" defaultValue={bot.welcomeMessage || ""} rows={2} className="w-full px-4 py-2 text-sm border border-slate-200 rounded-xl focus:ring-2 focus:ring-purple-500 outline-none" />
+              </div>
+              <div>
+                <label className="text-[11px] font-bold text-slate-500 uppercase">Texto Teclado (Placeholder)</label>
+                <input name="inputPlaceholder" defaultValue={bot.inputPlaceholder || ""} className="w-full px-4 py-2 text-sm border border-slate-200 rounded-xl focus:ring-2 focus:ring-purple-500 outline-none" />
+              </div>
+            </div>
+
+            <div>
+              <label className="text-[11px] font-bold text-slate-500 uppercase">Mensaje de Información (Botón "i")</label>
+              <textarea 
+                name="infoMessage" 
+                defaultValue={bot.infoMessage || ""} 
+                rows={4} 
+                className="w-full px-4 py-2 text-sm border border-slate-200 rounded-xl focus:ring-2 focus:ring-purple-500 outline-none"
+                placeholder="Escribe aquí las instrucciones largas..."
+              />
+            </div>
+
+            <div>
+              <label className="text-[11px] font-bold text-slate-500 uppercase">Directivas (System Prompt)</label>
+              <textarea name="systemInstructions" defaultValue={bot.systemInstructions || ""} rows={3} className="w-full px-4 py-2 text-sm border border-slate-200 rounded-xl focus:ring-2 focus:ring-purple-500 outline-none font-mono text-xs" />
+            </div>
+
+            <div className="flex justify-end gap-3 pt-2">
+              <button type="button" onClick={() => setEditingId(false)} className="px-5 py-2 text-slate-600 font-bold text-sm">Cancelar</button>
+              <button type="submit" className="bg-slate-800 text-white px-6 py-2 rounded-xl text-sm font-bold shadow-lg">Guardar Cambios</button>
+            </div>
+          </form>
+        </div>
+      )}
+    </div>
+  );
+}
+
+export function ChatbotList({ chatbots }: { chatbots: Chatbot[] }) {
+  if (chatbots.length === 0) return <div className="p-8 text-center text-slate-500">Sin chatbots aún.</div>;
+  return <div className="space-y-4">{chatbots.map(bot => <ChatbotCard key={bot.id} bot={bot} />)}</div>;
+}
