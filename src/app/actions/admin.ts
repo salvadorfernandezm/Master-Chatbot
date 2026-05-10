@@ -83,7 +83,9 @@ export async function updateChatbot(formData: FormData) {
   if (!id) return;
 
   const updateData: any = {};
-  const fields = ["name", "welcomeMessage", "systemInstructions", "inputPlaceholder", "fallbackMessage"];
+  // AÑADIMOS 'infoMessage' a la lista de abajo:
+  const fields = ["name", "welcomeMessage", "infoMessage", "systemInstructions", "inputPlaceholder", "fallbackMessage"];
+  
   fields.forEach(field => {
     const value = formData.get(field);
     if (value !== null) updateData[field] = value as string;
