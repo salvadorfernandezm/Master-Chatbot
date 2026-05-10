@@ -74,20 +74,20 @@ export default function ChatClient({ token, name, welcomeMessage, infoMessage, i
           </div>
         </div>
 
-       {infoMessage && (
-  <div className="flex items-center gap-2">
-    <span className="hidden sm:block text-[9px] font-black text-emerald-800 uppercase tracking-widest bg-emerald-100 px-3 py-1 rounded-md border border-emerald-200">
-      Avisos Importantes
-    </span>
-    <button 
-      onClick={() => setIsInfoOpen(true)}
-      className="h-10 w-10 rounded-full bg-emerald-700 text-white flex items-center justify-center font-serif italic text-xl hover:bg-emerald-800 transition-all shadow-lg active:scale-90 ring-4 ring-emerald-50 animate-bounce"
-      style={{ animationDuration: '3s' }} // Parpadeo suave cada 3 segundos
-    >
-      i
-    </button>
-  </div>
-)}
+        {/* BOTÓN DE INFORMACIÓN "i" ESMERALDA / PULSANTE */}
+        {infoMessage && (
+          <div className="flex items-center gap-2">
+            <span className="hidden sm:block text-[9px] font-black text-emerald-800 uppercase tracking-widest bg-emerald-100 px-3 py-1 rounded-md border border-emerald-200">
+              Avisos Importantes
+            </span>
+            <button 
+              onClick={() => setIsInfoOpen(true)}
+              className="h-10 w-10 rounded-full bg-emerald-700 text-white flex items-center justify-center font-serif italic text-xl hover:bg-emerald-800 transition-all shadow-lg active:scale-90 ring-4 ring-emerald-50 animate-bounce"
+              style={{ animationDuration: '3s' }}
+            >
+              i
+            </button>
+          </div>
         )}
       </header>
 
