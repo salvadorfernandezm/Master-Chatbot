@@ -33,23 +33,9 @@ function TrashIcon() {
   );
 }
 
-function CopyIcon() {
-  return (
-    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-3.5 h-3.5">
-      <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 17.25v3.375c0 .621-.504 1.125-1.125 1.125h-9.75a1.125 1.125 0 0 1-1.125-1.125V7.875c0-.621.504-1.125 1.125-1.125H6.75a9.06 9.06 0 0 1 1.5.124m7.5 10.376h3.375c.621 0 1.125-.504 1.125-1.125V11.25c0-4.46-3.243-8.161-7.5-8.876a9.06 9.06 0 0 0-1.5-.124H9.375c-.621 0-1.125.504-1.125 1.125v3.5m7.5 10.375H9.375a1.125 1.125 0 0 1-1.125-1.125v-9.25m12 6.625v-1.875a3.375 3.375 0 0 0-3.375-3.375h-1.5a1.125 1.125 0 0 1-1.125-1.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H9.75" />
-    </svg>
-  );
-}
-
 function ChatbotCard({ bot }: { bot: Chatbot }) {
   const [editingId, setEditingId] = useState(false);
-  const [copied, setCopied] = useState<"link" | "whatsapp" | null>(null);
   const [isToggling, setIsToggling] = useState(false);
-
-  const handleDelete = async () => {
-    if (!confirm(`¿Eliminar "${bot.name}"?\n⚠️ Los alumnos ya no podrán entrar.`)) return;
-    await deleteChatbot(bot.id);
-  };
 
   const handleToggleActive = async () => {
     setIsToggling(true);
@@ -61,93 +47,81 @@ function ChatbotCard({ bot }: { bot: Chatbot }) {
     window.location.reload(); 
   };
 
-  const handleCopyLink = () => {
-    const url = `${window.location.origin}/chat/${bot.token}`;
-    navigator.clipboard.writeText(url);
-    setCopied("link");
-    setTimeout(() => setCopied(null), 2500);
-  };
-
   const handleCopyWhatsApp = () => {
     const url = `${window.location.origin}/chat/${bot.token}`;
-    const message = `🎓 *${bot.name}*\nAccede aquí: ${url}`;
-    navigator.clipboard.writeText(message);
-    setCopied("whatsapp");
-    setTimeout(() => setCopied(null), 2500);
+    const message = `🎓 *${bot.name}* — Tu Tutor IA\n\nEstá disponible las 24 horas para tus dudas.\n\n👉 Accede aquí: ${url}`;
+    window.open(`https://wa.me/?text=${encodeURIComponent(message)}`, '_blank');
   };
 
   return (
-    <div className={`bg-white border rounded-2xl shadow-sm hover:shadow-md transition-all overflow-hidden ${!bot.isActive ? 'opacity-60 grayscale-[0.5]' : ''}`}>
-      <div className="p-6 flex flex-wrap justify-between items-center gap-4">
-        <div className="flex-1">
-          <div className="flex items-center gap-3 flex-wrap">
-            <h3 className="font-bold text-slate-800 text-lg">{bot.name}</h3>
-            <button onClick={handleToggleActive} disabled={isToggling} className={`px-3 py-1 rounded-full text-[10px] font-black uppercase ${bot.isActive ? 'bg-green-500 text-white' : 'bg-slate-400 text-white'}`}>
-              {bot.isActive ? 'En Línea' : 'Apagado'}
-            </button>
-          </div>
-          <div className="grid grid-cols-2 gap-4 mt-3 text-sm font-semibold">
-            <div className="p-2 bg-slate-50 rounded-xl">{bot.group.name}</div>
-            <div className="p-2 bg-purple-50 rounded-xl text-purple-700 truncate">{bot.knowledgeBase.name}</div>
-          </div>
-          {bot.isActive && (
-            <div className="mt-4 flex gap-2">
-              <button onClick={handleCopyLink} className="flex-1 px-3 py-1.5 rounded-lg text-xs font-bold border border-slate-200 text-slate-600 hover:bg-slate-50 flex items-center justify-center gap-2">
-                <CopyIcon /> {copied === "link" ? "Copiado" : "Link"}
+    <div className={`bg-white border-2 rounded-3xl shadow-sm hover:shadow-xl transition-all overflow-hidden mb-6 ${!bot.isActive ? 'opacity-60 border-slate-200' : 'border-purple-50'}`}>
+      <div className="p-6">
+        <div className="flex justify-between items-start mb-4">
+          <div className="flex-1">
+            <div className="flex items-center gap-3 mb-2">
+              <h3 className="font-extrabold text-slate-800 text-xl">{bot.name}</h3>
+              <button onClick={handleToggleActive} className={`px-4 py-1 rounded-full text-[10px] font-black uppercase tracking-tighter ${bot.isActive ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-500'}`}>
+                {bot.isActive ? '● En Línea' : '○ Apagado'}
               </button>
             </div>
-          )}
+            
+            <div className="flex gap-4 text-xs">
+              <span className="bg-slate-100 px-3 py-1 rounded-lg text-slate-600 font-bold italic">{bot.group.name}</span>
+              <span className="bg-purple-100 px-3 py-1 rounded-lg text-purple-700 font-bold">Base: {bot.knowledgeBase.name}</span>
+            </div>
+          </div>
+          
+          <div className="flex gap-2">
+            <button onClick={() => setEditingId(!editingId)} className="p-2.5 bg-slate-100 text-slate-600 rounded-2xl hover:bg-purple-600 hover:text-white transition-all shadow-sm">
+                <PencilIcon />
+            </button>
+            <button onClick={() => deleteChatbot(bot.id)} className="p-2.5 bg-slate-100 text-slate-400 rounded-2xl hover:bg-red-500 hover:text-white transition-all"><TrashIcon /></button>
+          </div>
         </div>
-        <div className="flex items-center gap-2 self-start mt-1">
-          <button onClick={() => setEditingId(!editingId)} className={`flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-bold transition-all ${editingId ? 'bg-slate-200' : 'bg-purple-100 text-purple-700'}`}>
-            <PencilIcon /> {editingId ? 'Cerrar' : 'Config.'}
-          </button>
-          <button onClick={handleDelete} className="p-2 text-slate-300 hover:text-red-500"><TrashIcon /></button>
+
+        {/* LINK DIRECTO PARA EL PROFESOR (Lo que pediste) */}
+        <div className="mt-4 p-4 bg-slate-50 rounded-2xl border border-dashed border-slate-300">
+           <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Acceso Académico (Token: {bot.token})</p>
+           <div className="flex items-center justify-between">
+              <a href={`/chat/${bot.token}`} target="_blank" className="text-sm font-black text-purple-600 hover:underline">/chat/{bot.token} ↗</a>
+              <button onClick={handleCopyWhatsApp} className="text-[10px] bg-green-600 text-white px-3 py-1 rounded-full font-bold">Enviar WhatsApp</button>
+           </div>
         </div>
       </div>
 
       {editingId && (
-        <div className="px-6 pb-6 pt-2 border-t border-slate-100 bg-slate-50/50">
-          <p className="text-xs font-black text-purple-500 uppercase tracking-widest mt-4 mb-4">⚙️ Personalidad</p>
+        <div className="p-6 bg-slate-50 border-t border-slate-100">
           <form action={updateChatbot} onSubmit={() => setEditingId(false)} className="space-y-4">
             <input type="hidden" name="id" value={bot.id} />
-            <input type="hidden" name="isActive" value={String(bot.isActive)} />
-
             <div>
-              <label className="text-[11px] font-bold text-slate-500 uppercase">Nombre</label>
-              <input name="name" defaultValue={bot.name} required className="w-full px-4 py-2 text-sm border border-purple-200 rounded-xl focus:ring-2 focus:ring-purple-500 outline-none" />
+              <label className="text-[10px] font-bold text-slate-400 uppercase">Nombre</label>
+              <input name="name" defaultValue={bot.name} required className="w-full p-3 rounded-xl border border-slate-200 outline-none" />
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="text-[11px] font-bold text-slate-500 uppercase">Mensaje Bienvenida</label>
-                <textarea name="welcomeMessage" defaultValue={bot.welcomeMessage || ""} rows={2} className="w-full px-4 py-2 text-sm border border-slate-200 rounded-xl focus:ring-2 focus:ring-purple-500 outline-none" />
+                <label className="text-[10px] font-bold text-slate-400 uppercase">Bienvenida</label>
+                <textarea name="welcomeMessage" defaultValue={bot.welcomeMessage || ""} rows={2} className="w-full p-3 rounded-xl border border-slate-200 outline-none text-sm" />
               </div>
               <div>
-                <label className="text-[11px] font-bold text-slate-500 uppercase">Texto Teclado (Placeholder)</label>
-                <input name="inputPlaceholder" defaultValue={bot.inputPlaceholder || ""} className="w-full px-4 py-2 text-sm border border-slate-200 rounded-xl focus:ring-2 focus:ring-purple-500 outline-none" />
+                <label className="text-[10px] font-bold text-slate-400 uppercase">Escribiendo...</label>
+                <input name="inputPlaceholder" defaultValue={bot.inputPlaceholder || ""} className="w-full p-3 rounded-xl border border-slate-200 outline-none text-sm" />
               </div>
             </div>
 
             <div>
-              <label className="text-[11px] font-bold text-slate-500 uppercase">Mensaje de Información (Botón "i")</label>
-              <textarea 
-                name="infoMessage" 
-                defaultValue={bot.infoMessage || ""} 
-                rows={4} 
-                className="w-full px-4 py-2 text-sm border border-slate-200 rounded-xl focus:ring-2 focus:ring-purple-500 outline-none"
-                placeholder="Escribe aquí las instrucciones largas..."
-              />
+              <label className="text-[10px] font-bold text-slate-400 uppercase">Mensaje de Información (Boton "i")</label>
+              <textarea name="infoMessage" defaultValue={bot.infoMessage || ""} rows={3} className="w-full p-3 rounded-xl border border-slate-200 outline-none text-sm" placeholder="Escribe instrucciones aquí..." />
             </div>
 
             <div>
-              <label className="text-[11px] font-bold text-slate-500 uppercase">Directivas (System Prompt)</label>
-              <textarea name="systemInstructions" defaultValue={bot.systemInstructions || ""} rows={3} className="w-full px-4 py-2 text-sm border border-slate-200 rounded-xl focus:ring-2 focus:ring-purple-500 outline-none font-mono text-xs" />
+              <label className="text-[10px] font-bold text-slate-400 uppercase">System Prompt (IA)</label>
+              <textarea name="systemInstructions" defaultValue={bot.systemInstructions || ""} rows={2} className="w-full p-3 rounded-xl border border-slate-200 outline-none font-mono text-[10px]" />
             </div>
 
-            <div className="flex justify-end gap-3 pt-2">
-              <button type="button" onClick={() => setEditingId(false)} className="px-5 py-2 text-slate-600 font-bold text-sm">Cancelar</button>
-              <button type="submit" className="bg-slate-800 text-white px-6 py-2 rounded-xl text-sm font-bold shadow-lg">Guardar Cambios</button>
+            <div className="flex justify-end gap-2">
+              <button type="button" onClick={() => setEditingId(false)} className="text-sm font-bold text-slate-400 px-4">Cancelar</button>
+              <button type="submit" className="bg-slate-900 text-white px-8 py-3 rounded-2xl font-bold text-sm shadow-xl shadow-slate-300">Actualizar Chatbot</button>
             </div>
           </form>
         </div>
@@ -157,6 +131,6 @@ function ChatbotCard({ bot }: { bot: Chatbot }) {
 }
 
 export function ChatbotList({ chatbots }: { chatbots: Chatbot[] }) {
-  if (chatbots.length === 0) return <div className="p-8 text-center text-slate-500">Sin chatbots aún.</div>;
-  return <div className="space-y-4">{chatbots.map(bot => <ChatbotCard key={bot.id} bot={bot} />)}</div>;
+  if (chatbots.length === 0) return <div className="p-10 text-center text-slate-400 italic">No has creado bots todavía.</div>;
+  return <div>{chatbots.map(bot => <ChatbotCard key={bot.id} bot={bot} />)}</div>;
 }
