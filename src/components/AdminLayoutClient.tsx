@@ -36,13 +36,6 @@ export default function AdminLayoutClient({ children, orgName, orgLogo }: AdminL
     { name: "Conocimiento", href: "/admin/knowledge", icon: "📚" },
     { name: "Chatbots", href: "/admin/chatbots", icon: "🤖" },
     { name: "Ajustes", href: "/admin/settings", icon: "⚙️" },
-{ name: "Resumen", href: "/admin", icon: "📊" },
-  { name: "Analíticas", href: "/admin/analytics", icon: "📈" },
-  { name: "Buzón Estudiantil", href: "/admin/buzon", icon: "📩" }, // <--- NUEVO
-  { name: "Grupos", href: "/admin/groups", icon: "👥" },
-  { name: "Conocimiento", href: "/admin/knowledge", icon: "📚" },
-  { name: "Chatbots", href: "/admin/chatbots", icon: "🤖" },
-  { name: "Ajustes", href: "/admin/settings", icon: "⚙️" },
   ];
 
   return (
