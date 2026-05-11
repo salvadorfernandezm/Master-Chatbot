@@ -69,22 +69,25 @@ model DocumentChunk {
 }
 
 model Chatbot {
-  id                 String        @id @default(cuid())
+  id                 String   @id @default(cuid())
   name               String
-  token              String        @unique
+  token              String   @unique
   groupId            String
   knowledgeBaseId    String
-  isActive           Boolean       @default(true)
+  isActive           Boolean  @default(true)
   welcomeMessage     String?
+  infoMessage        String?  // Esta es tu nueva ocurrencia del botón de info
   systemInstructions String?
   fallbackMessage    String?
   inputPlaceholder   String?
   logoUrl            String?
-  createdAt          DateTime      @default(now())
-  updatedAt          DateTime      @updatedAt
-  group              Group         @relation(fields: [groupId], references: [id], onDelete: Cascade)
-  knowledgeBase      KnowledgeBase @relation(fields: [knowledgeBaseId], references: [id], onDelete: Cascade)
-  interactions       Interaction[]
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  // RELACIONES
+  group         Group         @relation(fields: [groupId], references: [id])
+  knowledgeBase KnowledgeBase @relation(fields: [knowledgeBaseId], references: [id])
+  interactions  Interaction[] // <--- ESTA ES LA LÍNEA QUE FALTA PARA QUE EL ERROR SE VAYA
 }
 
 model Interaction {
@@ -94,4 +97,19 @@ model Interaction {
   response  String
   createdAt DateTime @default(now())
   chatbot   Chatbot  @relation(fields: [chatbotId], references: [id], onDelete: Cascade)
+}
+
+// Modelo para el Buzón Inteligente
+model Ticket {
+  id              String   @id @default(cuid())
+  type            String   // Sugerencia, Académica, Infraestructura, Grave
+  content         String   // Lo que escribió el alumno
+  category        String?  // Rojo, Amarillo, Azul (Lo decide la IA)
+  status          String   @default("PENDIENTE") // Pendiente, Enrutado, Resuelto
+  studentName     String?  // Opcional por el anonimato
+  studentEmail    String?  // Opcional para seguimiento
+  evidenceUrl     String?  // Por si suben fotos (en el futuro)
+  aiSummary       String?  // El resumen formal que hará la IA
+  assignedTo      String?  // A quién se le mandó el correo (Mantenimiento, Directora, etc.)
+  createdAt       DateTime @default(now())
 }
