@@ -31,6 +31,7 @@ export default function AdminLayoutClient({ children, orgName, orgLogo }: AdminL
   const links = [
     { name: "Resumen", href: "/admin", icon: "📊" },
     { name: "Analíticas", href: "/admin/analytics", icon: "📈" },
+    { name: "Buzón Estudiantil", href: "/admin/buzon", icon: "📩" },
     { name: "Grupos", href: "/admin/groups", icon: "👥" },
     { name: "Conocimiento", href: "/admin/knowledge", icon: "📚" },
     { name: "Chatbots", href: "/admin/chatbots", icon: "🤖" },
