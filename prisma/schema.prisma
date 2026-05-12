@@ -26,6 +26,7 @@ model Settings {
   timezone              String   @default("UTC")
   createdAt             DateTime @default(now())
   updatedAt             DateTime @updatedAt
+organizationBuzonInfo String? @db.Text
 }
 
 model Group {
@@ -102,14 +103,12 @@ model Interaction {
 // Modelo para el Buzón Inteligente
 model Ticket {
   id              String   @id @default(cuid())
-  type            String   // Sugerencia, Académica, Infraestructura, Grave
-  content         String   // Lo que escribió el alumno
-  category        String?  // Rojo, Amarillo, Azul (Lo decide la IA)
-  status          String   @default("PENDIENTE") // Pendiente, Enrutado, Resuelto
-  studentName     String?  // Opcional por el anonimato
-  studentEmail    String?  // Opcional para seguimiento
-  evidenceUrl     String?  // Por si suben fotos (en el futuro)
-  aiSummary       String?  // El resumen formal que hará la IA
-  assignedTo      String?  // A quién se le mandó el correo (Mantenimiento, Directora, etc.)
+  type            String   // SUGERENCIA, ACADEMICA, INFRAESTRUCTURA, GRAVE
+  content         String   @db.Text
+  studentName     String?
+  studentEmail    String?  // OBLIGATORIO si es GRAVE
+  studentPhone    String?  // Por si hay que llamar al alumno en una emergencia
+  evidenceUrl     String?  // Aquí guardaremos la lista de archivos separados por comas
+  status          String   @default("PENDIENTE")
   createdAt       DateTime @default(now())
 }

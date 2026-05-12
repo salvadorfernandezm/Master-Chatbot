@@ -9,10 +9,12 @@ import { randomBytes } from "crypto";
 // 1. CONFIGURACIÓN GLOBAL
 // ==========================================
 export async function updateSettings(formData: FormData) {
-  const organizationName = formData.get("organizationName") as string; // Coincide con el input
-  const organizationLogo = formData.get("organizationLogo") as string; // Coincide con el input
+  const organizationName = formData.get("organizationName") as string;
+  const organizationLogo = formData.get("organizationLogo") as string;
   const defaultWelcomeMessage = formData.get("defaultWelcomeMessage") as string;
   const timezone = formData.get("timezone") as string;
+  // NUEVO: La regla del Buzón
+  const organizationBuzonInfo = formData.get("organizationBuzonInfo") as string;
 
   const settings = await prisma.settings.findFirst();
 
@@ -20,7 +22,8 @@ export async function updateSettings(formData: FormData) {
     organizationName,
     organizationLogo,
     defaultWelcomeMessage,
-    timezone
+    timezone,
+    organizationBuzonInfo // <-- LO GUARDAMOS EN LA NUBE
   };
 
   if (settings) {
