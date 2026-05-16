@@ -1,11 +1,10 @@
 // @ts-nocheck
 
-// PARCHE PARA VERCEL (DOMMatrix y otros)
+// Parche de seguridad para que la web cargue fluida
 if (typeof global.DOMMatrix === 'undefined') {
   global.DOMMatrix = class DOMMatrix { constructor() {} };
 }
 
-// PROCESADOR DE ARCHIVOS (PDF, WORD, EXCEL)
 export async function processFile(
   buffer: Buffer,
   filename: string,
@@ -13,21 +12,21 @@ export async function processFile(
   knowledgeBaseId: string,
   documentId: string
 ) {
-  // CARGA DINÁMICA (LAZY LOADING) para que Vercel no se asuste al abrir la web
+  // CARGA EN CALIENTE: Las librerías pesadas solo se cargan AQUÍ adentro
   const pdfLib = require("pdf-parse");
   const mammoth = require("mammoth");
   const XLSX = require("xlsx");
   const { RecursiveCharacterTextSplitter } = require("@langchain/textsplitters");
-  const { getEmbeddingsForTexts } = require("./vectorStore");
-  const { prisma } = require("./prisma");
+  // Nota el .default o la importación directa para evitar el fallo
+  const vectorStore = await import("./vectorStore");
 
   const textSplitter = new RecursiveCharacterTextSplitter({
-    chunkSize: 2000,
-    chunkOverlap: 400,
+    chunkSize: 1500,
+    chunkOverlap: 200,
   });
 
   const fileExtension = filename.split('.').pop()?.toUpperCase();
-  let chunks: any[] = [];
+  let chunks = [];
 
   try {
     if (fileExtension === "PDF") {
@@ -52,31 +51,25 @@ export async function processFile(
 
     if (chunks.length === 0) return 0;
 
-    // GUARDAR EN BASE DE DATOS
-    const BATCH_SIZE = 50; 
-    for (let i = 0; i < chunks.length; i += BATCH_SIZE) {
-      const batch = chunks.slice(i, i + BATCH_SIZE);
-      const embeddings = await getEmbeddingsForTexts(batch.map((c: any) => c.pageContent));
+    for (let i = 0; i < chunks.length; i += 50) {
+      const batch = chunks.slice(i, i + 50);
+      const embeddings = await vectorStore.getEmbeddingsForTexts(batch.map((c: any) => c.pageContent));
+      const { prisma } = await import("./prisma");
       await prisma.documentChunk.createMany({
         data: batch.map((c: any, idx: number) => ({
           content: c.pageContent,
           metadata: JSON.stringify(c.metadata),
           embedding: JSON.stringify(embeddings[idx]),
-          documentId: documentId,
-          knowledgeBaseId: knowledgeBaseId
+          documentId,
+          knowledgeBaseId
         }))
       });
     }
     return chunks.length;
   } catch (error: any) {
-    console.error("Fallo en proceso de archivo:", error.message);
+    console.error("Error procesador:", error.message);
     throw error;
   }
 }
 
-// CORRECCIÓN: Función con los 3 argumentos que pide admin.ts
-export async function processUrl(url: string, knowledgeBaseId: string, documentId: string) {
-    console.log(`🌐 Intento de procesar URL: ${url}`);
-    // Se deja vacía por ahora para evitar problemas de Build en Vercel
-    return 0;
-}
+export async function processUrl(url: string, kbId: string, docId: string) { return 0; }
