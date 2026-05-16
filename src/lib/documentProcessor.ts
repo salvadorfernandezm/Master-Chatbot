@@ -1,6 +1,11 @@
 // @ts-nocheck
-// Eliminamos el require de arriba para que Vercel no se asuste al abrir la web
 
+// PARCHE PARA VERCEL (DOMMatrix y otros)
+if (typeof global.DOMMatrix === 'undefined') {
+  global.DOMMatrix = class DOMMatrix { constructor() {} };
+}
+
+// PROCESADOR DE ARCHIVOS (PDF, WORD, EXCEL)
 export async function processFile(
   buffer: Buffer,
   filename: string,
@@ -8,7 +13,7 @@ export async function processFile(
   knowledgeBaseId: string,
   documentId: string
 ) {
-  // LA MAGIA: Solo cargamos las librerías pesadas CUANDO se ejecuta esta función
+  // CARGA DINÁMICA (LAZY LOADING) para que Vercel no se asuste al abrir la web
   const pdfLib = require("pdf-parse");
   const mammoth = require("mammoth");
   const XLSX = require("xlsx");
@@ -47,8 +52,10 @@ export async function processFile(
 
     if (chunks.length === 0) return 0;
 
-    for (let i = 0; i < chunks.length; i += 50) {
-      const batch = chunks.slice(i, i + 50);
+    // GUARDAR EN BASE DE DATOS
+    const BATCH_SIZE = 50; 
+    for (let i = 0; i < chunks.length; i += BATCH_SIZE) {
+      const batch = chunks.slice(i, i + BATCH_SIZE);
       const embeddings = await getEmbeddingsForTexts(batch.map((c: any) => c.pageContent));
       await prisma.documentChunk.createMany({
         data: batch.map((c: any, idx: number) => ({
@@ -62,9 +69,14 @@ export async function processFile(
     }
     return chunks.length;
   } catch (error: any) {
-    console.error("Error:", error.message);
+    console.error("Fallo en proceso de archivo:", error.message);
     throw error;
   }
 }
 
-export async function processUrl() { return 0; }
+// CORRECCIÓN: Función con los 3 argumentos que pide admin.ts
+export async function processUrl(url: string, knowledgeBaseId: string, documentId: string) {
+    console.log(`🌐 Intento de procesar URL: ${url}`);
+    // Se deja vacía por ahora para evitar problemas de Build en Vercel
+    return 0;
+}
