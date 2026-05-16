@@ -2,46 +2,42 @@
 import { GoogleGenerativeAIEmbeddings } from "@langchain/google-genai";
 
 const embeddings = new GoogleGenerativeAIEmbeddings({
-  apiKey: process.env.GEMINI_API_KEY,
+  apiKey: process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY,
   modelName: "embedding-001",
 });
 
+// Función necesaria para subir archivos
 export async function getEmbeddingsForTexts(texts: string[]) {
   return await embeddings.embedDocuments(texts);
 }
 
-let localDocs: any[] = [];
-
 export async function loadStoreFromDB(knowledgeBaseId: string, prisma: any) {
-  try {
-    // FILTRO TOTAL: Solo cargamos los fragmentos de LA BASE asignada
-    const chunks = await prisma.documentChunk.findMany({
-      where: { knowledgeBaseId: knowledgeBaseId }
-    });
-
-    localDocs = chunks.map((chunk) => ({
-      pageContent: chunk.content,
-      metadata: typeof chunk.metadata === 'string' ? JSON.parse(chunk.metadata) : chunk.metadata,
-    }));
-    
-    console.log(`✅ Base [${knowledgeBaseId}] cargada: ${localDocs.length} datos.`);
-  } catch (error) {
-    console.error("❌ Error en DB:", error.message);
-  }
+  // En esta versión simplificada no hace falta cargar en memoria
+  return; 
 }
 
-export async function searchVectorStore(query: string, knowledgeBaseId: string, limit: number = 30) {
-  if (localDocs.length === 0) return [];
-  const searchText = query.toLowerCase();
-  
-  // Separamos las palabras clave
-  const words = searchText.split(' ').filter(w => w.length > 3);
-  
-  // Buscamos coincidencias dentro de esta base específica
-  const matches = localDocs.filter(doc => 
-    words.some(word => doc.pageContent.toLowerCase().includes(word))
-  );
+export async function searchVectorStore(query: string, knowledgeBaseId: string, limit: number = 10) {
+  try {
+    const { prisma } = await import("./prisma");
+    
+    // BUSCADOR DE EMERGENCIA: Buscamos directamente en Supabase
+    // Esto es lo que salvará la prueba Beta
+    const words = query.toLowerCase().split(' ').filter(w => w.length > 3);
+    
+    const chunks = await prisma.documentChunk.findMany({
+      where: {
+        knowledgeBaseId,
+        OR: words.length > 0 ? words.map(w => ({ content: { contains: w, mode: 'insensitive' } })) : undefined
+      },
+      take: limit
+    });
 
-  // Si no hay coincidencias exactas, mandamos una muestra amplia del archivo
-  return matches.length > 0 ? matches : localDocs.slice(0, limit);
+    if (chunks.length === 0) {
+        return await prisma.documentChunk.findMany({ where: { knowledgeBaseId }, take: limit });
+    }
+
+    return chunks.map(c => ({ pageContent: c.content, metadata: {} }));
+  } catch (error) {
+    return [];
+  }
 }
