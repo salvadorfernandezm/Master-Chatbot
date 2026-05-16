@@ -13,8 +13,10 @@ export async function updateSettings(formData: FormData) {
   const organizationLogo = formData.get("organizationLogo") as string;
   const defaultWelcomeMessage = formData.get("defaultWelcomeMessage") as string;
   const timezone = formData.get("timezone") as string;
-  // NUEVO: La regla del Buzón
   const organizationBuzonInfo = formData.get("organizationBuzonInfo") as string;
+  
+  // Convertimos el valor del interruptor que vendrá del formulario
+  const isBuzonActive = formData.get("isBuzonActive") === "true";
 
   const settings = await prisma.settings.findFirst();
 
@@ -23,7 +25,8 @@ export async function updateSettings(formData: FormData) {
     organizationLogo,
     defaultWelcomeMessage,
     timezone,
-    organizationBuzonInfo // <-- LO GUARDAMOS EN LA NUBE
+    organizationBuzonInfo, // <-- La coma era vital aquí
+    isBuzonActive          // <-- Y aquí ya cerramos el objeto
   };
 
   if (settings) {

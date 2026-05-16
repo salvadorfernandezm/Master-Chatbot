@@ -27,6 +27,7 @@ model Settings {
   createdAt             DateTime @default(now())
   updatedAt             DateTime @updatedAt
 organizationBuzonInfo String? @db.Text
+isBuzonActive         Boolean @default(true)
 }
 
 model Group {
