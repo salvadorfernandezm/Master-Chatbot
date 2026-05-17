@@ -17,34 +17,34 @@ export async function POST(req: Request) {
     });
     if (!chatbot) return NextResponse.json({ reply: "Chatbot no encontrado." });
 
-    // 2. CARGAR CONTEXTO (RAG)
+    // 2. CARGAR CONTEXTO
     await loadStoreFromDB(chatbot.knowledgeBaseId, prisma);
-    const vectorContexts = await searchVectorStore(message, chatbot.knowledgeBaseId, 15);
-    const contextText = vectorContexts.map((v: any) => v.pageContent).join("\n\n");
+    const results = await searchVectorStore(message, chatbot.knowledgeBaseId, 15);
+    const contextText = results.map((v: any) => v.pageContent).join("\n\n");
 
-    const systemPrompt = `Eres el asistente oficial del Prof. Salvador. Usa este contexto: ${contextText}.
-    REGLA: Para notas, busca al alumno. Para APA o ética, explica con detalle.`;
+    const systemPrompt = `Eres el asistente académico del Prof. Salvador. Usa este CONTEXTO para responder de forma precisa: ${contextText}.
+    REGLA: Si preguntan por calificaciones, busca al alumno. Para APA, sé detallado.`;
 
     let finalReply = "";
 
-    // --- INTENTO 1: GEMINI ---
+    // --- MOTOR 1: GEMINI (GRATIS) ---
     try {
-      const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key=${apiKeyGemini}`;
-      const res = await fetch(geminiUrl, {
+      const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${apiKeyGemini}`;
+      const resG = await fetch(geminiUrl, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ contents: [{ parts: [{ text: systemPrompt + "\n\nUsuario: " + message }] }] })
       });
-      const data = await res.json();
-      if (res.ok && data.candidates?.[0]?.content) {
-        finalReply = data.candidates[0].content.parts[0].text;
+      const dataG = await resG.json();
+      if (resG.ok && dataG.candidates?.[0]?.content) {
+        finalReply = dataG.candidates[0].content.parts[0].text;
       }
-    } catch (e) { console.log("Google en espera, saltando a respaldo..."); }
+    } catch (e) { console.log("Google ocupado, saltando a OpenAI..."); }
 
-    // --- INTENTO 2: OPENAI (RESPALDO) ---
+    // --- MOTOR 2: OPENAI (RESPALDO DE PAGO) ---
     if (!finalReply && apiKeyOpenAI) {
       try {
-        const res = await fetch("https://api.openai.com/v1/chat/completions", {
+        const resO = await fetch("https://api.openai.com/v1/chat/completions", {
           method: "POST",
           headers: { "Content-Type": "application/json", "Authorization": `Bearer ${apiKeyOpenAI}` },
           body: JSON.stringify({
@@ -52,20 +52,19 @@ export async function POST(req: Request) {
             messages: [{ role: "system", content: systemPrompt }, { role: "user", content: message }]
           })
         });
-        const data = await response.json();
-        finalReply = data.choices?.[0]?.message?.content || "";
-      } catch (e) { console.log("Fallo en respaldo."); }
+        const dataO = await resO.json();
+        finalReply = dataO.choices?.[0]?.message?.content || "";
+      } catch (e) { console.log("Fallo en motor de respaldo."); }
     }
 
-    if (!finalReply) finalReply = "El sistema está recibiendo muchas dudas. Por favor, reintenta en 15 segundos.";
+    if (!finalReply) finalReply = "⚠️ El sistema de inteligencia artificial está muy saturado. Por favor, reintenta tu pregunta en 20 segundos.";
 
-    // --- EL TOQUE DE GRACIA: GUARDADO ASEGURADO ---
-    // Ponemos esto justo antes del return final, fuera de cualquier "if"
+    // --- EL TAQUÍGRAFO (REGISTRO FINAL) ---
     await prisma.interaction.create({
       data: {
         chatbotId: chatbot.id,
         query: message.substring(0, 1000),
-        response: finalReply.substring(0, 5000) // Para que no corte el APA
+        response: finalReply.substring(0, 5000)
       }
     }).catch(err => console.error("Error analíticas:", err));
 
@@ -73,6 +72,6 @@ export async function POST(req: Request) {
 
   } catch (error: any) {
     console.error("❌ FALLO:", error.message);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ reply: "Sincronizando sabiduría... intenta de nuevo." });
   }
 }
