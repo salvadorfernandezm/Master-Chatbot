@@ -1,39 +1,78 @@
 export const dynamic = 'force-dynamic';
-import { NextResponse } from "next/server";
+import { NextResponse } from "next/dist/server/web/spec-extension/response";
 import { prisma } from "@/lib/prisma";
-import { searchVectorStore } from "@/lib/vectorStore";
+import { searchVectorStore, loadStoreFromDB } from "@/lib/vectorStore";
 
 export async function POST(req: Request) {
   try {
-    const { message, token } = await req.json();
-    const apiKey = process.env.GEMINI_API_KEY;
+    const body = await req.json();
+    const { message, token } = body;
+    const apiKeyGemini = process.env.GEMINI_API_KEY;
+    const apiKeyOpenAI = process.env.OPENAI_API_KEY;
 
-    const chatbot = await prisma.chatbot.findUnique({ where: { token, isActive: true } });
+    // 1. IDENTIFICAR AL CHATBOT
+    const chatbot = await prisma.chatbot.findUnique({
+      where: { token, isActive: true },
+      include: { knowledgeBase: true }
+    });
     if (!chatbot) return NextResponse.json({ reply: "Chatbot no encontrado." });
 
-    const results = await searchVectorStore(message, chatbot.knowledgeBaseId, 10);
-    const contextText = results.map((v: any) => v.pageContent).join("\n\n");
+    // 2. CARGAR CONTEXTO (RAG)
+    await loadStoreFromDB(chatbot.knowledgeBaseId, prisma);
+    const vectorContexts = await searchVectorStore(message, chatbot.knowledgeBaseId, 15);
+    const contextText = vectorContexts.map((v: any) => v.pageContent).join("\n\n");
 
-    const systemPrompt = `Eres un asistente académico. Contexto: ${contextText}. Responde directo.`;
+    const systemPrompt = `Eres el asistente oficial del Prof. Salvador. Usa este contexto: ${contextText}.
+    REGLA: Para notas, busca al alumno. Para APA o ética, explica con detalle.`;
 
-    // USAMOS EL ALIAS UNIVERSAL QUE GOOGLE SIEMPRE RESPONDE
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key=${apiKey}`;
+    let finalReply = "";
 
-    const response = await fetch(url, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ contents: [{ parts: [{ text: systemPrompt + "\n\nUsuario: " + message }] }] })
-    });
+    // --- INTENTO 1: GEMINI ---
+    try {
+      const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key=${apiKeyGemini}`;
+      const res = await fetch(geminiUrl, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ contents: [{ parts: [{ text: systemPrompt + "\n\nUsuario: " + message }] }] })
+      });
+      const data = await res.json();
+      if (res.ok && data.candidates?.[0]?.content) {
+        finalReply = data.candidates[0].content.parts[0].text;
+      }
+    } catch (e) { console.log("Google en espera, saltando a respaldo..."); }
 
-    const data = await response.json();
-    const reply = data.candidates?.[0]?.content?.parts?.[0]?.text || "Google está saturado, reintenta en 5 segundos.";
+    // --- INTENTO 2: OPENAI (RESPALDO) ---
+    if (!finalReply && apiKeyOpenAI) {
+      try {
+        const res = await fetch("https://api.openai.com/v1/chat/completions", {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "Authorization": `Bearer ${apiKeyOpenAI}` },
+          body: JSON.stringify({
+            model: "gpt-4o-mini",
+            messages: [{ role: "system", content: systemPrompt }, { role: "user", content: message }]
+          })
+        });
+        const data = await response.json();
+        finalReply = data.choices?.[0]?.message?.content || "";
+      } catch (e) { console.log("Fallo en respaldo."); }
+    }
 
-    // Guardado de analítica en segundo plano
-    prisma.interaction.create({ data: { chatbotId: chatbot.id, query: message, response: reply } }).catch(()=>{});
+    if (!finalReply) finalReply = "El sistema está recibiendo muchas dudas. Por favor, reintenta en 15 segundos.";
 
-    return NextResponse.json({ reply });
+    // --- EL TOQUE DE GRACIA: GUARDADO ASEGURADO ---
+    // Ponemos esto justo antes del return final, fuera de cualquier "if"
+    await prisma.interaction.create({
+      data: {
+        chatbotId: chatbot.id,
+        query: message.substring(0, 1000),
+        response: finalReply.substring(0, 5000) // Para que no corte el APA
+      }
+    }).catch(err => console.error("Error analíticas:", err));
+
+    return NextResponse.json({ reply: finalReply });
 
   } catch (error: any) {
-    return NextResponse.json({ reply: "Reintentando... Google está procesando datos." });
+    console.error("❌ FALLO:", error.message);
+    return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
