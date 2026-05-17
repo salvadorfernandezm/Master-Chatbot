@@ -1,3 +1,4 @@
+export const dynamic = 'force-dynamic';
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import bcrypt from "bcryptjs";
@@ -6,7 +7,7 @@ export async function POST() {
   try {
     const passwordHash = await bcrypt.hash("Salvador123", 10);
 
-    // 1. Crear o actualizar Ajustes (Para matar el Error 500)
+    // 1. Inyectamos los Ajustes para matar el Error 500
     await prisma.settings.upsert({
       where: { id: "default-settings" },
       update: {},
@@ -17,7 +18,7 @@ export async function POST() {
       }
     });
 
-    // 2. Crear o actualizar Usuario
+    // 2. Inyectamos al usuario maestro
     await prisma.user.upsert({
       where: { email: "admin@admin.com" },
       update: { password: passwordHash },
@@ -30,6 +31,7 @@ export async function POST() {
 
     return NextResponse.json({ success: true });
   } catch (error: any) {
+    console.error("Fallo en setup:", error.message);
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
