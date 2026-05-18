@@ -9,23 +9,20 @@ import { randomBytes } from "crypto";
 // 1. CONFIGURACIÓN GLOBAL
 // ==========================================
 export async function updateSettings(formData: FormData) {
-  const organizationName = (formData.get("organizationName") as string) || "Master Chatbot IA";
+  // Obtenemos los valores; si vienen vacíos, no importa, le asignamos un string vacío
+  const organizationName = (formData.get("organizationName") as string) || "Mi Escuela";
   const organizationLogo = (formData.get("organizationLogo") as string) || "";
-  const defaultWelcomeMessage = (formData.get("defaultWelcomeMessage") as string) || "¡Hola! ¿En qué puedo ayudarte?";
-  const timezone = (formData.get("timezone") as string) || "America/Mexico_City";
-  const organizationBuzonInfo = (formData.get("organizationBuzonInfo") as string) || "";
-  const isBuzonActive = formData.get("isBuzonActive") === "true";
-
+  const defaultWelcomeMessage = (formData.get("defaultWelcomeMessage") as string) || "Hola!";
+  const organizationBuzonInfo = (formData.get("organizationBuzonInfo") as string) || "Aún no hay reglas.";
+  
   const settings = await prisma.settings.findFirst();
 
-  // Armamos el objeto con valores seguros (nunca null)
   const data = {
     organizationName,
     organizationLogo,
     defaultWelcomeMessage,
-    timezone,
     organizationBuzonInfo,
-    isBuzonActive
+    timezone: "America/Mexico_City"
   };
 
   try {
@@ -35,9 +32,8 @@ export async function updateSettings(formData: FormData) {
       await prisma.settings.create({ data });
     }
     revalidatePath("/admin/settings");
-    revalidatePath("/"); // Refrescamos la principal para ver cambios
   } catch (error) {
-    console.error("Error al actualizar ajustes:", error);
+    console.error("Error salvando ajustes:", error);
   }
 }
 // ==========================================
