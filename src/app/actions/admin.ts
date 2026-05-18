@@ -9,32 +9,36 @@ import { randomBytes } from "crypto";
 // 1. CONFIGURACIÓN GLOBAL
 // ==========================================
 export async function updateSettings(formData: FormData) {
-  const organizationName = formData.get("organizationName") as string;
-  const organizationLogo = formData.get("organizationLogo") as string;
-  const defaultWelcomeMessage = formData.get("defaultWelcomeMessage") as string;
-  const timezone = formData.get("timezone") as string;
-  const organizationBuzonInfo = formData.get("organizationBuzonInfo") as string;
-  
-  // Convertimos el valor del interruptor que vendrá del formulario
+  const organizationName = (formData.get("organizationName") as string) || "Master Chatbot IA";
+  const organizationLogo = (formData.get("organizationLogo") as string) || "";
+  const defaultWelcomeMessage = (formData.get("defaultWelcomeMessage") as string) || "¡Hola! ¿En qué puedo ayudarte?";
+  const timezone = (formData.get("timezone") as string) || "America/Mexico_City";
+  const organizationBuzonInfo = (formData.get("organizationBuzonInfo") as string) || "";
   const isBuzonActive = formData.get("isBuzonActive") === "true";
 
   const settings = await prisma.settings.findFirst();
 
+  // Armamos el objeto con valores seguros (nunca null)
   const data = {
     organizationName,
     organizationLogo,
     defaultWelcomeMessage,
     timezone,
-    organizationBuzonInfo, // <-- La coma era vital aquí
-    isBuzonActive          // <-- Y aquí ya cerramos el objeto
+    organizationBuzonInfo,
+    isBuzonActive
   };
 
-  if (settings) {
-    await prisma.settings.update({ where: { id: settings.id }, data });
-  } else {
-    await prisma.settings.create({ data });
+  try {
+    if (settings) {
+      await prisma.settings.update({ where: { id: settings.id }, data });
+    } else {
+      await prisma.settings.create({ data });
+    }
+    revalidatePath("/admin/settings");
+    revalidatePath("/"); // Refrescamos la principal para ver cambios
+  } catch (error) {
+    console.error("Error al actualizar ajustes:", error);
   }
-  revalidatePath("/admin/settings");
 }
 // ==========================================
 // 2. ACCIONES DE GRUPOS
