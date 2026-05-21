@@ -9,13 +9,17 @@ export default function BuzonPublico() {
   const [isInfoOpen, setIsInfoOpen] = useState(false);
   const [settings, setSettings] = useState<any>(null);
 
-  // Cargamos los ajustes (logo y reglamento)
+  // Cambiamos la ruta de /api/admin/settings a /api/settings
   useEffect(() => {
     async function fetchSettings() {
-      const res = await fetch('/api/admin/settings'); // Asegúrate de tener este API endpoint
-      if (res.ok) {
-        const data = await res.json();
-        setSettings(data);
+      try {
+        const res = await fetch('/api/settings'); // <-- LA NUEVA LIGADURA
+        if (res.ok) {
+          const data = await res.json();
+          setSettings(data);
+        }
+      } catch (err) {
+        console.error("Error cargando el reglamento");
       }
     }
     fetchSettings();
