@@ -109,6 +109,22 @@ export async function deleteChatbot(id: string) {
   revalidatePath("/admin/chatbots");
 }
 
+try {
+    await prisma.chatbot.update({
+      where: { id },
+      data: updateData,
+    });
+    
+    // REFRESCAMOS TODO para que no haya que darle dos veces
+    revalidatePath("/admin/chatbots");
+    revalidatePath(`/chat/${id}`); 
+    return { success: true };
+  } catch (error) {
+    console.error("Error al actualizar:", error);
+    return { success: false };
+  }
+}
+
 // ==========================================
 // 4. ACCIONES DE BASES DE CONOCIMIENTO
 // ==========================================
