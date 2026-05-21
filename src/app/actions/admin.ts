@@ -6,13 +6,13 @@ import { processFile, processUrl } from "@/lib/documentProcessor";
 import { randomBytes } from "crypto";
 
 // ==========================================
-// 1. CONFIGURACIÓN GLOBAL (Tolerante a vacíos)
+// 1. CONFIGURACIÓN GLOBAL
 // ==========================================
 export async function updateSettings(formData: FormData) {
   const organizationName = (formData.get("organizationName") as string) || "Mi Escuela";
   const organizationLogo = (formData.get("organizationLogo") as string) || "";
-  const defaultWelcomeMessage = (formData.get("defaultWelcomeMessage") as string) || "Hola!";
-  const organizationBuzonInfo = (formData.get("organizationBuzonInfo") as string) || "Aún no hay reglas.";
+  const defaultWelcomeMessage = (formData.get("defaultWelcomeMessage") as string) || "¡Hola!";
+  const organizationBuzonInfo = (formData.get("organizationBuzonInfo") as string) || "";
   const isBuzonActive = formData.get("isBuzonActive") === "true";
   
   const settings = await prisma.settings.findFirst();
@@ -30,11 +30,11 @@ export async function updateSettings(formData: FormData) {
     if (settings) {
       await prisma.settings.update({ where: { id: settings.id }, data });
     } else {
-      await prisma.settings.create({ data });
+      await prisma.settings.create({ data: { ...data, id: "default-settings" } });
     }
     revalidatePath("/admin/settings");
     revalidatePath("/");
-    revalidatePath("/buzon"); // Actualizamos el buzón público
+    revalidatePath("/buzon");
   } catch (error) {
     console.error("Error salvando ajustes:", error);
   }
@@ -64,7 +64,7 @@ export async function deleteGroup(id: string) {
 }
 
 // ==========================================
-// 3. ACCIONES DE CHATBOTS (Versión Robusta)
+// 3. ACCIONES DE CHATBOTS
 // ==========================================
 export async function createChatbot(formData: FormData) {
   const name = formData.get("name") as string;
@@ -106,10 +106,8 @@ export async function updateChatbot(formData: FormData) {
   try {
     await prisma.chatbot.update({ where: { id }, data: updateData });
     revalidatePath("/admin/chatbots");
-    // Refrescamos la ruta del chat si fuera necesario (aunque token es el id dinámico)
     return { success: true };
   } catch (error) {
-    console.error("Error al actualizar:", error);
     return { success: false };
   }
 }
@@ -150,6 +148,7 @@ export async function deleteKnowledgeBase(id: string) {
 // ==========================================
 // 5. ACCIONES DE DOCUMENTOS
 // ==========================================
+
 export async function uploadFileDocument(formData: FormData) {
   const file = formData.get("file") as File;
   const knowledgeBaseId = formData.get("knowledgeBaseId") as string;
@@ -169,7 +168,25 @@ export async function uploadFileDocument(formData: FormData) {
   try {
     await processFile(buffer, file.name, type, knowledgeBaseId, doc.id);
   } catch (error) {
-    console.error("Error:", error);
+    console.error("Error procesando archivo:", error);
+  }
+  revalidatePath(`/admin/knowledge/${knowledgeBaseId}`);
+}
+
+// --- AQUÍ ESTÁ LA PIEZA QUE REPARARÁ EL ERROR ROJO ---
+export async function addUrlDocument(formData: FormData) {
+  const url = formData.get("url") as string;
+  const knowledgeBaseId = formData.get("knowledgeBaseId") as string;
+  if (!url || !knowledgeBaseId) return;
+
+  const doc = await prisma.document.create({
+    data: { filename: url, type: "URL", knowledgeBaseId },
+  });
+
+  try {
+    await processUrl(url, knowledgeBaseId, doc.id);
+  } catch (error) {
+    console.error("Error procesando URL:", error);
   }
   revalidatePath(`/admin/knowledge/${knowledgeBaseId}`);
 }
@@ -181,7 +198,7 @@ export async function deleteDocument(id: string, knowledgeBaseId: string) {
 }
 
 // ==========================================
-// 6. RESPALDO Y RESTAURACIÓN JSON
+// 6. RESPALDO Y RESTAURACIÓN
 // ==========================================
 export async function exportFullBackup() {
   const [groups, chatbots, kbs, docs] = await Promise.all([
@@ -190,7 +207,6 @@ export async function exportFullBackup() {
     prisma.knowledgeBase.findMany(),
     prisma.document.findMany(),
   ]);
-
   return {
     version: "2.0",
     date: new Date().toISOString(),
@@ -202,7 +218,6 @@ export async function importFullBackup(jsonData: string) {
   try {
     const backup = JSON.parse(jsonData);
     const { groups, chatbots, kbs, docs } = backup.data;
-
     await prisma.$transaction([
       prisma.interaction.deleteMany(),
       prisma.documentChunk.deleteMany(),
@@ -211,17 +226,14 @@ export async function importFullBackup(jsonData: string) {
       prisma.knowledgeBase.deleteMany(),
       prisma.group.deleteMany(),
     ]);
-
     if (groups.length) await prisma.group.createMany({ data: groups });
     if (kbs.length) await prisma.knowledgeBase.createMany({ data: kbs });
     if (chatbots.length) await prisma.chatbot.createMany({ data: chatbots });
     if (docs.length) await prisma.document.createMany({ data: docs });
-
     revalidatePath("/admin");
     return { success: true };
   } catch (error: any) {
-    console.error("Error en restauración:", error);
-    return { success: false, error: error.message || "Error desconocido" };
+    return { success: false, error: error.message };
   }
 }
 
@@ -232,21 +244,13 @@ export async function createTicket(formData: FormData) {
   const type = formData.get("type") as string;
   const content = formData.get("content") as string;
   const studentName = formData.get("studentName") as string;
-
   if (!content || !type) return;
-
   try {
     await prisma.ticket.create({
-      data: {
-        type,
-        content,
-        studentName: studentName || "Anónimo",
-        status: "PENDIENTE",
-      },
+      data: { type, content, studentName: studentName || "Anónimo", status: "PENDIENTE" },
     });
-    revalidatePath("/admin");
     revalidatePath("/admin/buzon");
   } catch (error) {
-    console.error("Error al enviar ticket:", error);
+    console.error("Error ticket:", error);
   }
 }
