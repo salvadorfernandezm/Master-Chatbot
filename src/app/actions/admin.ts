@@ -6,14 +6,14 @@ import { processFile, processUrl } from "@/lib/documentProcessor";
 import { randomBytes } from "crypto";
 
 // ==========================================
-// 1. CONFIGURACIÓN GLOBAL
+// 1. CONFIGURACIÓN GLOBAL (Tolerante a vacíos)
 // ==========================================
 export async function updateSettings(formData: FormData) {
-  // Obtenemos los valores; si vienen vacíos, no importa, le asignamos un string vacío
   const organizationName = (formData.get("organizationName") as string) || "Mi Escuela";
   const organizationLogo = (formData.get("organizationLogo") as string) || "";
   const defaultWelcomeMessage = (formData.get("defaultWelcomeMessage") as string) || "Hola!";
   const organizationBuzonInfo = (formData.get("organizationBuzonInfo") as string) || "Aún no hay reglas.";
+  const isBuzonActive = formData.get("isBuzonActive") === "true";
   
   const settings = await prisma.settings.findFirst();
 
@@ -22,6 +22,7 @@ export async function updateSettings(formData: FormData) {
     organizationLogo,
     defaultWelcomeMessage,
     organizationBuzonInfo,
+    isBuzonActive,
     timezone: "America/Mexico_City"
   };
 
@@ -32,10 +33,13 @@ export async function updateSettings(formData: FormData) {
       await prisma.settings.create({ data });
     }
     revalidatePath("/admin/settings");
+    revalidatePath("/");
+    revalidatePath("/buzon"); // Actualizamos el buzón público
   } catch (error) {
     console.error("Error salvando ajustes:", error);
   }
 }
+
 // ==========================================
 // 2. ACCIONES DE GRUPOS
 // ==========================================
@@ -60,7 +64,7 @@ export async function deleteGroup(id: string) {
 }
 
 // ==========================================
-// 3. ACCIONES DE CHATBOTS
+// 3. ACCIONES DE CHATBOTS (Versión Robusta)
 // ==========================================
 export async function createChatbot(formData: FormData) {
   const name = formData.get("name") as string;
@@ -89,7 +93,6 @@ export async function updateChatbot(formData: FormData) {
   if (!id) return;
 
   const updateData: any = {};
-  // AÑADIMOS 'infoMessage' a la lista de abajo:
   const fields = ["name", "welcomeMessage", "infoMessage", "systemInstructions", "inputPlaceholder", "fallbackMessage"];
   
   fields.forEach(field => {
@@ -100,29 +103,20 @@ export async function updateChatbot(formData: FormData) {
   const isActiveStr = formData.get("isActive");
   if (isActiveStr !== null) updateData.isActive = isActiveStr === "true";
 
-  await prisma.chatbot.update({ where: { id }, data: updateData });
-  revalidatePath("/admin/chatbots");
-}
-
-export async function deleteChatbot(id: string) {
-  await prisma.chatbot.delete({ where: { id } });
-  revalidatePath("/admin/chatbots");
-}
-
-try {
-    await prisma.chatbot.update({
-      where: { id },
-      data: updateData,
-    });
-    
-    // REFRESCAMOS TODO para que no haya que darle dos veces
+  try {
+    await prisma.chatbot.update({ where: { id }, data: updateData });
     revalidatePath("/admin/chatbots");
-    revalidatePath(`/chat/${id}`); 
+    // Refrescamos la ruta del chat si fuera necesario (aunque token es el id dinámico)
     return { success: true };
   } catch (error) {
     console.error("Error al actualizar:", error);
     return { success: false };
   }
+}
+
+export async function deleteChatbot(id: string) {
+  await prisma.chatbot.delete({ where: { id } });
+  revalidatePath("/admin/chatbots");
 }
 
 // ==========================================
@@ -154,7 +148,7 @@ export async function deleteKnowledgeBase(id: string) {
 }
 
 // ==========================================
-// 5. ACCIONES DE DOCUMENTOS (Simplificadas sin 'status')
+// 5. ACCIONES DE DOCUMENTOS
 // ==========================================
 export async function uploadFileDocument(formData: FormData) {
   const file = formData.get("file") as File;
@@ -168,42 +162,14 @@ export async function uploadFileDocument(formData: FormData) {
   else if (fileName.endsWith(".txt")) type = "TEXT";
 
   const buffer = Buffer.from(await file.arrayBuffer());
-  
-  // Creamos el registro del documento
   const doc = await prisma.document.create({
-    data: { 
-      filename: file.name, 
-      type, 
-      knowledgeBaseId 
-    },
+    data: { filename: file.name, type, knowledgeBaseId },
   });
 
   try {
-    // Procesamos el archivo (esto crea los fragmentos en la DB)
     await processFile(buffer, file.name, type, knowledgeBaseId, doc.id);
   } catch (error) {
-    console.error("Error procesando archivo:", error);
-  }
-  revalidatePath(`/admin/knowledge/${knowledgeBaseId}`);
-}
-
-export async function addUrlDocument(formData: FormData) {
-  const url = formData.get("url") as string;
-  const knowledgeBaseId = formData.get("knowledgeBaseId") as string;
-  if (!url || !knowledgeBaseId) return;
-
-  const doc = await prisma.document.create({
-    data: { 
-      filename: url, 
-      type: "URL", 
-      knowledgeBaseId 
-    },
-  });
-
-  try {
-    await processUrl(url, knowledgeBaseId, doc.id);
-  } catch (error) {
-    console.error("Error procesando URL:", error);
+    console.error("Error:", error);
   }
   revalidatePath(`/admin/knowledge/${knowledgeBaseId}`);
 }
@@ -214,7 +180,9 @@ export async function deleteDocument(id: string, knowledgeBaseId: string) {
   revalidatePath(`/admin/knowledge/${knowledgeBaseId}`);
 }
 
-// --- FUNCIÓN DE EXPORTACIÓN (Para descargar) ---
+// ==========================================
+// 6. RESPALDO Y RESTAURACIÓN JSON
+// ==========================================
 export async function exportFullBackup() {
   const [groups, chatbots, kbs, docs] = await Promise.all([
     prisma.group.findMany(),
@@ -230,7 +198,6 @@ export async function exportFullBackup() {
   };
 }
 
-// --- FUNCIÓN DE IMPORTACIÓN (Corregida para TypeScript) ---
 export async function importFullBackup(jsonData: string) {
   try {
     const backup = JSON.parse(jsonData);
@@ -252,13 +219,15 @@ export async function importFullBackup(jsonData: string) {
 
     revalidatePath("/admin");
     return { success: true };
-  } catch (error: any) { // <--- EL TRUCO ESTÁ EN ESTE ": any"
+  } catch (error: any) {
     console.error("Error en restauración:", error);
     return { success: false, error: error.message || "Error desconocido" };
   }
 }
 
-// --- ACCIÓN PARA EL BUZÓN INTELIGENTE ---
+// ==========================================
+// 7. BUZÓN INTELIGENTE
+// ==========================================
 export async function createTicket(formData: FormData) {
   const type = formData.get("type") as string;
   const content = formData.get("content") as string;
@@ -275,12 +244,8 @@ export async function createTicket(formData: FormData) {
         status: "PENDIENTE",
       },
     });
-
-    // Recargamos la ruta del administrador para que veas el nuevo ticket
     revalidatePath("/admin");
-    
-    // Aquí podrías redirigir a una página de "Gracias", 
-    // pero por ahora dejémoslo que recargue el buzón.
+    revalidatePath("/admin/buzon");
   } catch (error) {
     console.error("Error al enviar ticket:", error);
   }
