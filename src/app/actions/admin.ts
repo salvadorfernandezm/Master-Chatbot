@@ -104,11 +104,17 @@ export async function updateChatbot(formData: FormData) {
   if (isActiveStr !== null) updateData.isActive = isActiveStr === "true";
 
   try {
-    await prisma.chatbot.update({ where: { id }, data: updateData });
+    await prisma.chatbot.update({ 
+      where: { id }, 
+      data: updateData 
+    });
+    
+    // Solo revalidamos las rutas necesarias, sin devolver objetos
     revalidatePath("/admin/chatbots");
-    return { success: true };
+    revalidatePath(`/chat/${id}`);
   } catch (error) {
-    return { success: false };
+    console.error("Error al actualizar el chatbot:", error);
+    // IMPORTANTE: No ponemos "return", dejamos que la función termine sola
   }
 }
 
