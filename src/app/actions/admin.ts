@@ -12,16 +12,19 @@ export async function updateSettings(formData: FormData) {
   const organizationName = (formData.get("organizationName") as string) || "Mi Escuela";
   const organizationLogo = (formData.get("organizationLogo") as string) || "";
   const defaultWelcomeMessage = (formData.get("defaultWelcomeMessage") as string) || "¡Hola!";
-  const organizationBuzonInfo = (formData.get("organizationBuzonInfo") as string) || "";
-  const isBuzonActive = formData.get("isBuzonActive") === "true";
   
+  // LA CLAVE: No usamos .trim() al final para no quitar espacios que tú pusiste a propósito
+  const organizationBuzonInfo = (formData.get("organizationBuzonInfo") as string) || "";
+  
+  const isBuzonActive = formData.get("isBuzonActive") === "true";
+
   const settings = await prisma.settings.findFirst();
 
   const data = {
     organizationName,
     organizationLogo,
     defaultWelcomeMessage,
-    organizationBuzonInfo,
+    organizationBuzonInfo, // <-- Guardado puro
     isBuzonActive,
     timezone: "America/Mexico_City"
   };
@@ -33,10 +36,10 @@ export async function updateSettings(formData: FormData) {
       await prisma.settings.create({ data: { ...data, id: "default-settings" } });
     }
     revalidatePath("/admin/settings");
-    revalidatePath("/");
+    revalidatePath("/api/settings"); // Forzamos el refresco del "grifo" público
     revalidatePath("/buzon");
   } catch (error) {
-    console.error("Error salvando ajustes:", error);
+    console.error("Error al guardar ajustes:", error);
   }
 }
 

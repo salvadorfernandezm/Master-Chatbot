@@ -38,9 +38,15 @@ export default function BuzonPublico() {
                 prose-p:text-slate-600 prose-p:leading-relaxed
                 prose-li:text-slate-600
                 prose-strong:text-emerald-700 prose-strong:font-bold">
-                <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                  {settings?.organizationBuzonInfo || "_Cargando reglamento oficial..._"}
-                </ReactMarkdown>
+                <ReactMarkdown 
+  remarkPlugins={[remarkGfm]}
+  components={{
+    // Esto asegura que si dejas una línea en blanco, se respete como párrafo nuevo
+    p: ({node, ...props}) => <p className="mb-5 last:mb-0" {...props} />
+  }}
+>
+  {settings?.organizationBuzonInfo || "_Cargando reglamento..._"}
+</ReactMarkdown>
               </div>
             </div>
             
