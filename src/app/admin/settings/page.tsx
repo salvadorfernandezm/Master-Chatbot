@@ -47,12 +47,12 @@ export default async function SettingsPage() {
               Información que verá el Alumno (Botón "i" del Buzón)
             </label>
             <textarea 
-              name="organizationBuzonInfo"
-              defaultValue={settings.organizationBuzonInfo || ""}
-              rows={5}
-              placeholder="Ej: Los reportes GRAVES requieren identidad... Evidencias permitidas: audio, video..."
-              className="w-full px-5 py-4 rounded-2xl bg-[#fdfcf9] text-slate-900 border-slate-300 shadow-inner border border-white/20 text-white placeholder-white/30 focus:ring-2 focus:ring-lime-500 outline-none font-serif italic"
-            />
+  name="organizationBuzonInfo"
+  defaultValue={settings.organizationBuzonInfo || ""}
+  rows={10} // Le puse un poco más de espacio para que sea cómodo redactar
+  placeholder="Escribe el reglamento aquí..."
+  className="w-full px-5 py-4 rounded-2xl bg-[#fdfcf9] text-slate-900 border-2 border-slate-300 shadow-inner placeholder-slate-400 focus:ring-2 focus:ring-lime-500 focus:border-lime-500 outline-none font-serif italic"
+/>
           </div>
         </div>
 
