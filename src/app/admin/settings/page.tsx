@@ -51,7 +51,7 @@ export default async function SettingsPage() {
               defaultValue={settings.organizationBuzonInfo || ""}
               rows={5}
               placeholder="Ej: Los reportes GRAVES requieren identidad... Evidencias permitidas: audio, video..."
-              className="w-full px-5 py-4 rounded-2xl bg-white/10 border border-white/20 text-white placeholder-white/30 focus:ring-2 focus:ring-lime-500 outline-none font-serif italic"
+              className="w-full px-5 py-4 rounded-2xl bg-[#fdfcf9] text-slate-900 border-slate-300 shadow-inner border border-white/20 text-white placeholder-white/30 focus:ring-2 focus:ring-lime-500 outline-none font-serif italic"
             />
           </div>
         </div>

@@ -32,24 +32,30 @@ export default function BuzonPublico() {
             <h3 className="text-[11px] font-black uppercase tracking-[0.4em] text-emerald-600 mb-6 text-center">Reglamento Ético del Buzón</h3>
             
             <div className="max-h-[60vh] overflow-y-auto mb-8 pr-4 custom-scrollbar">
-              {/* LA MAGIA: Clase 'prose' para que los #### y los guiones funcionen */}
-              <div className="prose prose-slate max-w-none 
-                prose-headings:text-slate-800 prose-headings:font-black
-                prose-p:text-slate-600 prose-p:leading-relaxed
-                prose-li:text-slate-600
-                prose-strong:text-emerald-700 prose-strong:font-bold">
-                <ReactMarkdown 
-  remarkPlugins={[remarkGfm]}
-  components={{
-    // Esto asegura que si dejas una línea en blanco, se respete como párrafo nuevo
-    p: ({node, ...props}) => <p className="mb-5 last:mb-0" {...props} />
-  }}
->
-  {settings?.organizationBuzonInfo || "_Cargando reglamento..._"}
-</ReactMarkdown>
-              </div>
-            </div>
-            
+  {/* Ajustamos la 'prose' para que sea más espaciada y legible */}
+  <div className="prose prose-slate max-w-none 
+    prose-p:text-slate-600 prose-p:leading-relaxed prose-p:mb-6
+    prose-headings:text-slate-800 prose-headings:font-black prose-headings:mt-10 prose-headings:mb-4
+    prose-strong:text-emerald-700 prose-strong:font-bold
+    prose-li:text-slate-600 prose-li:mb-2">
+    
+    <ReactMarkdown 
+      remarkPlugins={[remarkGfm]}
+      components={{
+        // FORZAMOS EL AIRE: Cada título (h1 a h5) tendrá un margen superior extra
+        h1: ({node, ...props}) => <h1 className="mt-12 mb-6 border-b-2 border-emerald-50 pb-2" {...props} />,
+        h2: ({node, ...props}) => <h2 className="mt-10 mb-5 border-b border-slate-100 pb-2" {...props} />,
+        h3: ({node, ...props}) => <h3 className="mt-8 mb-4 text-emerald-800" {...props} />,
+        h4: ({node, ...props}) => <h4 className="mt-8 mb-3 text-slate-800 flex items-center gap-2" {...props} />,
+        h5: ({node, ...props}) => <h5 className="mt-6 mb-2 text-slate-700 font-bold" {...props} />,
+        // EL PÁRRAFO: Le damos una base sólida para que no se pegue al que sigue
+        p: ({node, ...props}) => <p className="mb-6 leading-relaxed" {...props} />,
+      }}
+    >
+      {settings?.organizationBuzonInfo || "_Cargando reglamento oficial..._"}
+    </ReactMarkdown>
+  </div>
+</div>            
             <button 
               onClick={() => setIsInfoOpen(false)}
               className="w-full py-4 bg-emerald-600 text-white text-xs font-black uppercase tracking-widest rounded-2xl shadow-xl shadow-emerald-200 hover:bg-emerald-700 active:scale-95 transition-all"
