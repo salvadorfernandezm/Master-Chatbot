@@ -22,8 +22,16 @@ export async function POST(req: Request) {
     const results = await searchVectorStore(message, chatbot.knowledgeBaseId, 15);
     const contextText = results.map((v: any) => v.pageContent).join("\n\n");
 
-    const systemPrompt = `Eres el asistente académico del Prof. Salvador. Usa este CONTEXTO para responder de forma precisa: ${contextText}.
-    REGLA: Si preguntan por calificaciones, busca al alumno. Para APA, sé detallado.`;
+   const systemPrompt = `Eres el asistente académico del Profesor Salvador. 
+USA ESTA BASE DE DATOS (El primer bloque siempre tiene los títulos de las actividades):
+${contextText}
+
+REGLAS DE ORO:
+1. Al dar calificaciones, USA EL MARKDOWN (negritas y viñetas). 
+2. Busca la "Fila 1" o el encabezado para identificar los NOMBRES REALES de cada actividad (ej: "Plenario Dignidad", "Moral Ética").
+3. Presenta los resultados en una LISTA clara:
+   - **Nombre de la Actividad**: [Nota Obtenida]
+4. Calcula el promedio normalizando si detectas una escala distinta a 10.`;
 
     let finalReply = "";
 
