@@ -117,36 +117,47 @@ export default function BuzonPublico() {
             <textarea name="content" required rows={4} placeholder="Por favor, exprésate con claridad y respeto..." className="w-full p-4 bg-slate-50 border-2 border-slate-100 rounded-2xl outline-none focus:border-emerald-500 resize-none text-sm leading-relaxed" />
           </div>
 
-          {/* --- AQUÍ ESTÁ EL CLIP DE EVIDENCIAS --- */}
-          <div className="space-y-2">
-            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Adjuntar Evidencia (Foto, Audio, PDF)</label>
-            <div className="relative">
-              <input 
-                type="file" 
-                name="evidence" 
-                id="evidence" 
-                className="hidden" 
-                onChange={(e) => {
-                    const file = e.target.files?.[0];
-                    setSelectedFile(file ? file.name : null);
-                }}
-              />
-              <label 
-                htmlFor="evidence" 
-                className={`flex items-center justify-center gap-3 p-6 border-2 border-dashed rounded-3xl cursor-pointer transition-all ${selectedFile ? 'bg-emerald-50 border-emerald-500' : 'bg-slate-50 border-slate-200 hover:border-emerald-300'}`}
-              >
-                <span className="text-3xl">{selectedFile ? '📄' : '📎'}</span>
-                <div className="text-left">
-                  <p className={`text-xs font-bold ${selectedFile ? 'text-emerald-700' : 'text-slate-500'}`}>
-                    {selectedFile ? 'Archivo seleccionado:' : 'Selecciona tus pruebas'}
-                  </p>
-                  <p className="text-[10px] text-slate-400 truncate max-w-[200px]">
-                    {selectedFile ? selectedFile : 'Click para buscar en tu equipo'}
-                  </p>
-                </div>
-              </label>
-            </div>
-          </div>
+          {/* --- AQUÍ ESTÁ EL CLIP DE EVIDENCIAS PURIFICADO--- */}
+          {/* --- BLOQUE DE EVIDENCIAS PURIFICADO --- */}
+<div className="space-y-4">
+  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1 text-center">
+    📦 Evidencia de Respaldo
+  </p>
+  <div className="relative">
+    {/* Ponemos accept de forma más sencilla para que el móvil no se confunda */}
+    <input 
+      type="file" 
+      name="evidence" 
+      id="evidence" 
+      className="sr-only" // 'sr-only' es una forma más limpia de ocultar el botón feo de Windows
+      onChange={(e) => {
+          const file = e.target.files?.[0];
+          setSelectedFile(file ? file.name : null);
+      }}
+    />
+    <label 
+      htmlFor="evidence" 
+      className={`flex flex-col items-center justify-center gap-3 p-8 border-2 border-dashed rounded-[2.5rem] cursor-pointer transition-all ${
+        selectedFile 
+          ? 'bg-emerald-50 border-emerald-500' 
+          : 'bg-slate-50 border-slate-300 hover:bg-white hover:border-emerald-400'
+      }`}
+    >
+      {/* Solo un icono grande para evitar la duplicidad de camaritas */}
+      <span className="text-4xl filter grayscale-[0.5]">
+        {selectedFile ? '📝' : '📎'}
+      </span>
+      <div className="text-center">
+        <p className={`text-xs font-black uppercase tracking-widest ${selectedFile ? 'text-emerald-700' : 'text-slate-500'}`}>
+          {selectedFile ? 'Evidencia cargada' : 'Adjuntar Pruebas'}
+        </p>
+        <p className="text-[9px] text-slate-400 mt-1 italic max-w-[180px] truncate mx-auto">
+          {selectedFile ? selectedFile : '(Fotos, capturas o audios)'}
+        </p>
+      </div>
+    </label>
+  </div>
+</div>
 
           <button type="submit" className="w-full py-5 bg-slate-900 text-white font-black uppercase tracking-[0.3em] text-xs rounded-2xl shadow-2xl hover:bg-black active:scale-[0.98] transition-all flex items-center justify-center gap-3 group">
             <span>ENVIAR MI REPORTE</span>
