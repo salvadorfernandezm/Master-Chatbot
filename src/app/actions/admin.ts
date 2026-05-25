@@ -290,3 +290,20 @@ export async function createTicket(formData: FormData) {
     return { error: "No se pudo registrar tu reporte. Intenta más tarde." };
   }
 }
+
+// --- CAMBIAR ESTATUS DE UN TICKET (La pieza que le falta a Vercel) ---
+export async function updateTicketStatus(id: string, newStatus: string) {
+  try {
+    await prisma.ticket.update({
+      where: { id },
+      data: { status: newStatus }
+    });
+    
+    // Esto refresca la página para que veas el cambio al instante
+    revalidatePath("/admin/buzon");
+    return { success: true };
+  } catch (error) {
+    console.error("Error al actualizar estatus:", error);
+    return { success: false };
+  }
+}
