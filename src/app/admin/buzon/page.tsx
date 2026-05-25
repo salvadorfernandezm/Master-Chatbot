@@ -2,80 +2,90 @@ export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
 import { prisma } from "@/lib/prisma";
+import { updateTicketStatus } from "@/app/actions/admin";
 
 export default async function AdminBuzonPage() {
-  // 1. Buscamos todos los reportes enviados por los alumnos
   const tickets = await prisma.ticket.findMany({
     orderBy: { createdAt: 'desc' }
   });
 
   return (
-    <div className="space-y-8 max-w-5xl mx-auto pb-20">
-      {/* CABECERA DEL MONITOR */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-slate-900 p-8 rounded-[2.5rem] text-white shadow-2xl relative overflow-hidden">
-        <div className="absolute top-0 right-0 p-8 text-6xl opacity-10">📩</div>
+    <div className="space-y-8 max-w-6xl mx-auto pb-20">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-slate-950 p-8 rounded-[2.5rem] text-white shadow-2xl relative overflow-hidden border-b-8 border-emerald-500">
         <div className="z-10">
-          <h1 className="text-2xl font-black uppercase tracking-widest">Gestión del Buzón</h1>
-          <p className="text-slate-400 text-sm italic">Monitor de Voz y Vez del Alumnado</p>
+          <h1 className="text-3xl font-black uppercase tracking-widest">Centro de Gestión Ética</h1>
+          <p className="text-slate-400 text-sm italic mt-2 underline decoration-emerald-500 decoration-2 underline-offset-4">
+             "Donde los que no tenían vez, hoy son escuchados."
+          </p>
         </div>
-        <div className="bg-emerald-500/20 text-emerald-400 px-6 py-2 rounded-2xl text-xs font-black uppercase tracking-widest border border-emerald-500/30">
-          {tickets.length} Reportes en total
+        <div className="z-10 bg-white/10 backdrop-blur-md px-6 py-4 rounded-3xl border border-white/20 text-center">
+            <p className="text-2xl font-black text-emerald-400">{tickets.length}</p>
+            <p className="text-[10px] uppercase font-bold tracking-tighter text-slate-300">Voces registradas</p>
         </div>
       </div>
 
-      {/* LISTADO DE REPORTES */}
-      <div className="grid grid-cols-1 gap-6">
+      <div className="grid grid-cols-1 gap-8">
         {tickets.length === 0 ? (
-          <div className="bg-white p-20 rounded-[3rem] border-2 border-dashed border-slate-200 text-center">
-             <p className="text-slate-400 italic">No hay mensajes en el buzón. Todo está en orden.</p>
+          <div className="bg-white p-20 rounded-[3rem] border-4 border-dashed border-slate-100 text-center">
+             <p className="text-slate-300 text-xl italic font-serif">La tranquilidad reina en el campus. No hay reportes pendientes.</p>
           </div>
         ) : (
           tickets.map((ticket) => (
-            <div key={ticket.id} className={`bg-white rounded-[2.5rem] border border-slate-200 shadow-sm overflow-hidden hover:shadow-md transition-all border-l-[12px] ${
-              ticket.type === 'GRAVE' ? 'border-l-red-500' : 'border-l-slate-900'
-            }`}>
-              <div className="p-8">
-                <div className="flex justify-between items-start mb-6">
-                  <div>
-                    <div className="flex items-center gap-2 mb-2">
-                       <span className={`px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest ${
-                         ticket.type === 'GRAVE' ? 'bg-red-100 text-red-700' : 'bg-blue-100 text-blue-700'
-                       }`}>
-                         {ticket.type}
-                       </span>
-                       <span className="text-[10px] text-slate-400 font-bold">
-                         {new Date(ticket.createdAt).toLocaleString('es-MX')}
-                       </span>
+            <div key={ticket.id} className="bg-white rounded-[3rem] shadow-xl border-2 border-slate-50 overflow-hidden hover:shadow-2xl transition-all duration-500 group">
+              <div className="p-10 flex flex-col md:flex-row gap-10">
+                
+                {/* LADO IZQUIERDO: LA VOZ DEL ALUMNO */}
+                <div className="flex-1 space-y-6">
+                  <div className="flex items-center gap-3">
+                    <span className={`px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-[0.2em] shadow-sm ${
+                       ticket.type === 'GRAVE' ? 'bg-red-500 text-white animate-pulse' : 
+                       ticket.type === 'ACADEMICA' ? 'bg-amber-100 text-amber-800' : 'bg-blue-100 text-blue-800'
+                    }`}>
+                       {ticket.type}
+                    </span>
+                    <span className="text-xs font-bold text-slate-300 uppercase tracking-widest">
+                       Ref: {ticket.id.substring(0,6)} • {new Date(ticket.createdAt).toLocaleDateString()}
+                    </span>
+                  </div>
+
+                  <h3 className="text-xl font-black text-slate-800">
+                    Remitente: <span className="text-purple-600 font-medium">{ticket.studentName || "Anónimo Protegido"}</span>
+                  </h3>
+
+                  <div className="bg-slate-50/50 p-8 rounded-[2rem] border border-slate-100 italic text-slate-600 leading-relaxed text-lg relative group-hover:bg-white transition-colors duration-300 shadow-inner">
+                    <span className="absolute -top-4 -left-2 text-6xl text-slate-200 pointer-events-none opacity-50">“</span>
+                    {ticket.content}
+                  </div>
+
+                  {ticket.evidenceUrl && (
+                    <div className="flex items-center gap-4 p-5 bg-emerald-50 rounded-2xl border-2 border-dashed border-emerald-200">
+                        <div className="text-2xl">📎</div>
+                        <div>
+                           <p className="text-[10px] font-black text-emerald-800 uppercase tracking-widest">Evidencia Cargada</p>
+                           <p className="text-xs text-emerald-600 font-bold">{ticket.evidenceUrl}</p>
+                        </div>
                     </div>
-                    <h3 className="text-lg font-bold text-slate-800 tracking-tight">
-                      De: <span className="font-medium text-slate-600 uppercase">{ticket.studentName || "Anónimo"}</span>
-                    </h3>
+                  )}
+                </div>
+
+                {/* LADO DERECHO: LA VEZ DEL MAESTRO (CONTROLES) */}
+                <div className="w-full md:w-56 space-y-6 border-l-2 border-slate-50 pl-0 md:pl-10">
+                  <div className="text-center md:text-left">
+                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">Estatus de Solución</p>
+                    <div className={`text-sm font-black p-3 rounded-2xl text-center shadow-lg uppercase tracking-wider ${
+                      ticket.status === 'PENDIENTE' ? 'bg-amber-500 text-white' : 'bg-emerald-600 text-white'
+                    }`}>
+                      {ticket.status}
+                    </div>
                   </div>
                   
-                  <div className="text-right">
-                     <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Estado</p>
-                     <span className="bg-slate-900 text-white px-5 py-2 rounded-full text-[10px] font-black uppercase tracking-widest shadow-md">
-                       {ticket.status}
-                     </span>
+                  {/* Botones de acción simulada para la Directora */}
+                  <div className="space-y-3 pt-4">
+                     <button className="w-full py-3 bg-slate-900 text-white text-[10px] font-black uppercase tracking-widest rounded-xl hover:bg-emerald-600 transition-all">Marcar como Resuelto</button>
+                     <button className="w-full py-3 bg-white border-2 border-slate-200 text-slate-400 text-[10px] font-black uppercase tracking-widest rounded-xl">Ignorar Reporte</button>
                   </div>
                 </div>
 
-                {/* CONTENIDO DEL MENSAJE */}
-                <div className="bg-slate-50 p-6 rounded-[1.5rem] border border-slate-100 mb-6 italic text-slate-700 leading-relaxed shadow-inner">
-                  "{ticket.content}"
-                </div>
-
-                {/* VISOR DE EVIDENCIAS */}
-                {ticket.evidenceUrl && (
-                  <div className="flex items-center gap-4 p-4 bg-emerald-50 rounded-2xl border border-emerald-100 border-dashed">
-                    <span className="text-2xl">📁</span>
-                    <div className="flex-1 overflow-hidden">
-                      <p className="text-[9px] font-black text-emerald-700 uppercase tracking-widest">Evidencia Adjunta</p>
-                      <p className="text-xs text-emerald-600 font-medium truncate">{ticket.evidenceUrl}</p>
-                    </div>
-                    <button className="px-4 py-2 bg-emerald-600 text-white text-[10px] font-black rounded-lg uppercase">Ver</button>
-                  </div>
-                )}
               </div>
             </div>
           ))

@@ -294,3 +294,17 @@ export async function createTicket(formData: FormData) {
     console.error("Error al enviar ticket:", error);
   }
 }
+
+// --- CAMBIAR ESTATUS DE UN TICKET (Paz para el Maestro) ---
+export async function updateTicketStatus(id: string, newStatus: string) {
+  try {
+    await prisma.ticket.update({
+      where: { id },
+      data: { status: newStatus }
+    });
+    revalidatePath("/admin/buzon");
+    return { success: true };
+  } catch (error) {
+    return { success: false };
+  }
+}
