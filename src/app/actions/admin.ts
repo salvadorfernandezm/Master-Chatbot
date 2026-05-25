@@ -293,17 +293,23 @@ export async function createTicket(formData: FormData) {
 
 // --- CAMBIAR ESTATUS DE UN TICKET (La pieza que le falta a Vercel) ---
 export async function updateTicketStatus(id: string, newStatus: string) {
-  try {
-    await prisma.ticket.update({
-      where: { id },
-      data: { status: newStatus }
+ try {
+    await prisma.ticket.create({
+      data: {
+        folio,
+        type,
+        content,
+        studentName: studentName || "Anónimo Protegido",
+        studentEmail: studentEmail || null,
+        evidenceUrl: evidenceUrl,
+        status: "PENDIENTE",
+      },
     });
-    
-    // Esto refresca la página para que veas el cambio al instante
+
     revalidatePath("/admin/buzon");
-    return { success: true };
+    return { success: true, folio }; // <--- REVISA QUE ESTA LÍNEA ESTÉ ASÍ
+    
   } catch (error) {
-    console.error("Error al actualizar estatus:", error);
+    console.error("Error:", error);
     return { success: false };
   }
-}
