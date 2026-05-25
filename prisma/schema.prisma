@@ -104,12 +104,15 @@ model Interaction {
 // Modelo para el Buzón Inteligente
 model Ticket {
   id              String   @id @default(cuid())
-  type            String   // SUGERENCIA, ACADEMICA, INFRAESTRUCTURA, GRAVE
-  content         String   @db.Text
-  studentName     String?
-  studentEmail    String?  // OBLIGATORIO si es GRAVE
-  studentPhone    String?  // Por si hay que llamar al alumno en una emergencia
-  evidenceUrl     String?  // Aquí guardaremos la lista de archivos separados por comas
-  status          String   @default("PENDIENTE")
+  folio           String   @unique // El código secreto (ej: "Z-1234")
+  type            String   
+  content         String   
+  studentName     String?  
+  status          String   @default("PENDIENTE") 
+  
+  // NUEVOS CAMPOS PARA LA "VEZ" DEL ALUMNO:
+  authorityResponse String?  // Lo que la autoridad le contesta al alumno
+  studentResolved  Boolean  @default(false) // Si el alumno dio el visto bueno
+  
   createdAt       DateTime @default(now())
 }
