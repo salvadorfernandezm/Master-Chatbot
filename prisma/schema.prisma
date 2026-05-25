@@ -101,18 +101,21 @@ model Interaction {
   chatbot   Chatbot  @relation(fields: [chatbotId], references: [id], onDelete: Cascade)
 }
 
-// Modelo para el Buzón Inteligente
+// Modelo para el Buzón Inteligente (Versión Blindada)
 model Ticket {
-  id              String   @id @default(cuid())
-  folio           String   @unique // El código secreto (ej: "Z-1234")
-  type            String   
-  content         String   
-  studentName     String?  
-  status          String   @default("PENDIENTE") 
+  id                String   @id @default(cuid())
+  folio             String   @unique // El código secreto (ej: "ETH-A1B2")
+  type              String   // GRAVE, ACADEMICA, LOGISTICA
+  content           String   @db.Text // Permite mensajes largos
+  studentName       String?  
+  studentEmail      String?  // <--- ESTA ES LA PIEZA QUE ARREGLA EL ERROR DE VERCEL
+  evidenceUrl       String?
+  status            String   @default("PENDIENTE") // PENDIENTE, RESUELTO
   
-  // NUEVOS CAMPOS PARA LA "VEZ" DEL ALUMNO:
-  authorityResponse String?  // Lo que la autoridad le contesta al alumno
-  studentResolved  Boolean  @default(false) // Si el alumno dio el visto bueno
+  // Gestión de la autoridad y satisfacción del alumno
+  authorityResponse String?  @db.Text
+  studentResolved   Boolean  @default(false)
   
-  createdAt       DateTime @default(now())
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
 }

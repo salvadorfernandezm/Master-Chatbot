@@ -246,65 +246,47 @@ export async function importFullBackup(jsonData: string) {
   }
 }
 
-// ==========================================
-// 7. BUZÓN INTELIGENTE SUBIDA DE ARCHIVOS
-// ==========================================
-// --- ACCIÓN PARA EL BUZÓN CON SUBIDA DE ARCHIVOS ---
+// --- ACCIÓN PARA EL BUZÓN ÉTICO (VERSIÓN FINAL NUBE) ---
 export async function createTicket(formData: FormData) {
   const type = formData.get("type") as string;
   const content = formData.get("content") as string;
   const studentName = formData.get("studentName") as string;
-  const studentEmail = formData.get("studentEmail") as string; // Añadimos email
-  const file = formData.get("evidence") as File; // Recogemos el archivo del clip
+  const studentEmail = formData.get("studentEmail") as string;
+  const file = formData.get("evidence") as File;
 
-  if (!content || !type) return;
+  if (!content || !type) return { error: "Faltan campos obligatorios" };
+
+  // 1. GENERAMOS EL FOLIO ÚNICO (VITAL para la base de datos)
+  // Crea algo como ETH-A1B2
+  const folio = `ETH-${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
 
   let evidenceUrl = null;
-
-  // Lógica para subir a Supabase Storage si hay un archivo
   if (file && file.size > 0) {
-    try {
-      const fileName = `${Date.now()}-${file.name}`;
-      // Usamos el cliente de Supabase (aquí podrías necesitar importar tu configuración de Supabase)
-      // Pero para no complicarte, si ya tenemos las URLs en el .env, Prisma puede ayudar
-      // o usaremos un pequeño truco de fetch para el Storage de Supabase.
-      
-      console.log(`📎 Subiendo evidencia: ${fileName}`);
-      // Nota: Esta parte la simplificaremos guardando el nombre para la Fase Beta II
-      // Para un despegue inmediato hoy, guardaremos que 'SÍ TIENE EVIDENCIA'
-      evidenceUrl = `Pendiente de proceso: ${file.name}`;
-    } catch (e) {
-      console.error("Fallo al procesar archivo:", e);
-    }
+    // Por ahora guardamos el nombre. En la Fase 2 activaremos el Storage de Supabase
+    evidenceUrl = `Archivo adjunto: ${file.name}`;
   }
 
   try {
+    // 2. CREAMOS EL TICKET EN LA NUBE
     await prisma.ticket.create({
       data: {
+        folio, // <--- Si no enviamos esto, Supabase da error
         type,
         content,
-        studentName: studentName || "Anónimo",
+        studentName: studentName || "Anónimo Protegido",
         studentEmail: studentEmail || null,
         evidenceUrl: evidenceUrl,
         status: "PENDIENTE",
       },
     });
-    revalidatePath("/admin/buzon");
-  } catch (error) {
-    console.error("Error al enviar ticket:", error);
-  }
-}
 
-// --- CAMBIAR ESTATUS DE UN TICKET (Paz para el Maestro) ---
-export async function updateTicketStatus(id: string, newStatus: string) {
-  try {
-    await prisma.ticket.update({
-      where: { id },
-      data: { status: newStatus }
-    });
     revalidatePath("/admin/buzon");
-    return { success: true };
+    
+    // 3. DEVOLVEMOS EL FOLIO (Para que el alumno lo anote)
+    return { success: true, folio }; 
+    
   } catch (error) {
-    return { success: false };
+    console.error("Error al crear ticket:", error);
+    return { error: "No se pudo registrar tu reporte. Intenta más tarde." };
   }
 }
