@@ -47,7 +47,7 @@ export async function updateTicketStatus(id: string, newStatus: string) {
 }
 
 // ==========================================
-// 2. GESTIÓN DE GRUPOS (Lo que Vercel pedía)
+// 2. GESTIÓN DE GRUPOS
 // ==========================================
 
 export async function createGroup(formData: FormData) {
@@ -158,7 +158,7 @@ export async function addUrlDocument(formData: FormData) {
 }
 
 // ==========================================
-// 5. CONFIGURACIÓN Y RESPALDO
+// 5. CONFIGURACIÓN Y RESPALDO (Import/Export)
 // ==========================================
 
 export async function updateSettings(formData: FormData) {
@@ -180,4 +180,22 @@ export async function exportFullBackup() {
     prisma.document.findMany(),
   ]);
   return { groups, chatbots, kbs, docs };
+}
+
+// LA PIEZA QUE LE FALTABA A VERCEL:
+export async function importFullBackup(data: any) {
+  try {
+    const { groups, kbs, chatbots } = data;
+
+    // Restauramos grupos, bases y chatbots (skipDuplicates para no chocar)
+    if (groups) await prisma.group.createMany({ data: groups, skipDuplicates: true });
+    if (kbs) await prisma.knowledgeBase.createMany({ data: kbs, skipDuplicates: true });
+    if (chatbots) await prisma.chatbot.createMany({ data: chatbots, skipDuplicates: true });
+
+    revalidatePath("/admin");
+    return { success: true };
+  } catch (error) {
+    console.error("Error en importación:", error);
+    return { success: false };
+  }
 }
