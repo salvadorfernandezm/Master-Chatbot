@@ -198,4 +198,4 @@ export async function importFullBackup(data: any) {
     console.error("Error en importación:", error);
     return { success: false };
   }
-}
+} // <--- Asegúrate de que esta sea la última línea del archivo
