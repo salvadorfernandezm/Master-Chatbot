@@ -247,6 +247,7 @@ export async function importFullBackup(jsonData: string) {
 }
 
 // --- ACCIÓN PARA EL BUZÓN ÉTICO (VERSIÓN FINAL NUBE) ---
+// --- 1. FUNCIÓN PARA CREAR EL TICKET (La que usa el alumno) ---
 export async function createTicket(formData: FormData) {
   const type = formData.get("type") as string;
   const content = formData.get("content") as string;
@@ -254,46 +255,17 @@ export async function createTicket(formData: FormData) {
   const studentEmail = formData.get("studentEmail") as string;
   const file = formData.get("evidence") as File;
 
-  if (!content || !type) return { error: "Faltan campos obligatorios" };
+  if (!content || !type) return { success: false, error: "Faltan datos" };
 
-  // 1. GENERAMOS EL FOLIO ÚNICO (VITAL para la base de datos)
-  // Crea algo como ETH-A1B2
+  // Generamos el folio único
   const folio = `ETH-${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
 
   let evidenceUrl = null;
   if (file && file.size > 0) {
-    // Por ahora guardamos el nombre. En la Fase 2 activaremos el Storage de Supabase
     evidenceUrl = `Archivo adjunto: ${file.name}`;
   }
 
   try {
-    // 2. CREAMOS EL TICKET EN LA NUBE
-    await prisma.ticket.create({
-      data: {
-        folio, // <--- Si no enviamos esto, Supabase da error
-        type,
-        content,
-        studentName: studentName || "Anónimo Protegido",
-        studentEmail: studentEmail || null,
-        evidenceUrl: evidenceUrl,
-        status: "PENDIENTE",
-      },
-    });
-
-    revalidatePath("/admin/buzon");
-    
-    // 3. DEVOLVEMOS EL FOLIO (Para que el alumno lo anote)
-    return { success: true, folio }; 
-    
-  } catch (error) {
-    console.error("Error al crear ticket:", error);
-    return { error: "No se pudo registrar tu reporte. Intenta más tarde." };
-  }
-}
-
-// --- CAMBIAR ESTATUS DE UN TICKET (La pieza que le falta a Vercel) ---
-export async function updateTicketStatus(id: string, newStatus: string) {
- try {
     await prisma.ticket.create({
       data: {
         folio,
@@ -307,9 +279,26 @@ export async function updateTicketStatus(id: string, newStatus: string) {
     });
 
     revalidatePath("/admin/buzon");
-    return { success: true, folio }; // <--- REVISA QUE ESTA LÍNEA ESTÉ ASÍ
+    return { success: true, folio }; 
     
   } catch (error) {
-    console.error("Error:", error);
+    console.error("Error al crear ticket:", error);
     return { success: false };
   }
+}
+
+// --- 2. FUNCIÓN PARA ACTUALIZAR ESTATUS (La que usas tú o la Directora) ---
+export async function updateTicketStatus(id: string, newStatus: string) {
+  try {
+    await prisma.ticket.update({
+      where: { id },
+      data: { status: newStatus }
+    });
+    
+    revalidatePath("/admin/buzon");
+    return { success: true };
+  } catch (error) {
+    console.error("Error al actualizar estatus:", error);
+    return { success: false };
+  }
+}
