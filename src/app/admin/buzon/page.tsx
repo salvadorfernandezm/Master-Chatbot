@@ -5,7 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { updateTicketStatus } from "@/app/actions/admin";
 
 export default async function AdminBuzonPage() {
-  let tickets = [];
+  let tickets: any[] = [];
   
   // Intentamos traer los datos, si falla (por base vacía) no rompemos la página
   try {
