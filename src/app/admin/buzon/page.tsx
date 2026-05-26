@@ -9,6 +9,18 @@ export default async function AdminBuzonPage() {
     orderBy: { createdAt: 'desc' }
   });
 
+export default async function AdminBuzonPage() {
+  let tickets = [];
+  try {
+    tickets = await prisma.ticket.findMany({
+      orderBy: { createdAt: 'desc' }
+    });
+  } catch (e) {
+    console.error("Error cargando tickets:", e);
+    // Si falla, mostramos la página vacía en lugar de error 500
+    tickets = [];
+  }
+
   return (
     <div className="space-y-8 max-w-6xl mx-auto pb-20">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-slate-950 p-8 rounded-[2.5rem] text-white shadow-2xl relative overflow-hidden border-b-8 border-emerald-500">

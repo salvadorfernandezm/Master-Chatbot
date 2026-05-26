@@ -257,48 +257,30 @@ export async function createTicket(formData: FormData) {
 
   if (!content || !type) return { success: false, error: "Faltan datos" };
 
-  // Generamos el folio único
   const folio = `ETH-${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
 
-  let evidenceUrl = null;
-  if (file && file.size > 0) {
-    evidenceUrl = `Archivo adjunto: ${file.name}`;
-  }
-
   try {
-    await prisma.ticket.create({
+    console.log("尝试 (Intentando) crear ticket con folio:", folio);
+    
+    const newTicket = await prisma.ticket.create({
       data: {
         folio,
         type,
         content,
         studentName: studentName || "Anónimo Protegido",
         studentEmail: studentEmail || null,
-        evidenceUrl: evidenceUrl,
+        evidenceUrl: file && file.size > 0 ? `Adjunto: ${file.name}` : null,
         status: "PENDIENTE",
       },
     });
 
+    console.log("✅ Ticket creado con éxito ID:", newTicket.id);
     revalidatePath("/admin/buzon");
     return { success: true, folio }; 
     
-  } catch (error) {
-    console.error("Error al crear ticket:", error);
-    return { success: false };
-  }
-}
-
-// --- 2. FUNCIÓN PARA ACTUALIZAR ESTATUS (La que usas tú o la Directora) ---
-export async function updateTicketStatus(id: string, newStatus: string) {
-  try {
-    await prisma.ticket.update({
-      where: { id },
-      data: { status: newStatus }
-    });
-    
-    revalidatePath("/admin/buzon");
-    return { success: true };
-  } catch (error) {
-    console.error("Error al actualizar estatus:", error);
-    return { success: false };
+  } catch (error: any) {
+    // ESTO SALDRÁ EN TU TERMINAL NEGRA
+    console.error("❌ ERROR REAL DE PRISMA:", error.message);
+    return { success: false, error: error.message };
   }
 }
