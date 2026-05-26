@@ -183,19 +183,20 @@ export async function exportFullBackup() {
 }
 
 // LA PIEZA QUE LE FALTABA A VERCEL:
-export async function importFullBackup(data: any) {
+export async function importFullBackup(data: any): Promise<{ success: boolean; error?: string }> {
   try {
     const { groups, kbs, chatbots } = data;
 
-    // Restauramos grupos, bases y chatbots (skipDuplicates para no chocar)
+    // Restauramos grupos, bases y chatbots
     if (groups) await prisma.group.createMany({ data: groups, skipDuplicates: true });
     if (kbs) await prisma.knowledgeBase.createMany({ data: kbs, skipDuplicates: true });
     if (chatbots) await prisma.chatbot.createMany({ data: chatbots, skipDuplicates: true });
 
     revalidatePath("/admin");
     return { success: true };
-  } catch (error) {
+  } catch (error: any) {
     console.error("Error en importación:", error);
-    return { success: false };
+    // AQUÍ ESTÁ EL TRUCO: Devolvemos el campo 'error' que el botón espera leer
+    return { success: false, error: error.message || "Error desconocido al restaurar" };
   }
-} // <--- Asegúrate de que esta sea la última línea del archivo
+}
