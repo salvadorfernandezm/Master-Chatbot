@@ -17,7 +17,6 @@ export async function createTicket(formData: FormData) {
   const file = formData.get("evidence") as File;
 
   if (!content || !type) return { success: false, error: "Faltan datos" };
-
   const folio = `ETH-${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
 
   try {
@@ -28,35 +27,51 @@ export async function createTicket(formData: FormData) {
         content,
         studentName: studentName || "Anónimo Protegido",
         studentEmail: studentEmail || null,
-        evidenceUrl: file && file.size > 0 ? `Adjunto: ${file.name}` : null,
+        evidenceUrl: file && file.size > 0 ? `Archivo: ${file.name}` : null,
         status: "PENDIENTE",
       },
     });
     revalidatePath("/admin/buzon");
     return { success: true, folio };
   } catch (error) {
-    console.error("Error al crear ticket:", error);
     return { success: false };
   }
 }
 
-// LA PIEZA QUE FALTABA:
 export async function updateTicketStatus(id: string, newStatus: string) {
   try {
-    await prisma.ticket.update({
-      where: { id },
-      data: { status: newStatus }
-    });
+    await prisma.ticket.update({ where: { id }, data: { status: newStatus } });
     revalidatePath("/admin/buzon");
     return { success: true };
-  } catch (error) {
-    console.error("Error al actualizar estatus:", error);
-    return { success: false };
-  }
+  } catch (error) { return { success: false }; }
 }
 
 // ==========================================
-// 2. GESTIÓN DE CHATBOTS Y GRUPOS
+// 2. GESTIÓN DE GRUPOS (Lo que Vercel pedía)
+// ==========================================
+
+export async function createGroup(formData: FormData) {
+  const name = formData.get("name") as string;
+  const description = formData.get("description") as string;
+  await prisma.group.create({ data: { name, description } });
+  revalidatePath("/admin/groups");
+}
+
+export async function updateGroup(formData: FormData) {
+  const id = formData.get("id") as string;
+  const name = formData.get("name") as string;
+  const description = formData.get("description") as string;
+  await prisma.group.update({ where: { id }, data: { name, description } });
+  revalidatePath("/admin/groups");
+}
+
+export async function deleteGroup(id: string) {
+  await prisma.group.delete({ where: { id } });
+  revalidatePath("/admin/groups");
+}
+
+// ==========================================
+// 3. GESTIÓN DE CHATBOTS
 // ==========================================
 
 export async function createChatbot(formData: FormData) {
@@ -66,13 +81,7 @@ export async function createChatbot(formData: FormData) {
   const token = randomBytes(4).toString("hex");
 
   await prisma.chatbot.create({
-    data: {
-      name,
-      token,
-      groupId,
-      knowledgeBaseId,
-      isActive: true,
-    },
+    data: { name, token, groupId, knowledgeBaseId, isActive: true },
   });
   revalidatePath("/admin/chatbots");
 }
@@ -81,7 +90,6 @@ export async function updateChatbot(formData: FormData) {
   const id = formData.get("id") as string;
   const updateData: any = {};
   const fields = ["name", "welcomeMessage", "systemInstructions", "inputPlaceholder", "fallbackMessage", "isActive"];
-  
   fields.forEach(field => {
     const value = formData.get(field);
     if (value !== null) {
@@ -89,7 +97,6 @@ export async function updateChatbot(formData: FormData) {
       else updateData[field] = value as string;
     }
   });
-
   await prisma.chatbot.update({ where: { id }, data: updateData });
   revalidatePath("/admin/chatbots");
 }
@@ -100,7 +107,7 @@ export async function deleteChatbot(id: string) {
 }
 
 // ==========================================
-// 3. GESTIÓN DE CONOCIMIENTO Y DOCUMENTOS
+// 4. GESTIÓN DE CONOCIMIENTO (Bases y Docs)
 // ==========================================
 
 export async function createKnowledgeBase(formData: FormData) {
@@ -110,26 +117,48 @@ export async function createKnowledgeBase(formData: FormData) {
   revalidatePath("/admin/knowledge");
 }
 
+export async function updateKnowledgeBase(formData: FormData) {
+  const id = formData.get("id") as string;
+  const name = formData.get("name") as string;
+  const description = formData.get("description") as string;
+  await prisma.knowledgeBase.update({ where: { id }, data: { name, description } });
+  revalidatePath("/admin/knowledge");
+}
+
+export async function deleteKnowledgeBase(id: string) {
+  await prisma.documentChunk.deleteMany({ where: { knowledgeBaseId: id } });
+  await prisma.document.deleteMany({ where: { knowledgeBaseId: id } });
+  await prisma.knowledgeBase.delete({ where: { id } });
+  revalidatePath("/admin/knowledge");
+}
+
 export async function uploadFileDocument(formData: FormData) {
   const file = formData.get("file") as File;
   const knowledgeBaseId = formData.get("knowledgeBaseId") as string;
   if (!file || !knowledgeBaseId) return;
-
-  let type = "WORD";
-  if (file.name.toLowerCase().endsWith(".pdf")) type = "PDF";
-  else if (file.name.toLowerCase().endsWith(".xlsx")) type = "EXCEL";
-
+  let type = file.name.toLowerCase().endsWith(".pdf") ? "PDF" : (file.name.toLowerCase().endsWith(".xlsx") ? "EXCEL" : "WORD");
   const buffer = Buffer.from(await file.arrayBuffer());
-  const doc = await prisma.document.create({
-    data: { filename: file.name, type, knowledgeBaseId },
-  });
-
+  const doc = await prisma.document.create({ data: { filename: file.name, type, knowledgeBaseId } });
   await processFile(buffer, file.name, type, knowledgeBaseId, doc.id);
   revalidatePath(`/admin/knowledge/${knowledgeBaseId}`);
 }
 
+export async function deleteDocument(id: string, knowledgeBaseId: string) {
+  await prisma.documentChunk.deleteMany({ where: { documentId: id } });
+  await prisma.document.delete({ where: { id } });
+  revalidatePath(`/admin/knowledge/${knowledgeBaseId}`);
+}
+
+export async function addUrlDocument(formData: FormData) {
+  const url = formData.get("url") as string;
+  const knowledgeBaseId = formData.get("knowledgeBaseId") as string;
+  const doc = await prisma.document.create({ data: { filename: url, type: "URL", knowledgeBaseId } });
+  await processUrl(url, knowledgeBaseId, doc.id);
+  revalidatePath(`/admin/knowledge/${knowledgeBaseId}`);
+}
+
 // ==========================================
-// 4. CONFIGURACIÓN Y RESPALDO
+// 5. CONFIGURACIÓN Y RESPALDO
 // ==========================================
 
 export async function updateSettings(formData: FormData) {
@@ -150,5 +179,5 @@ export async function exportFullBackup() {
     prisma.knowledgeBase.findMany(),
     prisma.document.findMany(),
   ]);
-  return { date: new Date().toISOString(), data: { groups, chatbots, kbs, docs } };
+  return { groups, chatbots, kbs, docs };
 }
