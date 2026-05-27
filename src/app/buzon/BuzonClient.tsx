@@ -59,7 +59,7 @@ export default function BuzonClient({ reglamento }: { reglamento: string }) {
           <h2 className="text-emerald-500 font-black text-xs uppercase tracking-[0.2em] mb-4 flex items-center gap-2">
             <span>📜</span> Reglamento y Marco Ético
           </h2>
-          <div className="prose prose-invert prose-sm max-h-64 overflow-y-auto pr-4 mb-6 custom-scrollbar text-slate-300 italic font-serif">
+          <div className="prose prose-invert prose-sm max-h-[500px] overflow-y-auto pr-4 mb-6 custom-scrollbar text-slate-300 italic font-serif">
             <ReactMarkdown remarkPlugins={[remarkGfm]}>{reglamento}</ReactMarkdown>
           </div>
           

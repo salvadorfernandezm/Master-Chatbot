@@ -68,18 +68,17 @@ REGLAS DE ORO:
     if (!finalReply) finalReply = "⚠️ El sistema de inteligencia artificial está muy saturado. Por favor, reintenta tu pregunta en 20 segundos.";
 
     // --- EL TAQUÍGRAFO (REGISTRO FINAL) ---
-    await prisma.interaction.create({
-      data: {
-        chatbotId: chatbot.id,
-        query: message.substring(0, 1000),
-        response: finalReply.substring(0, 5000)
-      }
-    }).catch(err => console.error("Error analíticas:", err));
+    try {
+      await prisma.interaction.create({
+        data: {
+          chatbotId: chatbot.id,
+          query: message.substring(0, 500),
+          response: reply.substring(0, 2000)
+        }
+      });
+      console.log("📊 Interacción grabada con éxito.");
+    } catch (e) {
+      console.error("❌ Error al grabar analítica:", e);
+    }
 
-    return NextResponse.json({ reply: finalReply });
-
-  } catch (error: any) {
-    console.error("❌ FALLO:", error.message);
-    return NextResponse.json({ reply: "Sincronizando sabiduría... intenta de nuevo." });
-  }
-}
+    return NextResponse.json({ reply });
