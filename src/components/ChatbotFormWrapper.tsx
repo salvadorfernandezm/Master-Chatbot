@@ -1,6 +1,6 @@
 "use client";
 import { useState } from "react";
-import { createChatbot } from "@/app/actions/admin";
+import { createChatbot } from "@/app/actions/admin"; // Importación correcta
 
 interface ChatbotFormWrapperProps {
   groups: { id: string; name: string }[];
@@ -22,7 +22,8 @@ export default function ChatbotFormWrapper({ groups, knowledgeBases }: ChatbotFo
         </button>
       </div>
 
-      <form action={createKnowledgeBase} className={`${isOpen ? 'block' : 'hidden'} lg:block space-y-4`}>
+      {/* CAMBIO CLAVE: La acción ahora es createChatbot */}
+      <form action={createChatbot} className={`${isOpen ? 'block' : 'hidden'} lg:block space-y-4`}>
         {/* 1. Nombre del Bot */}
         <div>
           <label className="block text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1 ml-1">
