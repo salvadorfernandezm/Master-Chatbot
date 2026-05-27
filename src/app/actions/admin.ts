@@ -9,35 +9,31 @@ import { randomBytes } from "crypto";
 // 1. GESTIÓN DEL BUZÓN ÉTICO (Tickets)
 // ==========================================
 
-export async function createTicket(formData: FormData) {
-  const type = formData.get("type") as string;
-  const content = formData.get("content") as string;
-  const studentName = formData.get("studentName") as string;
-  const studentEmail = formData.get("studentEmail") as string;
-  const file = formData.get("evidence") as File;
+export async function updateSettings(formData: FormData) {
+  const organizationName = formData.get("organizationName") as string;
+  const organizationBuzonInfo = formData.get("organizationBuzonInfo") as string; // <--- EL REGLAMENTO
 
-  if (!content || !type) return { success: false, error: "Faltan datos" };
-  const folio = `ETH-${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
+  const settings = await prisma.settings.findFirst();
 
-  try {
-    await prisma.ticket.create({
-      data: {
-        folio,
-        type,
-        content,
-        studentName: studentName || "Anónimo Protegido",
-        studentEmail: studentEmail || null,
-        evidenceUrl: file && file.size > 0 ? `Archivo: ${file.name}` : null,
-        status: "PENDIENTE",
-      },
+  if (settings) {
+    await prisma.settings.update({
+      where: { id: settings.id },
+      data: { 
+        organizationName,
+        organizationBuzonInfo // SE GUARDA AQUÍ
+      }
     });
-    revalidatePath("/admin/buzon");
-    return { success: true, folio };
-  } catch (error) {
-    return { success: false };
+  } else {
+    await prisma.settings.create({
+      data: { 
+        organizationName,
+        organizationBuzonInfo 
+      }
+    });
   }
+  revalidatePath("/admin/settings");
+  revalidatePath("/buzon"); // Refrescamos el buzón del alumno
 }
-
 export async function updateTicketStatus(id: string, newStatus: string) {
   try {
     await prisma.ticket.update({ where: { id }, data: { status: newStatus } });
