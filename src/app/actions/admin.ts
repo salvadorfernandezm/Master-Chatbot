@@ -1,4 +1,4 @@
-"use server";
+"use server"; // <--- ESTA LÍNEA ES VITAL PARA VERCEL
 
 import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
@@ -9,31 +9,36 @@ import { randomBytes } from "crypto";
 // 1. GESTIÓN DEL BUZÓN ÉTICO (Tickets)
 // ==========================================
 
-export async function updateSettings(formData: FormData) {
-  const organizationName = formData.get("organizationName") as string;
-  const organizationBuzonInfo = formData.get("organizationBuzonInfo") as string; // <--- EL REGLAMENTO
+export async function createTicket(formData: FormData) {
+  const type = formData.get("type") as string;
+  const content = formData.get("content") as string;
+  const studentName = formData.get("studentName") as string;
+  const studentEmail = formData.get("studentEmail") as string;
+  const file = formData.get("evidence") as File;
 
-  const settings = await prisma.settings.findFirst();
+  if (!content || !type) return { success: false, error: "Faltan datos" };
+  const folio = `ETH-${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
 
-  if (settings) {
-    await prisma.settings.update({
-      where: { id: settings.id },
-      data: { 
-        organizationName,
-        organizationBuzonInfo // SE GUARDA AQUÍ
-      }
+  try {
+    await prisma.ticket.create({
+      data: {
+        folio,
+        type,
+        content,
+        studentName: studentName || "Anónimo Protegido",
+        studentEmail: studentEmail || null,
+        evidenceUrl: file && file.size > 0 ? `Archivo: ${file.name}` : null,
+        status: "PENDIENTE",
+      },
     });
-  } else {
-    await prisma.settings.create({
-      data: { 
-        organizationName,
-        organizationBuzonInfo 
-      }
-    });
+    revalidatePath("/admin/buzon");
+    return { success: true, folio };
+  } catch (error) {
+    console.error("Error en createTicket:", error);
+    return { success: false };
   }
-  revalidatePath("/admin/settings");
-  revalidatePath("/buzon"); // Refrescamos el buzón del alumno
 }
+
 export async function updateTicketStatus(id: string, newStatus: string) {
   try {
     await prisma.ticket.update({ where: { id }, data: { status: newStatus } });
@@ -50,14 +55,6 @@ export async function createGroup(formData: FormData) {
   const name = formData.get("name") as string;
   const description = formData.get("description") as string;
   await prisma.group.create({ data: { name, description } });
-  revalidatePath("/admin/groups");
-}
-
-export async function updateGroup(formData: FormData) {
-  const id = formData.get("id") as string;
-  const name = formData.get("name") as string;
-  const description = formData.get("description") as string;
-  await prisma.group.update({ where: { id }, data: { name, description } });
   revalidatePath("/admin/groups");
 }
 
@@ -103,21 +100,13 @@ export async function deleteChatbot(id: string) {
 }
 
 // ==========================================
-// 4. GESTIÓN DE CONOCIMIENTO (Bases y Docs)
+// 4. GESTIÓN DE CONOCIMIENTO
 // ==========================================
 
 export async function createKnowledgeBase(formData: FormData) {
   const name = formData.get("name") as string;
   const description = formData.get("description") as string;
   await prisma.knowledgeBase.create({ data: { name, description } });
-  revalidatePath("/admin/knowledge");
-}
-
-export async function updateKnowledgeBase(formData: FormData) {
-  const id = formData.get("id") as string;
-  const name = formData.get("name") as string;
-  const description = formData.get("description") as string;
-  await prisma.knowledgeBase.update({ where: { id }, data: { name, description } });
   revalidatePath("/admin/knowledge");
 }
 
@@ -145,27 +134,21 @@ export async function deleteDocument(id: string, knowledgeBaseId: string) {
   revalidatePath(`/admin/knowledge/${knowledgeBaseId}`);
 }
 
-export async function addUrlDocument(formData: FormData) {
-  const url = formData.get("url") as string;
-  const knowledgeBaseId = formData.get("knowledgeBaseId") as string;
-  const doc = await prisma.document.create({ data: { filename: url, type: "URL", knowledgeBaseId } });
-  await processUrl(url, knowledgeBaseId, doc.id);
-  revalidatePath(`/admin/knowledge/${knowledgeBaseId}`);
-}
-
 // ==========================================
-// 5. CONFIGURACIÓN Y RESPALDO (Import/Export)
+// 5. CONFIGURACIÓN Y RESPALDO
 // ==========================================
 
 export async function updateSettings(formData: FormData) {
   const organizationName = formData.get("organizationName") as string;
+  const organizationBuzonInfo = formData.get("organizationBuzonInfo") as string;
   const settings = await prisma.settings.findFirst();
   if (settings) {
-    await prisma.settings.update({ where: { id: settings.id }, data: { organizationName } });
+    await prisma.settings.update({ where: { id: settings.id }, data: { organizationName, organizationBuzonInfo } });
   } else {
-    await prisma.settings.create({ data: { organizationName } });
+    await prisma.settings.create({ data: { organizationName, organizationBuzonInfo } });
   }
   revalidatePath("/admin/settings");
+  revalidatePath("/buzon");
 }
 
 export async function exportFullBackup() {
@@ -178,21 +161,15 @@ export async function exportFullBackup() {
   return { groups, chatbots, kbs, docs };
 }
 
-// LA PIEZA QUE LE FALTABA A VERCEL:
 export async function importFullBackup(data: any): Promise<{ success: boolean; error?: string }> {
   try {
     const { groups, kbs, chatbots } = data;
-
-    // Restauramos grupos, bases y chatbots
     if (groups) await prisma.group.createMany({ data: groups, skipDuplicates: true });
     if (kbs) await prisma.knowledgeBase.createMany({ data: kbs, skipDuplicates: true });
     if (chatbots) await prisma.chatbot.createMany({ data: chatbots, skipDuplicates: true });
-
     revalidatePath("/admin");
     return { success: true };
   } catch (error: any) {
-    console.error("Error en importación:", error);
-    // AQUÍ ESTÁ EL TRUCO: Devolvemos el campo 'error' que el botón espera leer
-    return { success: false, error: error.message || "Error desconocido al restaurar" };
+    return { success: false, error: error.message };
   }
 }
