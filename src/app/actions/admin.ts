@@ -75,7 +75,12 @@ export async function createChatbot(formData: FormData) {
   const name = formData.get("name") as string;
   const groupId = formData.get("groupId") as string;
   const knowledgeBaseId = formData.get("knowledgeBaseId") as string;
-  const token = randomBytes(4).toString("hex");
+  
+  // Si escribes el token viejo en el formulario, lo usamos. Si no, genera uno nuevo.
+  const manualToken = formData.get("manualToken") as string;
+  const token = manualToken && manualToken.trim() !== "" 
+                ? manualToken.trim() 
+                : randomBytes(4).toString("hex");
 
   await prisma.chatbot.create({
     data: { name, token, groupId, knowledgeBaseId, isActive: true },
