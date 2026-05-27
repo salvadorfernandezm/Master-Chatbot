@@ -1,4 +1,4 @@
-"use server"; // <--- ESTA LÍNEA ES VITAL PARA VERCEL
+"use server";
 
 import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
@@ -8,7 +8,6 @@ import { randomBytes } from "crypto";
 // ==========================================
 // 1. GESTIÓN DEL BUZÓN ÉTICO (Tickets)
 // ==========================================
-
 export async function createTicket(formData: FormData) {
   const type = formData.get("type") as string;
   const content = formData.get("content") as string;
@@ -17,7 +16,7 @@ export async function createTicket(formData: FormData) {
   const file = formData.get("evidence") as File;
 
   if (!content || !type) return { success: false, error: "Faltan datos" };
-  const folio = `ETH-${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
+  const folio = `ETH-${Math.random().toString(36).substring(2, 7).toUpperCase()}`;
 
   try {
     await prisma.ticket.create({
@@ -34,7 +33,6 @@ export async function createTicket(formData: FormData) {
     revalidatePath("/admin/buzon");
     return { success: true, folio };
   } catch (error) {
-    console.error("Error en createTicket:", error);
     return { success: false };
   }
 }
@@ -50,11 +48,18 @@ export async function updateTicketStatus(id: string, newStatus: string) {
 // ==========================================
 // 2. GESTIÓN DE GRUPOS
 // ==========================================
-
 export async function createGroup(formData: FormData) {
   const name = formData.get("name") as string;
   const description = formData.get("description") as string;
   await prisma.group.create({ data: { name, description } });
+  revalidatePath("/admin/groups");
+}
+
+export async function updateGroup(formData: FormData) {
+  const id = formData.get("id") as string;
+  const name = formData.get("name") as string;
+  const description = formData.get("description") as string;
+  await prisma.group.update({ where: { id }, data: { name, description } });
   revalidatePath("/admin/groups");
 }
 
@@ -66,7 +71,6 @@ export async function deleteGroup(id: string) {
 // ==========================================
 // 3. GESTIÓN DE CHATBOTS
 // ==========================================
-
 export async function createChatbot(formData: FormData) {
   const name = formData.get("name") as string;
   const groupId = formData.get("groupId") as string;
@@ -100,13 +104,20 @@ export async function deleteChatbot(id: string) {
 }
 
 // ==========================================
-// 4. GESTIÓN DE CONOCIMIENTO
+// 4. GESTIÓN DE CONOCIMIENTO (Bases y Docs)
 // ==========================================
-
 export async function createKnowledgeBase(formData: FormData) {
   const name = formData.get("name") as string;
   const description = formData.get("description") as string;
   await prisma.knowledgeBase.create({ data: { name, description } });
+  revalidatePath("/admin/knowledge");
+}
+
+export async function updateKnowledgeBase(formData: FormData) {
+  const id = formData.get("id") as string;
+  const name = formData.get("name") as string;
+  const description = formData.get("description") as string;
+  await prisma.knowledgeBase.update({ where: { id }, data: { name, description } });
   revalidatePath("/admin/knowledge");
 }
 
@@ -134,10 +145,17 @@ export async function deleteDocument(id: string, knowledgeBaseId: string) {
   revalidatePath(`/admin/knowledge/${knowledgeBaseId}`);
 }
 
+export async function addUrlDocument(formData: FormData) {
+  const url = formData.get("url") as string;
+  const knowledgeBaseId = formData.get("knowledgeBaseId") as string;
+  const doc = await prisma.document.create({ data: { filename: url, type: "URL", knowledgeBaseId } });
+  await processUrl(url, knowledgeBaseId, doc.id);
+  revalidatePath(`/admin/knowledge/${knowledgeBaseId}`);
+}
+
 // ==========================================
 // 5. CONFIGURACIÓN Y RESPALDO
 // ==========================================
-
 export async function updateSettings(formData: FormData) {
   const organizationName = formData.get("organizationName") as string;
   const organizationBuzonInfo = formData.get("organizationBuzonInfo") as string;
