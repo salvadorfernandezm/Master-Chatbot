@@ -32,7 +32,7 @@ export async function updateSettings(formData: FormData) {
 }
 
 // ==========================================
-// 2. GESTIÓN DE CHATBOTS (Configuración y Prompt)
+// 2. GESTIÓN DE CHATBOTS (Rescate de Tokens)
 // ==========================================
 export async function createChatbot(formData: FormData) {
   const name = formData.get("name") as string;
@@ -50,14 +50,11 @@ export async function createChatbot(formData: FormData) {
   revalidatePath("/admin/chatbots");
 }
 
-// ESTA FUNCIÓN ES LA QUE ESTABA FALLANDO Y BORRABA TUS DATOS
 export async function updateChatbot(formData: FormData) {
   const id = formData.get("id") as string;
   if (!id) return;
 
   const updateData: any = {};
-  
-  // Mapeamos exactamente lo que viene del formulario
   if (formData.has("name")) updateData.name = formData.get("name") as string;
   if (formData.has("welcomeMessage")) updateData.welcomeMessage = formData.get("welcomeMessage") as string;
   if (formData.has("systemInstructions")) updateData.systemInstructions = formData.get("systemInstructions") as string;
@@ -79,7 +76,7 @@ export async function deleteChatbot(id: string) {
 }
 
 // ==========================================
-// 3. GESTIÓN DEL BUZÓN (Tickets)
+// 3. GESTIÓN DEL BUZÓN (Tickets y Folios)
 // ==========================================
 export async function createTicket(formData: FormData) {
   const type = formData.get("type") as string;
@@ -116,7 +113,7 @@ export async function updateTicketStatus(id: string, newStatus: string) {
 }
 
 // ==========================================
-// 4. GRUPOS Y CONOCIMIENTO (MAINTENANCE)
+// 4. GRUPOS
 // ==========================================
 export async function createGroup(formData: FormData) {
   const name = formData.get("name") as string;
@@ -125,15 +122,34 @@ export async function createGroup(formData: FormData) {
   revalidatePath("/admin/groups");
 }
 
+export async function updateGroup(formData: FormData) {
+  const id = formData.get("id") as string;
+  const name = formData.get("name") as string;
+  const description = formData.get("description") as string;
+  await prisma.group.update({ where: { id }, data: { name, description } });
+  revalidatePath("/admin/groups");
+}
+
 export async function deleteGroup(id: string) {
   await prisma.group.delete({ where: { id } });
   revalidatePath("/admin/groups");
 }
 
+// ==========================================
+// 5. CONOCIMIENTO (Bases, Archivos y URLs)
+// ==========================================
 export async function createKnowledgeBase(formData: FormData) {
   const name = formData.get("name") as string;
   const description = formData.get("description") as string;
   await prisma.knowledgeBase.create({ data: { name, description } });
+  revalidatePath("/admin/knowledge");
+}
+
+export async function updateKnowledgeBase(formData: FormData) {
+  const id = formData.get("id") as string;
+  const name = formData.get("name") as string;
+  const description = formData.get("description") as string;
+  await prisma.knowledgeBase.update({ where: { id }, data: { name, description } });
   revalidatePath("/admin/knowledge");
 }
 
@@ -154,4 +170,46 @@ export async function uploadFileDocument(formData: FormData) {
   });
   await processFile(buffer, file.name, doc.type, knowledgeBaseId, doc.id);
   revalidatePath(`/admin/knowledge/${knowledgeBaseId}`);
+}
+
+// ESTA FUNCIÓN LA PEDÍA VERCEL:
+export async function deleteDocument(id: string, knowledgeBaseId: string) {
+  await prisma.documentChunk.deleteMany({ where: { documentId: id } });
+  await prisma.document.delete({ where: { id } });
+  revalidatePath(`/admin/knowledge/${knowledgeBaseId}`);
+}
+
+// ESTA FUNCIÓN TAMBIÉN LA PEDÍA VERCEL:
+export async function addUrlDocument(formData: FormData) {
+  const url = formData.get("url") as string;
+  const knowledgeBaseId = formData.get("knowledgeBaseId") as string;
+  const doc = await prisma.document.create({ data: { filename: url, type: "URL", knowledgeBaseId } });
+  await processUrl(url, knowledgeBaseId, doc.id);
+  revalidatePath(`/admin/knowledge/${knowledgeBaseId}`);
+}
+
+// ==========================================
+// 6. RESPALDO (Backup)
+// ==========================================
+export async function exportFullBackup() {
+  const [groups, chatbots, kbs, docs] = await Promise.all([
+    prisma.group.findMany(),
+    prisma.chatbot.findMany(),
+    prisma.knowledgeBase.findMany(),
+    prisma.document.findMany(),
+  ]);
+  return { date: new Date().toISOString(), data: { groups, chatbots, kbs, docs } };
+}
+
+export async function importFullBackup(data: any) {
+  try {
+    const { groups, kbs, chatbots } = data;
+    if (groups) await prisma.group.createMany({ data: groups, skipDuplicates: true });
+    if (kbs) await prisma.knowledgeBase.createMany({ data: kbs, skipDuplicates: true });
+    if (chatbots) await prisma.chatbot.createMany({ data: chatbots, skipDuplicates: true });
+    revalidatePath("/admin");
+    return { success: true };
+  } catch (error: any) {
+    return { success: false, error: error.message };
+  }
 }
