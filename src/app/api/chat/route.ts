@@ -19,7 +19,7 @@ export async function POST(req: Request) {
 
     // 1. CARGAR CONTEXTO
     await loadStoreFromDB(chatbot.knowledgeBaseId, prisma);
-    const vectorContexts = await searchVectorStore(message, chatbot.knowledgeBaseId, 15);
+    const vectorContexts = await searchVectorStore(message, chatbot.knowledgeBaseId, 40);
     const contextText = vectorContexts.map((v: any) => v.pageContent).join("\n\n");
 
     const systemPrompt = `Eres un asistente académico experto. Usa este contexto: ${contextText}. Responde de forma clara.`;
