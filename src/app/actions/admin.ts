@@ -12,7 +12,7 @@ export async function updateSettings(formData: FormData) {
   const organizationName = formData.get("organizationName") as string;
   const organizationLogo = formData.get("organizationLogo") as string;
   const organizationBuzonInfo = formData.get("organizationBuzonInfo") as string;
-  const isBuzonActive = formData.get("isBuzonActive") === "true"; // Nuevo: Botón de pánico del buzón
+  const isBuzonActive = formData.get("isBuzonActive") === "true"; // Recogemos el On/Off
 
   const settings = await prisma.settings.findFirst();
 
@@ -20,7 +20,7 @@ export async function updateSettings(formData: FormData) {
     organizationName,
     organizationLogo,
     organizationBuzonInfo,
-    isBuzonActive // Guardamos si el buzón está prendido o apagado
+    isBuzonActive 
   };
 
   if (settings) {
@@ -30,7 +30,7 @@ export async function updateSettings(formData: FormData) {
   }
   
   revalidatePath("/admin/settings");
-  revalidatePath("/buzon");
+  revalidatePath("/buzon"); // Refrescamos el buzón para el alumno
 }
 
 // ==========================================
