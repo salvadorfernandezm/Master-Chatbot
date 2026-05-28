@@ -32,7 +32,7 @@ export default async function SettingsPage() {
             </div>
             <div className="space-y-1">
               <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Logo (URL)</label>
-              <input name="organizationLogo" defaultValue={settings.organizationLogo || ""} className="w-full px-4 py-3 rounded-2xl border border-slate-200 focus:ring-2 focus:ring-purple-500 outline-none" />
+              <input name="organizationLogo"" defaultValue={settings.organizationLogo || ""} className="w-full px-4 py-3 rounded-2xl border border-slate-200 focus:ring-2 focus:ring-purple-500 outline-none" />
             </div>
           </div>
         </div>
@@ -46,9 +46,9 @@ export default async function SettingsPage() {
             <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">
               Información que verá el Alumno (Botón "i" del Buzón)
             </label>
-            <textarea 
-  name="organizationBuzonInfo"
-  defaultValue={settings.organizationBuzonInfo || ""}
+            <textarea name="organizationBuzonInfo" 
+<select name="isBuzonActive" ... /> 
+    defaultValue={settings.organizationBuzonInfo || ""}
   rows={10} // Le puse un poco más de espacio para que sea cómodo redactar
   placeholder="Escribe el reglamento aquí..."
   className="w-full px-5 py-4 rounded-2xl bg-[#fdfcf9] text-slate-900 border-2 border-slate-300 shadow-inner placeholder-slate-400 focus:ring-2 focus:ring-lime-500 focus:border-lime-500 outline-none font-serif italic"
