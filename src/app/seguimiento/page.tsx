@@ -7,16 +7,25 @@ export default function SeguimientoPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
-  async function handleSearch() {
+ async function handleSearch() {
     setLoading(true);
     setError("");
     try {
-      const res = await fetch(`/api/buzon/seguimiento?folio=${folio.trim()}`);
+      // 1. Llamamos a la API
+      const res = await fetch(`/api/seguimiento?folio=${folio.trim().toUpperCase()}`);
+      
+      // 2. Obtenemos los datos una sola vez
       const data = await res.json();
-      if (res.ok) setTicket(data);
-      else setError(data.error);
-    } catch (e) {
-      setError("Error de conexión");
+      
+      if (!res.ok) {
+        throw new Error(data.error || "Folio no encontrado");
+      }
+
+      // 3. Si todo está bien, guardamos el ticket
+      setTicket(data);
+    } catch (e: any) {
+      setError(e.message || "Error al conectar con el servidor");
+      setTicket(null);
     } finally {
       setLoading(false);
     }
