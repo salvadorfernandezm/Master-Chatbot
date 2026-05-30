@@ -4,6 +4,7 @@ import { useState } from "react";
 import { createTicket } from "@/app/actions/admin";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+import Link from "next/link"; 
 
 export default function BuzonClient({ reglamento }: { reglamento: string }) {
   const [status, setStatus] = useState<"IDLE" | "SUCCESS" | "ERROR" | "SENDING">("IDLE");
