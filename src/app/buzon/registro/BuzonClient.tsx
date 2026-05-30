@@ -40,6 +40,12 @@ export default function BuzonClient({ reglamento }: { reglamento: string }) {
   return (
     <div className="min-h-screen bg-slate-950 p-6 md:p-12 text-white font-sans">
       <div className="max-w-3xl mx-auto">
+        
+        {/* PEGA ESTO AQUÍ: Botón de Regreso */}
+        <Link href="/buzon" className="inline-flex items-center gap-2 text-slate-500 hover:text-emerald-400 transition-colors text-[10px] font-black uppercase tracking-[0.2em] mb-10 group">
+           <span className="group-hover:-translate-x-1 transition-transform inline-block">←</span> Volver al Portal
+        </Link>
+
         <header className="mb-10 text-center">
           <h1 className="text-3xl font-black uppercase tracking-widest text-emerald-500">Buzón de Voz Ética</h1>
         </header>

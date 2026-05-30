@@ -34,6 +34,12 @@ export default function SeguimientoPage() {
   return (
     <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center p-6 text-white font-sans">
       <div className="max-w-md w-full">
+        
+        {/* PEGA ESTO AQUÍ: Botón de Regreso */}
+        <Link href="/buzon" className="inline-flex items-center gap-2 text-slate-500 hover:text-blue-400 transition-colors text-[10px] font-black uppercase tracking-[0.2em] mb-6 group">
+           <span className="group-hover:-translate-x-1 transition-transform inline-block">←</span> Volver al Portal
+        </Link>
+
         <h1 className="text-2xl font-black uppercase text-center mb-8 tracking-widest text-emerald-500">Consulta de Seguimiento</h1>
         
         <div className="bg-slate-900 p-8 rounded-[2.5rem] border border-white/10 shadow-2xl mb-6">

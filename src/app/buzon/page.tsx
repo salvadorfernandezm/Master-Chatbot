@@ -26,7 +26,7 @@ export default function BuzonHubPage() {
       icon: "📊",
       href: "/admin/analytics", // Luego haremos una versión pública si quieres
       color: "from-purple-500 to-purple-700",
-      btnText: "Explorar Datos"
+      btnText: "Estamos procesando los primeros datos para garantizar transparencia total"
     },
     {
       title: "Portal de Gestión (Directora)",

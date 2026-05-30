@@ -186,6 +186,15 @@ export default function ChatClient({
           </button>
         </div>
       </footer>
+        {/* PEGA ESTO AQUÍ: Aviso de Error */}
+        <div className="max-w-2xl mx-auto pb-4">
+           <Link 
+             href="/buzon/registro" 
+             className="flex items-center justify-center gap-2 text-[9px] font-black uppercase tracking-widest text-slate-400 hover:text-red-500 transition-all bg-slate-50 py-2 rounded-xl border border-slate-100 mt-2"
+           >
+             <span>⚠️</span> ¿La IA cometió un error? Infórmanos para mejorar
+           </Link>
+        </div>
     </div>
   );
 }
