@@ -89,6 +89,8 @@ export default function ChatClient({
     <div className="flex flex-col h-screen bg-slate-50 relative font-sans">
       <header className="bg-white border-b border-slate-200 px-6 py-4 flex items-center justify-between shadow-sm z-40 w-full sticky top-0">
         <div className="flex items-center gap-3">
+<div className="flex items-center justify-between w-full max-w-3xl mx-auto">
+      <div className="flex items-center gap-3">
           {logoUrl ? (
             <img src={logoUrl} alt="Logo" className="w-10 h-10 object-contain rounded-lg shadow-sm" />
           ) : (
@@ -101,15 +103,16 @@ export default function ChatClient({
         </div>
 
         {infoMessage && (
-    <button 
-      onClick={() => alert(infoMessage)} // Versión rápida, luego podemos hacer un modal elegante
-      className="h-8 w-8 rounded-full border-2 border-emerald-500 text-emerald-500 font-bold flex items-center justify-center hover:bg-emerald-500 hover:text-white transition-all text-sm"
-      title="Información importante"
-    >
-      i
-    </button>
-  )}
-</header>
+        <button 
+          onClick={() => alert(infoMessage)} 
+          className="h-9 w-9 rounded-full border-2 border-emerald-500 text-emerald-500 font-black flex items-center justify-center hover:bg-emerald-500 hover:text-white transition-all shadow-[0_0_15px_rgba(16,185,129,0.2)]"
+          title="Ver información del profesor"
+        >
+          i
+        </button>
+      )}
+    </div>
+  </header>
 
       {/* VENTANA EMERGENTE DE REGLAMENTO */}
       {isInfoOpen && (

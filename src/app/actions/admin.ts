@@ -57,13 +57,14 @@ export async function updateChatbot(formData: FormData) {
   if (!id) return;
 
   const updateData: any = {};
-const fields = ["name", "welcomeMessage", "systemInstructions", "inputPlaceholder", "fallbackMessage", "infoMessage"];
+  
+  // Mapeo manual y estricto para evitar cruces
   if (formData.has("name")) updateData.name = formData.get("name") as string;
   if (formData.has("welcomeMessage")) updateData.welcomeMessage = formData.get("welcomeMessage") as string;
-  if (formData.has("systemInstructions")) updateData.systemInstructions = formData.get("systemInstructions") as string;
+  if (formData.has("infoMessage")) updateData.infoMessage = formData.get("infoMessage") as string; // <--- EL CAJÓN DE LA "i"
   if (formData.has("inputPlaceholder")) updateData.inputPlaceholder = formData.get("inputPlaceholder") as string;
-  if (formData.has("fallbackMessage")) updateData.fallbackMessage = formData.get("fallbackMessage") as string;
-  
+  if (formData.has("systemInstructions")) updateData.systemInstructions = formData.get("systemInstructions") as string;
+
   const isActiveStr = formData.get("isActive");
   if (isActiveStr !== null) {
     updateData.isActive = isActiveStr === "true";

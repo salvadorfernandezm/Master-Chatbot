@@ -73,32 +73,23 @@ function BuzonForm({ reglamento }: { reglamento: string }) {
           </section>
         )}
 
-        <form action={handleSubmit} className={`space-y-6 transition-all duration-700 ${accepted ? 'opacity-100 mt-8' : 'opacity-0 h-0 pointer-events-none'}`}>
-          <div className="bg-slate-900 p-8 rounded-[2.5rem] shadow-xl border border-white/5 space-y-6">
-            <select 
-              name="type" 
-              defaultValue={isTechnical ? "SOPORTE_TECNICO" : "ACADEMICA"}
-              className="w-full bg-black border-2 border-slate-800 p-4 rounded-2xl focus:border-emerald-500 outline-none text-sm text-white"
-            >
-              <option value="ACADEMICA">Asunto Académico</option>
-              <option value="LOGISTICA">Instalaciones / Logística</option>
-              <option value="GRAVE">Situación Grave / Ética</option>
-              <option value="SOPORTE_TECNICO">Fallo Técnico en el Chat</option>
-            </select>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <input name="studentEmail" type="email" placeholder="Tu Correo (Opcional)" className="w-full bg-black border-2 border-slate-800 p-4 rounded-2xl focus:border-emerald-500 outline-none text-sm" />
-              <input name="studentName" type="text" placeholder="Tu Nombre (Opcional)" className="w-full bg-black border-2 border-slate-800 p-4 rounded-2xl focus:border-emerald-500 outline-none text-sm" />
-            </div>
-            <textarea name="content" required rows={5} placeholder={isTechnical ? "Describe el error que detectaste..." : "Describe los hechos..."} className="w-full bg-black border-2 border-slate-800 p-4 rounded-2xl focus:border-emerald-500 outline-none resize-none text-sm"></textarea>
-          </div>
-          <button type="submit" disabled={status === "SENDING"} className="w-full bg-emerald-500 hover:bg-white text-black font-black py-5 rounded-[2rem] shadow-2xl transition-all uppercase tracking-widest disabled:opacity-50">
-            {status === "SENDING" ? "Registrando..." : "Enviar Reporte y Generar Folio"}
-          </button>
-        </form>
-      </div>
-    </div>
-  );
-}
+       {/* TIPO DE REPORTE INTELIGENTE */}
+{isTechnical ? (
+  // Si es técnico, ocultamos el selector y mandamos el valor fijo
+  <input type="hidden" name="type" value="SOPORTE_TECNICO" />
+) : (
+  <div>
+    <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest block mb-3 ml-2">Tipo de situación</label>
+    <select 
+      name="type" 
+      className="w-full bg-black border-2 border-slate-800 p-4 rounded-2xl focus:border-emerald-500 outline-none text-sm text-white"
+    >
+      <option value="ACADEMICA">Asunto Académico</option>
+      <option value="LOGISTICA">Instalaciones / Logística</option>
+      <option value="GRAVE">Situación Grave / Ética</option>
+    </select>
+  </div>
+)}
 
 export default function BuzonClient({ reglamento }: { reglamento: string }) {
   return (
