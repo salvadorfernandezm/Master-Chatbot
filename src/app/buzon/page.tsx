@@ -32,7 +32,7 @@ export default function BuzonHubPage() {
       title: "Portal de Gestión (Directora)",
       desc: "Acceso exclusivo para la revisión y resolución de casos.",
       icon: "🏛️",
-      href: "/admin/buzon",
+       href: "/admin/directora",
       color: "from-slate-700 to-slate-900",
       btnText: "Entrar a Gestión"
     }

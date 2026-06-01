@@ -27,22 +27,36 @@ function BuzonForm({ reglamento }: { reglamento: string }) {
   }
 
   if (status === "SUCCESS") {
-    return (
-      <div className="min-h-screen bg-slate-950 flex items-center justify-center p-6 text-white text-center font-sans">
-        <div className="max-w-md w-full bg-slate-900 p-10 rounded-[3rem] shadow-2xl border-b-8 border-emerald-500 animate-in zoom-in duration-500">
-          <div className="text-6xl mb-6 text-emerald-500">✓</div>
-          <h1 className="text-2xl font-black uppercase mb-4 tracking-tighter">Voz Registrada</h1>
-          <div className="bg-black/50 p-6 rounded-3xl border border-white/10 mb-8 shadow-inner">
-            <p className="text-[10px] text-emerald-500 uppercase font-black tracking-widest mb-2">Tu Folio de Seguimiento</p>
-            <p className="text-5xl font-black text-white tracking-tighter">{folio}</p>
-          </div>
-          <button onClick={() => window.location.assign("/buzon")} className="bg-emerald-600 hover:bg-emerald-500 px-8 py-3 rounded-2xl font-bold transition-all">
-            Volver al Portal
-          </button>
+  return (
+    <div className="min-h-screen bg-slate-950 flex items-center justify-center p-6 text-white text-center font-sans">
+      <div className="max-w-md w-full bg-slate-900 p-10 rounded-[3rem] shadow-2xl border-b-8 border-emerald-500 animate-in zoom-in duration-500">
+        <div className="text-6xl mb-6 text-emerald-500">✓</div>
+        <h1 className="text-2xl font-black uppercase mb-4 tracking-tighter">
+          {isTechnical ? "Reporte de Fallo Enviado" : "Voz Registrada"}
+        </h1>
+        
+        <div className="bg-black/50 p-6 rounded-3xl border border-white/10 mb-8 shadow-inner">
+          <p className="text-[10px] text-emerald-500 uppercase font-black tracking-widest mb-2">Folio de Seguimiento</p>
+          <p className="text-5xl font-black text-white tracking-tighter">{folio}</p>
         </div>
+
+        {/* BOTÓN INTELIGENTE DE RETORNO */}
+        <button 
+          onClick={() => {
+            if (isTechnical) {
+              window.history.back(); // Regresa al chat de donde vino
+            } else {
+              window.location.assign("/buzon"); // Regresa al portal del alumno
+            }
+          }} 
+          className="w-full bg-emerald-600 hover:bg-emerald-500 py-4 rounded-2xl font-black uppercase text-xs tracking-widest transition-all shadow-lg"
+        >
+          {isTechnical ? "Regresar al Chat" : "Volver al Portal"}
+        </button>
       </div>
-    );
-  }
+    </div>
+  );
+}
 
   return (
     <div className="min-h-screen bg-slate-950 p-6 md:p-12 text-white font-sans">
