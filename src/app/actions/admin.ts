@@ -57,6 +57,7 @@ export async function updateChatbot(formData: FormData) {
   if (!id) return;
 
   const updateData: any = {};
+const fields = ["name", "welcomeMessage", "systemInstructions", "inputPlaceholder", "fallbackMessage", "infoMessage"];
   if (formData.has("name")) updateData.name = formData.get("name") as string;
   if (formData.has("welcomeMessage")) updateData.welcomeMessage = formData.get("welcomeMessage") as string;
   if (formData.has("systemInstructions")) updateData.systemInstructions = formData.get("systemInstructions") as string;

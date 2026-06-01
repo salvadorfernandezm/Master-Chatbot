@@ -100,17 +100,16 @@ export default function ChatClient({
           </div>
         </div>
 
-        {/* BOTÓN DE INFORMACIÓN "i" ESMERALDA */}
         {infoMessage && (
-          <button 
-            onClick={() => setIsInfoOpen(true)}
-            className="h-10 w-10 rounded-full bg-emerald-600 text-white flex items-center justify-center font-serif italic text-xl hover:bg-emerald-700 shadow-lg active:scale-90 transition-all ring-4 ring-white animate-pulse"
-            title="Instrucciones del profesor"
-          >
-            i
-          </button>
-        )}
-      </header>
+    <button 
+      onClick={() => alert(infoMessage)} // Versión rápida, luego podemos hacer un modal elegante
+      className="h-8 w-8 rounded-full border-2 border-emerald-500 text-emerald-500 font-bold flex items-center justify-center hover:bg-emerald-500 hover:text-white transition-all text-sm"
+      title="Información importante"
+    >
+      i
+    </button>
+  )}
+</header>
 
       {/* VENTANA EMERGENTE DE REGLAMENTO */}
       {isInfoOpen && (
@@ -190,7 +189,7 @@ export default function ChatClient({
         {/* PEGA ESTO AQUÍ: Aviso de Error */}
         <div className="max-w-2xl mx-auto pb-4">
            <Link 
-             href="/buzon/registro" 
+             href="/buzon/registro?type=SOPORTE_TECNICO" // <-- Añadimos este "apellido" al link
              className="flex items-center justify-center gap-2 text-[9px] font-black uppercase tracking-widest text-slate-400 hover:text-red-500 transition-all bg-slate-50 py-2 rounded-xl border border-slate-100 mt-2"
            >
              <span>⚠️</span> ¿La IA cometió un error? Infórmanos para mejorar
