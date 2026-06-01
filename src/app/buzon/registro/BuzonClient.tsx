@@ -1,15 +1,19 @@
 "use client";
 
-import { useState } from "react";
-import { createTicket } from "@/app/actions/admin";
-import ReactMarkdown from "react-markdown";
-import remarkGfm from "remark-gfm";
-import Link from "next/link"; 
+import { useState, useEffect } from "react"; // Añade useEffect
+import { useSearchParams } from "next/navigation"; // Añade esto
 
 export default function BuzonClient({ reglamento }: { reglamento: string }) {
+  const searchParams = useSearchParams();
+  const isTechnical = searchParams.get("type") === "SOPORTE_TECNICO";
+
   const [status, setStatus] = useState<"IDLE" | "SUCCESS" | "ERROR" | "SENDING">("IDLE");
-  const [folio, setFolio] = useState("");
   const [accepted, setAccepted] = useState(false);
+
+  // AUTO-ACEPTAR REGLAMENTO SI ES SOPORTE TÉCNICO
+  useEffect(() => {
+    if (isTechnical) setAccepted(true);
+  }, [isTechnical]);
 
   async function handleSubmit(formData: FormData) {
     setStatus("SENDING");
@@ -82,8 +86,14 @@ export default function BuzonClient({ reglamento }: { reglamento: string }) {
         <form action={handleSubmit} className={`space-y-6 transition-all duration-700 ${accepted ? 'opacity-100 mt-8' : 'opacity-0 h-0 pointer-events-none'}`}>
           <div className="bg-slate-900 p-8 rounded-[2.5rem] shadow-xl border border-white/5 space-y-6">
             <select name="type" className="w-full bg-black border-2 border-slate-800 p-4 rounded-2xl focus:border-emerald-500 outline-none text-sm text-white">
-              <option value="ACADEMICA">Asunto Académico</option>
-              <option value="LOGISTICA">Instalaciones / Logística</option>
+<select 
+    name="type" 
+    defaultValue={isTechnical ? "SOPORTE_TECNICO" : "ACADEMICA"}
+    className="..."
+  >
+    <option value="ACADEMICA">Asunto Académico</option>
+    <option value="SOPORTE_TECNICO">Fallo Técnico en el Chat</option>
+                 <option value="LOGISTICA">Instalaciones / Logística</option>
               <option value="GRAVE">Situación Grave / Ética</option>
             </select>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

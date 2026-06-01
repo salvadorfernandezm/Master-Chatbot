@@ -78,7 +78,7 @@ model Chatbot {
   knowledgeBaseId    String
   isActive           Boolean  @default(true)
   welcomeMessage     String?
-  infoMessage        String?  // Esta es tu nueva ocurrencia del botón de info
+  infoMessage        String?  @db.Text // Esta es tu nueva ocurrencia del botón de info
   systemInstructions String?
   fallbackMessage    String?
   inputPlaceholder   String?

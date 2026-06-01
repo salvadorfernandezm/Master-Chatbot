@@ -17,6 +17,8 @@ export default function AdminLayoutClient({ children, orgName, orgLogo }: AdminL
   const router = useRouter();
   const pathname = usePathname();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+ // --- SENSOR DE LA DIRECTORA ---
+  const isDirectorPanel = pathname === "/admin/directora";
 
   useEffect(() => {
     if (status === "unauthenticated") router.push("/login");
