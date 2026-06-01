@@ -75,15 +75,11 @@ function BuzonForm({ reglamento }: { reglamento: string }) {
 
        {/* TIPO DE REPORTE INTELIGENTE */}
 {isTechnical ? (
-  // Si es técnico, ocultamos el selector y mandamos el valor fijo
   <input type="hidden" name="type" value="SOPORTE_TECNICO" />
 ) : (
   <div>
     <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest block mb-3 ml-2">Tipo de situación</label>
-    <select 
-      name="type" 
-      className="w-full bg-black border-2 border-slate-800 p-4 rounded-2xl focus:border-emerald-500 outline-none text-sm text-white"
-    >
+    <select name="type" className="w-full bg-black border-2 border-slate-800 p-4 rounded-2xl focus:border-emerald-500 outline-none text-sm text-white">
       <option value="ACADEMICA">Asunto Académico</option>
       <option value="LOGISTICA">Instalaciones / Logística</option>
       <option value="GRAVE">Situación Grave / Ética</option>
