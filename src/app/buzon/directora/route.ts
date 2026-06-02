@@ -9,6 +9,6 @@ export async function GET() {
     });
     return NextResponse.json(tickets);
   } catch (error) {
-    return NextResponse.json({ error: "Fallo en base de datos" }, { status: 500 });
+    return NextResponse.json({ error: "Fallo en base" }, { status: 500 });
   }
 }

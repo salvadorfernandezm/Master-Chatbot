@@ -26,7 +26,7 @@ export default function ChatClient({ token, name, welcomeMessage, infoMessage, i
   ]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
-  const [isInfoOpen, setIsInfoOpen] = useState(false); // Estado para el modal de la "i"
+  const [isInfoOpen, setIsInfoOpen] = useState(false);
   
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -64,8 +64,7 @@ export default function ChatClient({ token, name, welcomeMessage, infoMessage, i
       if (!res.ok) throw new Error(data.error || "Saturación");
       setMessages(prev => [...prev, { role: "assistant", content: data.reply }]);
     } catch (error: any) {
-      let friendly = "⚠️ El sistema está saturado. Espera 15 segundos.";
-      setMessages(prev => [...prev, { role: "assistant", content: friendly }]);
+      setMessages(prev => [...prev, { role: "assistant", content: "⚠️ El sistema está un poco saturado. Reintenta en 15 segundos." }]);
     } finally {
       setLoading(false);
     }
@@ -87,7 +86,6 @@ export default function ChatClient({ token, name, welcomeMessage, infoMessage, i
             </div>
           </div>
 
-          {/* BOTÓN i ESMERALDA */}
           {infoMessage && (
             <button 
               onClick={() => setIsInfoOpen(true)}
@@ -132,34 +130,26 @@ export default function ChatClient({ token, name, welcomeMessage, infoMessage, i
             </button>
           </div>
           <div className="flex justify-center mt-4">
-            <Link href="/buzon/registro?type=SOPORTE_TECNICO" className="text-[9px] font-black uppercase text-slate-400 hover:text-red-500 transition-colors flex items-center gap-1">
-              ⚠️ Reportar un fallo técnico en el chat
+            <Link href="/buzon/registro?type=SOPORTE_TECNICO" className="text-[9px] font-black uppercase text-slate-400 hover:text-red-500 transition-colors">
+              ⚠️ Reportar un fallo técnico
             </Link>
           </div>
         </div>
       </footer>
 
-      {/* VENTANA EMERGENTE (MODAL) DE INFORMACIÓN MEJORADA */}
-{isInfoOpen && (
-  <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-md z-[100] flex items-center justify-center p-6 animate-in fade-in duration-300">
-    <div className="bg-white rounded-[3rem] p-10 max-w-lg w-full shadow-2xl border-t-8 border-emerald-500">
-      <h2 className="text-emerald-600 font-black uppercase text-xs tracking-[0.2em] mb-6 text-center">Información del Profesor</h2>
-      
-      {/* AQUÍ ESTÁ EL CAMBIO: Quitamos el centrado forzado y las cursivas, añadimos ReactMarkdown */}
-      <div className="text-slate-700 text-sm leading-relaxed mb-10 overflow-y-auto max-h-[60vh] pr-2 custom-scrollbar">
-        <div className="prose prose-slate max-w-none">
-           <ReactMarkdown remarkPlugins={[remarkGfm]}>
-              {infoMessage}
-           </ReactMarkdown>
+      {isInfoOpen && (
+        <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-md z-[100] flex items-center justify-center p-6 animate-in fade-in duration-300">
+          <div className="bg-white rounded-[3rem] p-10 max-w-lg w-full shadow-2xl border-t-8 border-emerald-500">
+            <h2 className="text-emerald-600 font-black uppercase text-xs tracking-[0.2em] mb-6 text-center">Información del Profesor</h2>
+            <div className="text-slate-700 text-sm leading-relaxed mb-10 overflow-y-auto max-h-[60vh] pr-2 custom-scrollbar">
+              <div className="prose prose-slate max-w-none">
+                 <ReactMarkdown remarkPlugins={[remarkGfm]}>{infoMessage}</ReactMarkdown>
+              </div>
+            </div>
+            <button onClick={() => setIsInfoOpen(false)} className="w-full bg-slate-900 text-white py-4 rounded-2xl font-bold uppercase text-xs tracking-widest hover:bg-black transition-all">Cerrar</button>
+          </div>
         </div>
-      </div>
-
-      <button 
-        onClick={() => setIsInfoOpen(false)}
-        className="w-full bg-slate-900 text-white py-4 rounded-2xl font-bold uppercase text-xs tracking-widest hover:bg-black transition-all shadow-lg shadow-slate-200"
-      >
-        Cerrar Información
-      </button>
+      )}
     </div>
-  </div>
-)}
+  );
+}
