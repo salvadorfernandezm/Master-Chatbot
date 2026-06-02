@@ -86,14 +86,14 @@ export default function ChatClient({ token, name, welcomeMessage, infoMessage, i
             </div>
           </div>
 
-          {infoMessage && (
-            <button 
-              onClick={() => setIsInfoOpen(true)}
-              className="h-9 w-9 rounded-full border-2 border-emerald-500 text-emerald-500 font-black flex items-center justify-center hover:bg-emerald-500 hover:text-white transition-all shadow-lg shadow-emerald-500/10"
-            >
-              i
-            </button>
-          )}
+         {infoMessage && (
+  <button 
+    onClick={() => setIsInfoOpen(true)}
+    className="h-7 w-7 md:h-9 md:w-9 flex-shrink-0 rounded-full border-2 border-emerald-500 text-emerald-500 font-black flex items-center justify-center hover:bg-emerald-500 hover:text-white transition-all text-xs md:text-base"
+  >
+    i
+  </button>
+)}
         </div>
       </header>
 
