@@ -97,20 +97,29 @@ export default function ChatClient({ token, name, welcomeMessage, infoMessage, i
         </div>
       </header>
 
-      <main className="flex-1 overflow-y-auto p-4 md:p-8">
-        <div className="max-w-3xl mx-auto space-y-6">
-          {messages.map((msg, i) => (
-            <div key={i} className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
-              <div className={`max-w-[85%] md:max-w-[75%] p-4 rounded-2xl ${msg.role === "user" ? "bg-indigo-600 text-white shadow-lg" : "bg-white border border-slate-200 shadow-sm"}`}>
-                <div className="prose prose-slate max-w-none prose-sm">
-                  <ReactMarkdown remarkPlugins={[remarkGfm]}>{msg.content}</ReactMarkdown>
-                </div>
-              </div>
-            </div>
-          ))}
-          <div ref={messagesEndRef} />
+      <main className="flex-1 overflow-y-auto p-3 md:p-8"> {/* Bajamos p-4 a p-3 */}
+  <div className="max-w-3xl mx-auto space-y-4"> {/* Bajamos space-y-6 a 4 */}
+    {messages.map((msg, i) => (
+      <div key={i} className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
+        <div 
+          className={`max-w-[90%] md:max-w-[75%] p-3 md:p-4 rounded-2xl ${
+            msg.role === "user" 
+              ? "bg-indigo-600 text-white shadow-lg" 
+              : "bg-white border border-slate-200 shadow-sm text-slate-800"
+          }`}
+        >
+          {/* AQUÍ ESTÁ EL TRUCO: text-[13px] para móvil, sm para PC */}
+          <div className="prose prose-slate max-w-none text-[13px] md:text-sm leading-snug md:leading-relaxed">
+            <ReactMarkdown remarkPlugins={[remarkGfm]}>
+              {msg.content}
+            </ReactMarkdown>
+          </div>
         </div>
-      </main>
+      </div>
+    ))}
+    <div ref={messagesEndRef} />
+  </div>
+</main>
 
       <footer className="bg-white border-t border-slate-200 p-4">
         <div className="max-w-3xl mx-auto">
