@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { verifyDirectorPin, updateTicketStatus } from "@/app/actions/admin";
 
 export default function DirectorPanelPage() {
   const [pin, setPin] = useState("");
@@ -9,18 +10,20 @@ export default function DirectorPanelPage() {
   const [loading, setLoading] = useState(false);
 
   const checkPin = async () => {
-    // AQUÍ PUEDES CAMBIAR EL PIN: Por ahora es 1234
-    if (pin === "1234") {
+    setLoading(true);
+    // Le preguntamos al servidor si el PIN es correcto
+    const isValid = await verifyDirectorPin(pin);
+    
+    if (isValid) {
       setIsAuthorized(true);
-      setLoading(true);
       const res = await fetch('/api/buzon/directora');
       const data = await res.json();
       setTickets(data);
-      setLoading(false);
     } else {
       alert("PIN de acceso incorrecto.");
       setPin("");
     }
+    setLoading(false);
   };
 
   if (!isAuthorized) {

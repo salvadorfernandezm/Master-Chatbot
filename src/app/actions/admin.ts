@@ -35,9 +35,9 @@ export async function createTicket(formData: FormData) {
   const content = formData.get("content") as string;
   const studentName = formData.get("studentName") as string;
   const studentEmail = formData.get("studentEmail") as string;
-  const file = formData.get("evidence") as File;
 
-  if (!content || !type) return { success: false, error: "Faltan datos" };
+  if (!content || !type) return { success: false };
+
   const folio = `ETH-${Math.random().toString(36).substring(2, 7).toUpperCase()}`;
 
   try {
@@ -48,10 +48,20 @@ export async function createTicket(formData: FormData) {
         content,
         studentName: studentName || "Anónimo Protegido",
         studentEmail: studentEmail || null,
-        evidenceUrl: file && file.size > 0 ? `Archivo: ${file.name}` : null,
         status: "PENDIENTE",
       },
     });
+
+    // --- LÓGICA DEL SISTEMA NERVIOSO CENTRAL ---
+    let destinatario = process.env.EMAIL_INGENIERO; // Por defecto a ti
+
+    if (type === "ACADEMICA") destinatario = process.env.EMAIL_SECRETARIA_ACADEMICA;
+    if (type === "LOGISTICA") destinatario = process.env.EMAIL_SECRETARIA_ADMINISTRATIVA;
+    if (type === "GRAVE") destinatario = process.env.EMAIL_DIRECCION;
+
+    console.log(`📧 Notificación preparada para: ${destinatario}`);
+    // En la siguiente sesión conectaremos el "motor" de envío real (Resend)
+    
     revalidatePath("/admin/buzon");
     revalidatePath("/admin/directora");
     return { success: true, folio };
@@ -204,4 +214,10 @@ export async function importFullBackup(data: any): Promise<{ success: boolean; e
   } catch (error: any) {
     return { success: false, error: error.message };
   }
+}
+
+// --- VALIDAR PIN DE LA DIRECTORA (Seguridad de Servidor) ---
+export async function verifyDirectorPin(enteredPin: string) {
+  // Comparamos lo que escribió la Dire con la variable secreta de Vercel
+  return enteredPin === process.env.DIRECTOR_PIN;
 }
