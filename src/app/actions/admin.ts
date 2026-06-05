@@ -30,6 +30,10 @@ export async function updateSettings(formData: FormData) {
 // ==========================================
 // 2. GESTIÓN DEL BUZÓN (Tickets de Alumnos)
 // ==========================================
+import { Resend } from 'resend'; // Añade esto al principio del archivo
+
+const resend = new Resend(process.env.RESEND_API_KEY);
+
 export async function createTicket(formData: FormData) {
   const type = formData.get("type") as string;
   const content = formData.get("content") as string;
@@ -41,6 +45,7 @@ export async function createTicket(formData: FormData) {
   const folio = `ETH-${Math.random().toString(36).substring(2, 7).toUpperCase()}`;
 
   try {
+    // 1. Guardamos en Supabase
     await prisma.ticket.create({
       data: {
         folio,
@@ -52,20 +57,41 @@ export async function createTicket(formData: FormData) {
       },
     });
 
-    // --- LÓGICA DEL SISTEMA NERVIOSO CENTRAL ---
-    let destinatario = process.env.EMAIL_INGENIERO; // Por defecto a ti
+    // 2. Decidimos el destinatario según el Sistema Nervioso Central
+    let emailDestino = process.env.EMAIL_INGENIERO; // Tu correo por defecto
+    if (type === "ACADEMICA") emailDestino = process.env.EMAIL_SECRETARIA_ACADEMICA;
+    if (type === "LOGISTICA") emailDestino = process.env.EMAIL_SECRETARIA_ADMINISTRATIVA;
+    if (type === "GRAVE") emailDestino = process.env.EMAIL_DIRECCION;
 
-    if (type === "ACADEMICA") destinatario = process.env.EMAIL_SECRETARIA_ACADEMICA;
-    if (type === "LOGISTICA") destinatario = process.env.EMAIL_SECRETARIA_ADMINISTRATIVA;
-    if (type === "GRAVE") destinatario = process.env.EMAIL_DIRECCION;
+    // 3. ENVIAMOS EL CORREO CON EL "LINK MÁGICO"
+    // El link enviará al directivo a una página especial de respuesta
+    const linkDeRespuesta = `${process.env.NEXTAUTH_URL}/admin/responder?folio=${folio}`;
 
-    console.log(`📧 Notificación preparada para: ${destinatario}`);
-    // En la siguiente sesión conectaremos el "motor" de envío real (Resend)
-    
+    await resend.emails.send({
+      from: 'Buzon Etico <onboarding@resend.dev>', // Luego podemos poner tu dominio
+      to: [emailDestino as string],
+      subject: `Nuevo Reporte Ético: ${folio}`,
+      html: `
+        <div style="font-family: sans-serif; padding: 20px; border: 1px solid #e2e8f0; border-radius: 20px;">
+          <h2 style="color: #10b981;">Nuevo Reporte Recibido</h2>
+          <p><strong>Folio:</strong> ${folio}</p>
+          <p><strong>Tipo:</strong> ${type}</p>
+          <p><strong>Mensaje del Alumno:</strong></p>
+          <blockquote style="font-style: italic; color: #64748b; border-left: 4px solid #10b981; padding-left: 15px;">
+            "${content}"
+          </blockquote>
+          <br/>
+          <a href="${linkDeRespuesta}" style="background: #0f172a; color: white; padding: 12px 25px; text-decoration: none; border-radius: 10px; font-weight: bold;">
+            Responder y Resolver este caso
+          </a>
+        </div>
+      `
+    });
+
     revalidatePath("/admin/buzon");
-    revalidatePath("/admin/directora");
     return { success: true, folio };
   } catch (error) {
+    console.error("Fallo en el sistema nervioso:", error);
     return { success: false };
   }
 }
@@ -101,6 +127,7 @@ export async function deleteGroup(id: string) {
   await prisma.group.delete({ where: { id } });
   revalidatePath("/admin/groups");
 }
+
 
 // ==========================================
 // 4. GESTIÓN DE CHATBOTS (Identidad y Prompt)
