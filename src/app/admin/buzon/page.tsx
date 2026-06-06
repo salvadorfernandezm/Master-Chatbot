@@ -7,7 +7,6 @@ import { updateTicketStatus } from "@/app/actions/admin";
 export default async function AdminBuzonPage() {
   let tickets: any[] = [];
   
-  // Intentamos traer los datos, si falla (por base vacía) no rompemos la página
   try {
     tickets = await prisma.ticket.findMany({
       orderBy: { createdAt: 'desc' }
@@ -18,74 +17,57 @@ export default async function AdminBuzonPage() {
   }
 
   return (
-    <div className="space-y-8 max-w-6xl mx-auto pb-20">
+    <div className="space-y-8 max-w-6xl mx-auto pb-20 font-sans">
+      {/* Encabezado Principal */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-slate-950 p-8 rounded-[2.5rem] text-white shadow-2xl relative overflow-hidden border-b-8 border-emerald-500">
         <div className="z-10">
-          <h1 className="text-3xl font-black uppercase tracking-widest text-emerald-50">Centro de Gestión Ética</h1>
+          <h1 className="text-3xl font-black uppercase tracking-widest text-emerald-50">Panel General de Gestión</h1>
           <p className="text-slate-400 text-sm italic mt-2 underline decoration-emerald-500 decoration-2 underline-offset-4">
-             "Donde los que no tenían vez, hoy son escuchados."
+             "Administración total de voces y fallos técnicos."
           </p>
         </div>
         <div className="z-10 bg-white/10 backdrop-blur-md px-6 py-4 rounded-3xl border border-white/20 text-center">
             <p className="text-2xl font-black text-emerald-400">{tickets.length}</p>
-            <p className="text-[10px] uppercase font-bold tracking-tighter text-slate-300">Reportes</p>
+            <p className="text-[10px] uppercase font-bold tracking-tighter text-slate-300">Registros</p>
         </div>
       </div>
 
       <div className="grid grid-cols-1 gap-8">
         {tickets.length === 0 ? (
           <div className="bg-white p-20 rounded-[3rem] border-4 border-dashed border-slate-100 text-center">
-             <p className="text-slate-300 text-xl italic font-serif">La tranquilidad reina en el campus. No hay reportes registrados.</p>
+             <p className="text-slate-300 text-xl italic font-serif">No hay actividad en el buzón todavía.</p>
           </div>
         ) : (
           tickets.map((ticket) => (
             <div key={ticket.id} className="bg-white rounded-[3rem] shadow-xl border-2 border-slate-50 overflow-hidden hover:shadow-2xl transition-all duration-500 group">
-              <div className="p-10 flex flex-col md:flex-row gap-10">
+              <div className="p-10">
                 
-                <div className="flex-1 space-y-6">
-                  <div className="flex items-center gap-3">
-                    <span className={`px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-[0.2em] shadow-sm ${
-                       ticket.type === 'GRAVE' ? 'bg-red-500 text-white animate-pulse' : 
-                       ticket.type === 'ACADEMICA' ? 'bg-amber-100 text-amber-800' : 'bg-blue-100 text-blue-800'
-                    }`}>
-                       {ticket.type}
-                    </span>
-                    <span className="text-xs font-bold text-slate-300 uppercase tracking-widest">
-                       Folio: {ticket.folio} • {new Date(ticket.createdAt).toLocaleDateString()}
-                    </span>
+                <div className="flex flex-col md:flex-row justify-between gap-6 mb-6">
+                  <div className="flex-1 space-y-4">
+                    <div className="flex items-center gap-3">
+                      <span className={`px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-[0.2em] shadow-sm ${
+                         ticket.type === 'SOPORTE_TECNICO' ? 'bg-amber-100 text-amber-700' : 
+                         ticket.type === 'GRAVE' ? 'bg-red-500 text-white animate-pulse' : 'bg-blue-100 text-blue-800'
+                      }`}>
+                         {ticket.type}
+                      </span>
+                      <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">
+                         Folio: {ticket.folio} • {new Date(ticket.createdAt).toLocaleDateString()}
+                      </span>
+                    </div>
+
+                    <h3 className="text-xl font-black text-slate-800">
+                      De: <span className="text-purple-600 font-medium">{ticket.studentName || "Anónimo"}</span>
+                      {ticket.studentEmail && <span className="text-xs text-slate-400 font-normal ml-2">({ticket.studentEmail})</span>}
+                    </h3>
+
+                    <div className="bg-slate-50/50 p-6 rounded-[2rem] border border-slate-100 italic text-slate-600 leading-relaxed text-md relative group-hover:bg-white transition-colors duration-300">
+                      <span className="absolute -top-4 -left-2 text-6xl text-slate-200 pointer-events-none opacity-50">“</span>
+                      {ticket.content}
+                    </div>
                   </div>
 
-                  <h3 className="text-xl font-black text-slate-800">
-                    Remitente: <span className="text-purple-600 font-medium">{ticket.studentName || "Anónimo"}</span>
-                  </h3>
-
-                  <div className="bg-slate-50/50 p-8 rounded-[2rem] border border-slate-100 italic text-slate-600 leading-relaxed text-lg relative group-hover:bg-white transition-colors duration-300 shadow-inner">
-                    <span className="absolute -top-4 -left-2 text-6xl text-slate-200 pointer-events-none opacity-50">“</span>
-                    {ticket.content}
-                  </div>
-                </div
-
-{/* RESPUESTA DE LA AUTORIDAD (Añadir esto en los dos paneles) */}
-{ticket.authorityResponse && (
-  <div className="mt-6 p-6 bg-slate-50 rounded-3xl border border-slate-200">
-    <div className="flex justify-between items-center mb-3">
-        <p className="text-[10px] font-black text-slate-400 uppercase">Respuesta dada por el funcionario:</p>
-        {/* Aquí mostramos si el alumno está satisfecho */}
-        <span className={`px-3 py-1 rounded-full text-[9px] font-black uppercase ${ticket.studentResolved ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-500'}`}>
-            {ticket.studentResolved ? "✅ ALUMNO SATISFECHO" : "⏳ ESPERANDO VALIDACIÓN"}
-        </span>
-    </div>
-    <p className="text-sm text-slate-600 italic leading-relaxed">"{ticket.authorityResponse}"</p>
-    
-    {ticket.authorityEvidence && (
-      <p className="text-[10px] text-blue-500 mt-2 font-bold uppercase">📎 {ticket.authorityEvidence}</p>
-    )}
-  </div>
-)}
-
-                <div className="w-full md:w-56 space-y-6 border-l-2 border-slate-50 pl-0 md:pl-10">
-                  <div className="text-center md:text-left">
-                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">Estatus</p>
+                  <div className="w-full md:w-48 text-right">
                     <div className={`text-sm font-black p-3 rounded-2xl text-center shadow-lg uppercase tracking-wider ${
                       ticket.status === 'PENDIENTE' ? 'bg-amber-500 text-white' : 'bg-emerald-600 text-white'
                     }`}>
@@ -93,6 +75,25 @@ export default async function AdminBuzonPage() {
                     </div>
                   </div>
                 </div>
+
+                {/* SECCIÓN DE RESPUESTA DE LA AUTORIDAD */}
+                {ticket.authorityResponse && (
+                  <div className="mt-6 p-6 bg-emerald-50/50 rounded-[2rem] border border-emerald-100 relative">
+                    <div className="flex justify-between items-center mb-3">
+                        <p className="text-[10px] font-black text-emerald-700 uppercase tracking-widest">Respuesta Registrada:</p>
+                        <span className={`px-3 py-1 rounded-full text-[9px] font-black uppercase ${ticket.studentResolved ? 'bg-emerald-200 text-emerald-800' : 'bg-amber-100 text-amber-700'}`}>
+                            {ticket.studentResolved ? "✅ Alumno Satisfecho" : "⏳ Esperando Validación"}
+                        </span>
+                    </div>
+                    <p className="text-sm text-slate-700 italic leading-relaxed">"{ticket.authorityResponse}"</p>
+                    
+                    {ticket.authorityEvidence && (
+                      <div className="mt-3 flex items-center gap-2 text-blue-600 font-bold text-[10px] uppercase">
+                        <span>📎</span> {ticket.authorityEvidence}
+                      </div>
+                    )}
+                  </div>
+                )}
 
               </div>
             </div>
