@@ -1,4 +1,5 @@
 "use client";
+
 import { useState } from "react";
 import Link from "next/link";
 
@@ -8,21 +9,17 @@ export default function SeguimientoPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
- async function handleSearch() {
+  async function handleSearch() {
     setLoading(true);
     setError("");
     try {
-      // 1. Llamamos a la API
       const res = await fetch(`/api/seguimiento?folio=${folio.trim().toUpperCase()}`);
-      
-      // 2. Obtenemos los datos una sola vez
       const data = await res.json();
       
       if (!res.ok) {
         throw new Error(data.error || "Folio no encontrado");
       }
 
-      // 3. Si todo está bien, guardamos el ticket
       setTicket(data);
     } catch (e: any) {
       setError(e.message || "Error al conectar con el servidor");
@@ -36,7 +33,6 @@ export default function SeguimientoPage() {
     <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center p-6 text-white font-sans">
       <div className="max-w-md w-full">
         
-        {/* PEGA ESTO AQUÍ: Botón de Regreso */}
         <Link href="/buzon" className="inline-flex items-center gap-2 text-slate-500 hover:text-blue-400 transition-colors text-[10px] font-black uppercase tracking-[0.2em] mb-6 group">
            <span className="group-hover:-translate-x-1 transition-transform inline-block">←</span> Volver al Portal
         </Link>
@@ -63,6 +59,7 @@ export default function SeguimientoPage() {
           {error && <p className="text-red-400 text-[10px] mt-4 font-bold uppercase ml-2">{error}</p>}
         </div>
 
+        {/* TARJETA DE RESULTADO: Todo esto debe ir dentro del bloque {ticket && ...} */}
         {ticket && (
           <div className="bg-slate-900 rounded-[2.5rem] border-b-8 border-emerald-500 overflow-hidden animate-in slide-in-from-bottom-4 duration-500 shadow-2xl">
             <div className="p-8 space-y-6">
@@ -72,11 +69,36 @@ export default function SeguimientoPage() {
                     {ticket.status}
                 </span>
               </div>
-              <p className="text-slate-400 text-xs italic">" {ticket.content} "</p>
-              <div className="bg-black/40 p-6 rounded-3xl border border-emerald-500/20">
-                <p className="text-[10px] font-black uppercase text-emerald-500 mb-2">Respuesta Oficial:</p>
-                <p className="text-sm text-slate-200">{ticket.authorityResponse || "Su reporte está en proceso de revisión por el área correspondiente."}</p>
+              
+              <div>
+                <p className="text-[10px] font-black uppercase text-slate-500 mb-2">Tu reporte:</p>
+                <p className="text-slate-200 italic font-serif text-sm">"{ticket.content}"</p>
               </div>
+
+              <div className="bg-black/40 p-6 rounded-3xl border border-emerald-500/20 shadow-inner">
+                <p className="text-[10px] font-black uppercase text-emerald-500 mb-2">Respuesta Oficial:</p>
+                <p className="text-sm text-slate-200 leading-relaxed">
+                    {ticket.authorityResponse || "Su reporte está en proceso de revisión por el área correspondiente. Vuelva pronto."}
+                </p>
+              </div>
+
+              {/* BLOQUE DE SATISFACCIÓN: Solo aparece si hay respuesta y está resuelto */}
+              {ticket.authorityResponse && ticket.status === 'RESUELTO' && (
+                <div className="mt-8 pt-6 border-t border-white/5 text-center animate-in fade-in zoom-in duration-1000 delay-500">
+                  <p className="text-[10px] font-black uppercase text-slate-500 mb-4 tracking-widest">¿Se resolvió tu problema de forma justa?</p>
+                  <div className="flex gap-4">
+                    <button className="flex-1 bg-emerald-500/20 text-emerald-400 py-3 rounded-xl font-bold border border-emerald-500/30 hover:bg-emerald-500 hover:text-black transition-all text-xs">
+                      SÍ, ESTOY SATISFECHO
+                    </button>
+                    <button className="flex-1 bg-red-500/20 text-red-400 py-3 rounded-xl font-bold border border-red-500/30 hover:bg-red-500 hover:text-white transition-all text-xs">
+                      NO, SIGUE IGUAL
+                    </button>
+                  </div>
+                  <p className="text-[9px] text-slate-600 mt-4 italic font-serif">
+                    * Tienes 72 horas para manifestar tu inconformidad antes del cierre automático.
+                  </p>
+                </div>
+              )}
             </div>
           </div>
         )}
@@ -84,15 +106,3 @@ export default function SeguimientoPage() {
     </div>
   );
 }
-
-{/* Solo mostramos los botones si ya hay respuesta de la autoridad */}
-{ticket.authorityResponse && ticket.status === 'RESUELTO' && (
-  <div className="mt-8 pt-6 border-t border-white/5 text-center">
-    <p className="text-[10px] font-black uppercase text-slate-500 mb-4">¿Se resolvió tu problema de forma justa?</p>
-    <div className="flex gap-4">
-       <button className="flex-1 bg-emerald-500/20 text-emerald-400 py-3 rounded-xl font-bold border border-emerald-500/30 hover:bg-emerald-500 hover:text-black transition-all">SÍ, ESTOY SATISFECHO</button>
-       <button className="flex-1 bg-red-500/20 text-red-400 py-3 rounded-xl font-bold border border-red-500/30 hover:bg-red-500 hover:text-white transition-all">NO, SIGUE IGUAL</button>
-    </div>
-    <p className="text-[9px] text-slate-600 mt-4 italic">* Tienes 72 horas para manifestar tu inconformidad.</p>
-  </div>
-)}
