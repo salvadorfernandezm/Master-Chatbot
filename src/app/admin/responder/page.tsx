@@ -9,11 +9,10 @@ function ResponderForm() {
   const folio = searchParams.get("folio");
 
   const [ticket, setTicket] = useState<any>(null);
-  const [respuesta, setRespuesta] = useState("");
   const [loading, setLoading] = useState(false);
   const [status, setStatus] = useState<"IDLE" | "SUCCESS">("IDLE");
 
-  // Buscamos los datos del ticket para que la autoridad sepa qué está contestando
+  // Buscamos los datos del ticket al cargar
   useEffect(() => {
     if (folio) {
       fetch(`/api/seguimiento?folio=${folio}`)
@@ -22,21 +21,34 @@ function ResponderForm() {
     }
   }, [folio]);
 
-  const handleEnviar = async () => {
-    if (!respuesta.trim() || !ticket) return;
+  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
     setLoading(true);
-    const res = await submitAuthorityResponse(ticket.id || folio, respuesta);
-    if (res.success) setStatus("SUCCESS");
+    
+    const formData = new FormData(e.currentTarget);
+    const res = await submitAuthorityResponse(formData);
+    
+    if (res.success) {
+      setStatus("SUCCESS");
+    } else {
+      alert("Hubo un error al guardar la respuesta.");
+    }
     setLoading(false);
-  };
+  }
 
   if (status === "SUCCESS") {
     return (
-      <div className="min-h-screen bg-slate-900 flex items-center justify-center p-6 text-white text-center">
-        <div className="max-w-md bg-slate-800 p-10 rounded-[3rem] shadow-2xl border-b-8 border-emerald-500">
-          <div className="text-6xl mb-6">🏛️</div>
-          <h1 className="text-2xl font-black uppercase mb-4">Respuesta Enviada</h1>
-          <p className="text-slate-400 italic">"La gestión de calidad se fortalece con su atención. El alumno ha sido notificado."</p>
+      <div className="min-h-screen bg-slate-950 flex items-center justify-center p-6 text-white text-center">
+        <div className="max-w-md bg-slate-900 p-10 rounded-[3rem] shadow-2xl border-b-8 border-emerald-500 animate-in zoom-in duration-500">
+          <div className="text-6xl mb-6 text-emerald-500">🏛️</div>
+          <h1 className="text-2xl font-black uppercase mb-4">Resolución Guardada</h1>
+          <p className="text-slate-400 italic">"La respuesta ha sido registrada y el folio se ha marcado como RESUELTO."</p>
+          <button 
+            onClick={() => window.close()} 
+            className="mt-8 bg-emerald-600 hover:bg-emerald-500 px-8 py-3 rounded-2xl font-bold transition-all"
+          >
+            Cerrar Ventana
+          </button>
         </div>
       </div>
     );
@@ -50,46 +62,69 @@ function ResponderForm() {
         </h1>
 
         {ticket ? (
-          <div className="space-y-8">
-            {/* El Reporte Original */}
+          <form onSubmit={handleSubmit} className="space-y-8">
+            {/* ID OCULTO PARA EL SERVIDOR */}
+            <input type="hidden" name="id" value={ticket.id || ""} />
+
+            {/* El Reporte Original del Alumno */}
             <div className="bg-white p-8 rounded-[2.5rem] shadow-xl border border-slate-100">
-              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4">Reporte del Alumno (Folio {folio})</p>
-              <p className="text-slate-700 italic font-serif text-lg">"{ticket.content}"</p>
+              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4">
+                Reporte del Alumno (Folio {folio})
+              </p>
+              <p className="text-slate-700 italic font-serif text-lg leading-relaxed">
+                "{ticket.content}"
+              </p>
             </div>
 
-            {/* Cuadro de Respuesta */}
-            // Dentro de la sección del Cuadro de Respuesta:
-<div className="space-y-4">
-  <label className="text-[10px] font-black text-emerald-600 uppercase tracking-widest ml-2">Escriba la Resolución Oficial</label>
-  <textarea 
-    name="responseText" // Cambiamos a name para usar FormData
-    required
-    rows={6}
-    className="w-full p-6 rounded-[2rem] border-2 border-slate-200 focus:border-emerald-500 outline-none shadow-inner resize-none text-slate-700"
-    placeholder="Describa las acciones tomadas..."
-  />
-  
-  {/* EL CLIP DE EVIDENCIA PARA LA AUTORIDAD */}
-  <div className="bg-slate-100 p-4 rounded-2xl border-2 border-dashed border-slate-300">
-    <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest block mb-2">Adjuntar comprobante (Foto/Video/PDF)</label>
-    <input 
-      type="file" 
-      name="evidence"
-      className="text-xs text-slate-600 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-black file:bg-emerald-500 file:text-white"
-    />
-  </div>
+            {/* Cuadro de Respuesta de la Autoridad */}
+            <div className="space-y-6">
+              <div className="space-y-2">
+                <label className="text-[10px] font-black text-emerald-600 uppercase tracking-widest ml-2">
+                  Escriba la Resolución Oficial
+                </label>
+                <textarea 
+                  name="responseText"
+                  required
+                  rows={6}
+                  placeholder="Explique las acciones tomadas..."
+                  className="w-full p-6 rounded-[2rem] border-2 border-slate-200 focus:border-emerald-500 outline-none shadow-inner resize-none text-slate-700 bg-white"
+                />
+              </div>
 
-  <button 
-    type="submit" // Cambiado a submit para el formulario
-    className="w-full bg-slate-900 text-white font-black py-5 rounded-2xl shadow-xl hover:bg-emerald-600 transition-all uppercase tracking-widest"
-  >
-    Firmar y Resolver Caso
-  </button>
-</div>
+              {/* EL CLIP DE EVIDENCIA */}
+              <div className="bg-slate-100 p-6 rounded-[2rem] border-2 border-dashed border-slate-300">
+                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest block mb-2">
+                  Adjuntar Comprobante de Resolución (Opcional)
+                </label>
+                <input 
+                  type="file" 
+                  name="evidence"
+                  className="text-xs text-slate-600 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-[10px] file:font-black file:bg-emerald-500 file:text-white hover:file:bg-emerald-600 cursor-pointer"
+                />
+              </div>
+
+              <button 
+                type="submit"
+                disabled={loading}
+                className="w-full bg-slate-900 text-white font-black py-5 rounded-2xl shadow-xl hover:bg-emerald-600 transition-all active:scale-95 uppercase tracking-widest disabled:opacity-50"
+              >
+                {loading ? "Registrando..." : "Firmar y Resolver Caso"}
+              </button>
+            </div>
+          </form>
+        ) : (
+          <div className="text-center py-20">
+             <p className="italic text-slate-400 animate-pulse">Localizando expediente...</p>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
 
 export default function ResponderPage() {
   return (
-    <Suspense fallback={<div>Cargando Despacho...</div>}>
+    <Suspense fallback={<div className="min-h-screen bg-slate-950 flex items-center justify-center text-white italic">Cargando Despacho...</div>}>
       <ResponderForm />
     </Suspense>
   );
