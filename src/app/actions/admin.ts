@@ -252,15 +252,17 @@ export async function verifyDirectorPin(enteredPin: string) {
 // --- RESPUESTA DE LA AUTORIDAD (Cerrando el círculo) ---
 export async function submitAuthorityResponse(formData: FormData) {
   const id = formData.get("id") as string;
-  const responseText = formData.get("responseText") as string;
-  const file = formData.get("evidence") as File;
+  const responseText = formData.get("responseText") as string; // Coincide con el textarea
+  const file = formData.get("evidence") as File; // Coincide con el input file
 
-  if (!id || !responseText) return { success: false };
+  if (!id || !responseText) {
+    console.error("❌ Faltan datos: ID o Respuesta vacía");
+    return { success: false };
+  }
 
   let evidenceUrl = null;
   if (file && file.size > 0) {
-    // Por ahora guardamos el nombre, en el futuro configuraremos el almacenamiento real
-    evidenceUrl = `Evidencia oficial: ${file.name}`;
+    evidenceUrl = `Evidencia: ${file.name}`;
   }
 
   try {
@@ -268,7 +270,7 @@ export async function submitAuthorityResponse(formData: FormData) {
       where: { id },
       data: {
         authorityResponse: responseText,
-        authorityEvidence: evidenceUrl, // Asegúrate de tener este campo en el schema
+        authorityEvidence: evidenceUrl,
         status: "RESUELTO",
         updatedAt: new Date(),
       },
@@ -279,7 +281,7 @@ export async function submitAuthorityResponse(formData: FormData) {
     revalidatePath("/seguimiento");
     return { success: true };
   } catch (error) {
-    console.error("Error al guardar respuesta:", error);
+    console.error("❌ Error en base de datos:", error);
     return { success: false };
   }
 }

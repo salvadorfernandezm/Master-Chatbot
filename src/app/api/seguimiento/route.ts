@@ -10,6 +10,7 @@ export async function GET(req: Request) {
   const ticket = await prisma.ticket.findUnique({
     where: { folio: folio.toUpperCase() },
     select: {
+      id: true, // <--- ¡ESTA ES LA PIEZA CLAVE!
       content: true,
       status: true,
       authorityResponse: true,
@@ -17,7 +18,7 @@ export async function GET(req: Request) {
     }
   });
 
-  if (!ticket) return NextResponse.json({ error: "No se encontró ningún reporte con ese folio" }, { status: 404 });
+  if (!ticket) return NextResponse.json({ error: "No se encontró ningún reporte" }, { status: 404 });
 
   return NextResponse.json(ticket);
 }
