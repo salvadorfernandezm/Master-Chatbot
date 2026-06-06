@@ -84,3 +84,15 @@ export default function SeguimientoPage() {
     </div>
   );
 }
+
+{/* Solo mostramos los botones si ya hay respuesta de la autoridad */}
+{ticket.authorityResponse && ticket.status === 'RESUELTO' && (
+  <div className="mt-8 pt-6 border-t border-white/5 text-center">
+    <p className="text-[10px] font-black uppercase text-slate-500 mb-4">¿Se resolvió tu problema de forma justa?</p>
+    <div className="flex gap-4">
+       <button className="flex-1 bg-emerald-500/20 text-emerald-400 py-3 rounded-xl font-bold border border-emerald-500/30 hover:bg-emerald-500 hover:text-black transition-all">SÍ, ESTOY SATISFECHO</button>
+       <button className="flex-1 bg-red-500/20 text-red-400 py-3 rounded-xl font-bold border border-red-500/30 hover:bg-red-500 hover:text-white transition-all">NO, SIGUE IGUAL</button>
+    </div>
+    <p className="text-[9px] text-slate-600 mt-4 italic">* Tienes 72 horas para manifestar tu inconformidad.</p>
+  </div>
+)}

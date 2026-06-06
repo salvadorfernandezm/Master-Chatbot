@@ -68,7 +68,7 @@ export async function createTicket(formData: FormData) {
     const linkDeRespuesta = `${process.env.NEXTAUTH_URL}/admin/responder?folio=${folio}`;
 
     await resend.emails.send({
-      from: 'Buzon Etico <onboarding@resend.dev>', // Luego podemos poner tu dominio
+      from: 'Buzón Ético <onboarding@resend.dev>', // Luego podemos poner tu dominio
       to: [emailDestino as string],
       subject: `Nuevo Reporte Ético: ${folio}`,
       html: `
@@ -247,4 +247,28 @@ export async function importFullBackup(data: any): Promise<{ success: boolean; e
 export async function verifyDirectorPin(enteredPin: string) {
   // Comparamos lo que escribió la Dire con la variable secreta de Vercel
   return enteredPin === process.env.DIRECTOR_PIN;
+}
+
+// --- RESPUESTA DE LA AUTORIDAD (Cerrando el círculo) ---
+export async function submitAuthorityResponse(id: string, responseText: string) {
+  try {
+    await prisma.ticket.update({
+      where: { id },
+      data: {
+        authorityResponse: responseText,
+        status: "RESUELTO", // Cambiamos el estatus automáticamente
+        updatedAt: new Date(),
+      },
+    });
+
+    // Opcional: Aquí podríamos enviar un correo al alumno avisándole que ya tiene respuesta
+    
+    revalidatePath("/admin/buzon");
+    revalidatePath("/admin/directora");
+    revalidatePath("/seguimiento");
+    return { success: true };
+  } catch (error) {
+    console.error("Error al guardar respuesta:", error);
+    return { success: false };
+  }
 }
