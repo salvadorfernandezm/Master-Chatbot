@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { verifyDirectorPin, updateTicketStatus } from "@/app/actions/admin";
 
 export default function DirectorPanelPage() {
   const [pin, setPin] = useState("");
@@ -10,20 +9,21 @@ export default function DirectorPanelPage() {
   const [loading, setLoading] = useState(false);
 
   const checkPin = async () => {
-    setLoading(true);
-    // Le preguntamos al servidor si el PIN es correcto
-    const isValid = await verifyDirectorPin(pin);
-    
-    if (isValid) {
+    if (pin === "2101") { // Tu PIN de seguridad
       setIsAuthorized(true);
-      const res = await fetch('/api/buzon/directora');
-      const data = await res.json();
-      setTickets(data);
+      setLoading(true);
+      try {
+        const res = await fetch('/api/buzon/directora');
+        const data = await res.json();
+        setTickets(data);
+      } catch (e) {
+        console.error(e);
+      }
+      setLoading(false);
     } else {
       alert("PIN de acceso incorrecto.");
       setPin("");
     }
-    setLoading(false);
   };
 
   if (!isAuthorized) {
@@ -63,24 +63,51 @@ export default function DirectorPanelPage() {
           <p className="text-center italic animate-pulse">Consultando expedientes...</p>
         ) : (
           <div className="space-y-6">
-            <h2 className="text-lg font-bold text-slate-800 uppercase tracking-tight ml-2">Expedientes Recibidos</h2>
+            <h2 className="text-lg font-bold text-slate-800 uppercase tracking-tight ml-2">Expedientes de Voces Ciudadanas</h2>
             {tickets.map((t) => (
-              <div key={t.id} className="bg-white rounded-[2.5rem] p-8 border border-slate-100 shadow-xl relative overflow-hidden">
+              <div key={t.id} className="bg-white rounded-[3rem] p-8 border border-slate-100 shadow-xl relative overflow-hidden transition-all hover:shadow-2xl">
                 <div className={`absolute top-0 left-0 w-2 h-full ${t.type === 'GRAVE' ? 'bg-red-500' : 'bg-blue-500'}`}></div>
+                
                 <div className="flex justify-between items-start">
                    <div className="flex-1">
                       <div className="flex items-center gap-3 mb-4">
-                        <span className="bg-slate-100 text-slate-600 px-3 py-1 rounded-full text-[10px] font-black">{t.type}</span>
-                        <span className="text-[10px] text-slate-400 font-bold tracking-widest">FOLIO: {t.folio}</span>
+                        <span className="bg-slate-100 text-slate-600 px-3 py-1 rounded-full text-[10px] font-black uppercase">{t.type}</span>
+                        <span className="text-[10px] text-slate-400 font-bold tracking-widest uppercase">FOLIO: {t.folio}</span>
                       </div>
+                      
+                      {/* Mensaje original del alumno */}
                       <p className="text-slate-700 italic font-serif text-lg leading-relaxed">"{t.content}"</p>
+
+                      {/* RESPUESTA DE LA AUTORIDAD (Añadido) */}
+                      {t.authorityResponse && (
+                        <div className="mt-6 p-6 bg-slate-50 rounded-[2rem] border border-slate-200">
+                          <div className="flex justify-between items-center mb-3">
+                              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Respuesta del Funcionario:</p>
+                              <span className={`px-3 py-1 rounded-full text-[9px] font-black uppercase ${t.studentResolved ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>
+                                  {t.studentResolved ? "✅ ALUMNO SATISFECHO" : "⏳ EN ESPERA DE VALIDACIÓN"}
+                              </span>
+                          </div>
+                          <p className="text-sm text-slate-600 italic leading-relaxed">"{t.authorityResponse}"</p>
+                          {t.authorityEvidence && (
+                             <p className="text-[10px] text-blue-500 mt-3 font-bold uppercase flex items-center gap-1">
+                                <span>📎</span> {t.authorityEvidence}
+                             </p>
+                          )}
+                        </div>
+                      )}
                    </div>
-                   <div className={`ml-6 px-4 py-1.5 rounded-full text-[10px] font-black uppercase ${t.status === 'RESUELTO' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>
-                      {t.status}
+
+                   <div className="text-right ml-4">
+                      <div className={`px-4 py-1.5 rounded-full text-[10px] font-black uppercase ${t.status === 'RESUELTO' ? 'bg-emerald-500 text-white' : 'bg-amber-500 text-white'}`}>
+                        {t.status}
+                      </div>
                    </div>
                 </div>
               </div>
             ))}
+            {tickets.length === 0 && (
+                <p className="text-center py-20 text-slate-400 italic">No hay reportes ciudadanos en este momento.</p>
+            )}
           </div>
         )}
       </div>

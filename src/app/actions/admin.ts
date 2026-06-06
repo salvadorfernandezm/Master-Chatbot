@@ -285,3 +285,21 @@ export async function submitAuthorityResponse(formData: FormData) {
     return { success: false };
   }
 }
+
+// --- VOTO DE SATISFACCIÓN DEL ALUMNO ---
+export async function setStudentSatisfaction(id: string, satisfied: boolean) {
+  try {
+    await prisma.ticket.update({
+      where: { id },
+      data: { studentResolved: satisfied }
+    });
+    
+    revalidatePath("/seguimiento");
+    revalidatePath("/admin/buzon");
+    revalidatePath("/admin/directora");
+    return { success: true };
+  } catch (error) {
+    console.error("Error al guardar satisfacción:", error);
+    return { success: false };
+  }
+}

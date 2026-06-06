@@ -2,52 +2,55 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { setStudentSatisfaction } from "@/app/actions/admin";
 
 export default function SeguimientoPage() {
   const [folio, setFolio] = useState("");
   const [ticket, setTicket] = useState<any>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [voted, setVoted] = useState(false);
 
   async function handleSearch() {
     setLoading(true);
     setError("");
+    setVoted(false);
     try {
       const res = await fetch(`/api/seguimiento?folio=${folio.trim().toUpperCase()}`);
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Folio no encontrado");
       setTicket(data);
     } catch (e: any) {
-      setError(e.message || "Error al conectar con el servidor");
+      setError(e.message || "Error de conexión");
       setTicket(null);
     } finally {
       setLoading(false);
     }
   }
 
+  async function handleVote(satisfied: boolean) {
+    if (!ticket) return;
+    const res = await setStudentSatisfaction(ticket.id, satisfied);
+    if (res.success) {
+      setVoted(true);
+      // Actualizamos el estado local para que el alumno vea el cambio
+      setTicket({...ticket, studentResolved: satisfied});
+    }
+  }
+
   return (
     <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center p-6 text-white font-sans">
       <div className="max-w-md w-full">
-        
         <Link href="/buzon" className="inline-flex items-center gap-2 text-slate-500 hover:text-blue-400 transition-colors text-[10px] font-black uppercase tracking-[0.2em] mb-6 group">
            <span className="group-hover:-translate-x-1 transition-transform inline-block">←</span> Volver al Portal
         </Link>
-
         <h1 className="text-2xl font-black uppercase text-center mb-8 tracking-widest text-emerald-500">Seguimiento Ético</h1>
         
         <div className="bg-slate-900 p-8 rounded-[2.5rem] border border-white/10 shadow-2xl mb-6">
           <label className="text-[10px] font-black uppercase text-slate-500 tracking-widest block mb-4 ml-2">Folio Secreto</label>
           <div className="flex gap-2">
-            <input 
-              value={folio}
-              onChange={(e) => setFolio(e.target.value)}
-              placeholder="Ej: ETH-XXXX"
-              className="flex-1 bg-black border-2 border-slate-800 p-4 rounded-2xl focus:border-emerald-500 outline-none text-xl font-black uppercase"
-            />
-            <button 
-              onClick={handleSearch}
-              className="bg-emerald-600 hover:bg-emerald-500 px-6 rounded-2xl font-bold"
-            >🔎</button>
+            <input value={folio} onChange={(e) => setFolio(e.target.value)} placeholder="Ej: ETH-XXXX" className="flex-1 bg-black border-2 border-slate-800 p-4 rounded-2xl focus:border-emerald-500 outline-none text-xl font-black uppercase" />
+            <button onClick={handleSearch} className="bg-emerald-600 hover:bg-emerald-500 px-6 rounded-2xl font-bold">🔎</button>
           </div>
           {error && <p className="text-red-400 text-[10px] mt-4 font-bold uppercase ml-2">{error}</p>}
         </div>
@@ -63,7 +66,7 @@ export default function SeguimientoPage() {
               </div>
               
               <div className="bg-black/20 p-4 rounded-2xl border border-white/5">
-                <p className="text-[10px] font-black uppercase text-slate-500 mb-2">Tu reporte:</p>
+                <p className="text-[10px] font-black text-slate-500 mb-2">Tu reporte:</p>
                 <p className="text-slate-300 italic text-sm">"{ticket.content}"</p>
               </div>
 
@@ -72,18 +75,25 @@ export default function SeguimientoPage() {
                 <p className="text-sm text-white leading-relaxed">
                     {ticket.authorityResponse || "Pendiente de revisión."}
                 </p>
-
-                {/* AQUÍ SE MUESTRA EL CLIP DE LA AUTORIDAD */}
-                {ticket.authorityEvidence && (
-                  <div className="mt-4 p-3 bg-white/5 rounded-xl border border-white/10 flex items-center gap-3">
-                    <span className="text-lg">📎</span>
-                    <div>
-                      <p className="text-[8px] font-black text-slate-500 uppercase">Documento de Resolución</p>
-                      <p className="text-[11px] text-emerald-400 font-bold">{ticket.authorityEvidence}</p>
-                    </div>
-                  </div>
-                )}
               </div>
+
+              {ticket.status === 'RESUELTO' && (
+                <div className="mt-8 pt-6 border-t border-white/5 text-center">
+                  {voted || ticket.studentResolved !== false ? (
+                    <div className="p-4 bg-white/5 rounded-2xl border border-white/10 text-emerald-400 font-bold text-sm uppercase">
+                        ¡Gracias por validar la respuesta!
+                    </div>
+                  ) : (
+                    <>
+                      <p className="text-[10px] font-black uppercase text-slate-500 mb-4">¿Se resolvió tu problema de forma justa?</p>
+                      <div className="flex gap-4">
+                        <button onClick={() => handleVote(true)} className="flex-1 bg-emerald-500/20 text-emerald-400 py-3 rounded-xl font-bold border border-emerald-500/30 hover:bg-emerald-500 hover:text-black">SÍ</button>
+                        <button onClick={() => handleVote(false)} className="flex-1 bg-red-500/20 text-red-400 py-3 rounded-xl font-bold border border-red-500/30 hover:bg-red-500 hover:text-white">NO</button>
+                      </div>
+                    </>
+                  )}
+                </div>
+              )}
             </div>
           </div>
         )}

@@ -63,7 +63,25 @@ export default async function AdminBuzonPage() {
                     <span className="absolute -top-4 -left-2 text-6xl text-slate-200 pointer-events-none opacity-50">“</span>
                     {ticket.content}
                   </div>
-                </div>
+                </div
+
+{/* RESPUESTA DE LA AUTORIDAD (Añadir esto en los dos paneles) */}
+{ticket.authorityResponse && (
+  <div className="mt-6 p-6 bg-slate-50 rounded-3xl border border-slate-200">
+    <div className="flex justify-between items-center mb-3">
+        <p className="text-[10px] font-black text-slate-400 uppercase">Respuesta dada por el funcionario:</p>
+        {/* Aquí mostramos si el alumno está satisfecho */}
+        <span className={`px-3 py-1 rounded-full text-[9px] font-black uppercase ${ticket.studentResolved ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-500'}`}>
+            {ticket.studentResolved ? "✅ ALUMNO SATISFECHO" : "⏳ ESPERANDO VALIDACIÓN"}
+        </span>
+    </div>
+    <p className="text-sm text-slate-600 italic leading-relaxed">"{ticket.authorityResponse}"</p>
+    
+    {ticket.authorityEvidence && (
+      <p className="text-[10px] text-blue-500 mt-2 font-bold uppercase">📎 {ticket.authorityEvidence}</p>
+    )}
+  </div>
+)}
 
                 <div className="w-full md:w-56 space-y-6 border-l-2 border-slate-50 pl-0 md:pl-10">
                   <div className="text-center md:text-left">
