@@ -89,13 +89,14 @@ export default function DirectorPanelPage() {
                           </div>
                           <p className="text-sm text-slate-600 italic leading-relaxed">"{t.authorityResponse}"</p>
                           {t.authorityEvidence && (
-                             <p className="text-[10px] text-blue-500 mt-3 font-bold uppercase flex items-center gap-1">
-                                <span>📎</span> {t.authorityEvidence}
-                             </p>
-                          )}
-                        </div>
-                      )}
-                   </div>
+  <div className="mt-3 p-3 bg-slate-100 rounded-xl border border-slate-200 flex items-center gap-2">
+    <span className="text-lg">📎</span>
+    <div className="flex-1">
+      <p className="text-[8px] font-black text-slate-500 uppercase">Archivo Adjunto</p>
+      <p className="text-[11px] text-slate-700 font-bold">{t.authorityEvidence}</p>
+    </div>
+  </div>
+)}
 
                    <div className="text-right ml-4">
                       <div className={`px-4 py-1.5 rounded-full text-[10px] font-black uppercase ${t.status === 'RESUELTO' ? 'bg-emerald-500 text-white' : 'bg-amber-500 text-white'}`}>

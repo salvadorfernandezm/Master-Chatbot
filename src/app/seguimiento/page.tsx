@@ -87,6 +87,20 @@ export default function SeguimientoPage() {
                 </p>
               </div>
 
+{/* EVIDENCIA DE LA AUTORIDAD */}
+{ticket.authorityEvidence && (
+  <div className="mt-4 p-4 bg-white/5 border border-dashed border-emerald-500/30 rounded-2xl flex items-center gap-3">
+    <div className="h-10 w-10 bg-emerald-500/20 rounded-xl flex items-center justify-center text-xl">
+      📎
+    </div>
+    <div className="flex-1">
+      <p className="text-[9px] font-black text-emerald-500 uppercase tracking-widest">Evidencia de Resolución</p>
+      <p className="text-xs text-slate-200 font-bold">{ticket.authorityEvidence}</p>
+    </div>
+    {/* Nota: Aquí el alumno ve el nombre del archivo. Cuando activemos Storage, será un link de descarga */}
+  </div>
+)}
+
               {/* BOTONES DE VALIDACIÓN: Solo aparecen si el estatus es RESUELTO y no se ha votado */}
               {ticket.status === 'RESUELTO' && (
                 <div className="mt-8 pt-6 border-t border-white/5 text-center">
