@@ -17,7 +17,7 @@ export default function DirectorPanelPage() {
         const data = await res.json();
         setTickets(data);
       } catch (e) {
-        console.error(e);
+        console.error("Error al cargar datos:", e);
       }
       setLoading(false);
     } else {
@@ -60,7 +60,7 @@ export default function DirectorPanelPage() {
 
       <div className="max-w-6xl mx-auto p-8">
         {loading ? (
-          <p className="text-center italic animate-pulse">Consultando expedientes...</p>
+          <p className="text-center italic animate-pulse text-slate-500">Consultando expedientes...</p>
         ) : (
           <div className="space-y-6">
             <h2 className="text-lg font-bold text-slate-800 uppercase tracking-tight ml-2">Expedientes de Voces Ciudadanas</h2>
@@ -75,10 +75,8 @@ export default function DirectorPanelPage() {
                         <span className="text-[10px] text-slate-400 font-bold tracking-widest uppercase">FOLIO: {t.folio}</span>
                       </div>
                       
-                      {/* Mensaje original del alumno */}
                       <p className="text-slate-700 italic font-serif text-lg leading-relaxed">"{t.content}"</p>
 
-                      {/* RESPUESTA DE LA AUTORIDAD (Añadido) */}
                       {t.authorityResponse && (
                         <div className="mt-6 p-6 bg-slate-50 rounded-[2rem] border border-slate-200">
                           <div className="flex justify-between items-center mb-3">
@@ -88,15 +86,20 @@ export default function DirectorPanelPage() {
                               </span>
                           </div>
                           <p className="text-sm text-slate-600 italic leading-relaxed">"{t.authorityResponse}"</p>
+                          
+                          {/* DISEÑO ELEGANTE DEL CLIP DE EVIDENCIA */}
                           {t.authorityEvidence && (
-  <div className="mt-3 p-3 bg-slate-100 rounded-xl border border-slate-200 flex items-center gap-2">
-    <span className="text-lg">📎</span>
-    <div className="flex-1">
-      <p className="text-[8px] font-black text-slate-500 uppercase">Archivo Adjunto</p>
-      <p className="text-[11px] text-slate-700 font-bold">{t.authorityEvidence}</p>
-    </div>
-  </div>
-)}
+                            <div className="mt-3 p-3 bg-white rounded-xl border border-slate-200 flex items-center gap-2 w-fit">
+                              <span className="text-lg">📎</span>
+                              <div className="flex-1">
+                                <p className="text-[8px] font-black text-slate-500 uppercase">Archivo Adjunto</p>
+                                <p className="text-[11px] text-slate-700 font-bold">{t.authorityEvidence}</p>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                   </div>
 
                    <div className="text-right ml-4">
                       <div className={`px-4 py-1.5 rounded-full text-[10px] font-black uppercase ${t.status === 'RESUELTO' ? 'bg-emerald-500 text-white' : 'bg-amber-500 text-white'}`}>
