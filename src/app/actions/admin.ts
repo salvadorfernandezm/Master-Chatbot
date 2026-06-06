@@ -250,19 +250,30 @@ export async function verifyDirectorPin(enteredPin: string) {
 }
 
 // --- RESPUESTA DE LA AUTORIDAD (Cerrando el círculo) ---
-export async function submitAuthorityResponse(id: string, responseText: string) {
+export async function submitAuthorityResponse(formData: FormData) {
+  const id = formData.get("id") as string;
+  const responseText = formData.get("responseText") as string;
+  const file = formData.get("evidence") as File;
+
+  if (!id || !responseText) return { success: false };
+
+  let evidenceUrl = null;
+  if (file && file.size > 0) {
+    // Por ahora guardamos el nombre, en el futuro configuraremos el almacenamiento real
+    evidenceUrl = `Evidencia oficial: ${file.name}`;
+  }
+
   try {
     await prisma.ticket.update({
       where: { id },
       data: {
         authorityResponse: responseText,
-        status: "RESUELTO", // Cambiamos el estatus automáticamente
+        authorityEvidence: evidenceUrl, // Asegúrate de tener este campo en el schema
+        status: "RESUELTO",
         updatedAt: new Date(),
       },
     });
 
-    // Opcional: Aquí podríamos enviar un correo al alumno avisándole que ya tiene respuesta
-    
     revalidatePath("/admin/buzon");
     revalidatePath("/admin/directora");
     revalidatePath("/seguimiento");

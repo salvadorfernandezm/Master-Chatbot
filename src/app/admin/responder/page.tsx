@@ -58,31 +58,34 @@ function ResponderForm() {
             </div>
 
             {/* Cuadro de Respuesta */}
-            <div className="space-y-4">
-              <label className="text-[10px] font-black text-emerald-600 uppercase tracking-widest ml-2">Escriba la Resolución Oficial</label>
-              <textarea 
-                value={respuesta}
-                onChange={(e) => setRespuesta(e.target.value)}
-                rows={6}
-                placeholder="Describa las acciones tomadas para resolver este caso..."
-                className="w-full p-6 rounded-[2rem] border-2 border-slate-200 focus:border-emerald-500 outline-none shadow-inner resize-none text-slate-700"
-              />
-              <button 
-                onClick={handleEnviar}
-                disabled={loading || !respuesta.trim()}
-                className="w-full bg-slate-900 text-white font-black py-5 rounded-2xl shadow-xl hover:bg-emerald-600 transition-all active:scale-95 uppercase tracking-widest disabled:opacity-50"
-              >
-                {loading ? "Procesando..." : "Firmar y Resolver Caso"}
-              </button>
-            </div>
-          </div>
-        ) : (
-          <p className="text-center italic text-slate-400 animate-pulse">Localizando expediente del folio...</p>
-        )}
-      </div>
-    </div>
-  );
-}
+            // Dentro de la sección del Cuadro de Respuesta:
+<div className="space-y-4">
+  <label className="text-[10px] font-black text-emerald-600 uppercase tracking-widest ml-2">Escriba la Resolución Oficial</label>
+  <textarea 
+    name="responseText" // Cambiamos a name para usar FormData
+    required
+    rows={6}
+    className="w-full p-6 rounded-[2rem] border-2 border-slate-200 focus:border-emerald-500 outline-none shadow-inner resize-none text-slate-700"
+    placeholder="Describa las acciones tomadas..."
+  />
+  
+  {/* EL CLIP DE EVIDENCIA PARA LA AUTORIDAD */}
+  <div className="bg-slate-100 p-4 rounded-2xl border-2 border-dashed border-slate-300">
+    <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest block mb-2">Adjuntar comprobante (Foto/Video/PDF)</label>
+    <input 
+      type="file" 
+      name="evidence"
+      className="text-xs text-slate-600 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-black file:bg-emerald-500 file:text-white"
+    />
+  </div>
+
+  <button 
+    type="submit" // Cambiado a submit para el formulario
+    className="w-full bg-slate-900 text-white font-black py-5 rounded-2xl shadow-xl hover:bg-emerald-600 transition-all uppercase tracking-widest"
+  >
+    Firmar y Resolver Caso
+  </button>
+</div>
 
 export default function ResponderPage() {
   return (

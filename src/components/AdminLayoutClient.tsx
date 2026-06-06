@@ -18,7 +18,8 @@ export default function AdminLayoutClient({ children, orgName, orgLogo }: AdminL
   const pathname = usePathname();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
-  const isDirectorPanel = pathname === "/admin/directora";
+  // SENSOR DE PANELES SIN BARRA LATERAL (Directora y Respuesta)
+  const isStandalonePanel = pathname === "/admin/directora" || pathname === "/admin/responder";
 
   useEffect(() => {
     if (status === "unauthenticated") {
@@ -31,13 +32,13 @@ export default function AdminLayoutClient({ children, orgName, orgLogo }: AdminL
   }, [pathname]);
 
   if (status === "loading") {
-    return <div className="h-screen flex items-center justify-center bg-slate-900 text-white font-semibold italic animate-pulse">Cargando Maestro...</div>;
+    return <div className="h-screen flex items-center justify-center bg-slate-900 text-white font-semibold italic animate-pulse">Cargando Sistema...</div>;
   }
 
   if (!session) return null;
 
-  // SI ES EL PANEL DE LA DIRECTORA, NO HAY BARRA LATERAL
-  if (isDirectorPanel) {
+  // SI ES PANEL DE DIRECTORA O RESPUESTA, SOLO MUESTRA EL CONTENIDO
+  if (isStandalonePanel) {
     return (
       <main className="min-h-screen bg-slate-50 overflow-y-auto">
         {children}
@@ -56,8 +57,7 @@ export default function AdminLayoutClient({ children, orgName, orgLogo }: AdminL
   ];
 
   return (
-    <div className="flex h-screen bg-slate-50 overflow-hidden">
-      {/* Sidebar normal para ti */}
+    <div className="flex h-screen bg-slate-50 overflow-hidden font-sans">
       <aside className={`fixed inset-y-0 left-0 z-50 w-64 bg-slate-900 text-slate-300 shadow-2xl flex flex-col transform transition-transform duration-300 md:relative md:translate-x-0 ${isSidebarOpen ? "translate-x-0" : "-translate-x-full"}`}>
         <div className="p-6 border-b border-slate-700/50 flex items-center justify-between">
           <div className="flex items-center gap-3">

@@ -114,6 +114,7 @@ model Ticket {
   
   // Gestión de la autoridad y satisfacción del alumno
   authorityResponse String?  @db.Text
+authorityEvidence String?  @db.Text 
   studentResolved   Boolean  @default(false)
   
   createdAt         DateTime @default(now())
