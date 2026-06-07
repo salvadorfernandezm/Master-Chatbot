@@ -99,6 +99,7 @@ function ResponderForm() {
                 <input 
                   type="file" 
                   name="evidence"
+multiple
                   className="text-xs text-slate-600 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-[10px] file:font-black file:bg-emerald-500 file:text-white hover:file:bg-emerald-600 cursor-pointer"
                 />
               </div>

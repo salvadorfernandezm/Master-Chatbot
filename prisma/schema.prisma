@@ -86,6 +86,16 @@ model Chatbot {
   createdAt          DateTime @default(now())
   updatedAt          DateTime @updatedAt
 
+model Attachment {
+  id        String   @id @default(cuid())
+  url       String   // Link de Supabase Storage
+  name      String   // Nombre del archivo (ej: foto1.jpg)
+  type      String   // STUDENT o AUTHORITY (quién lo subió)
+  ticketId  String
+  ticket    Ticket   @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+}
+
   // RELACIONES
   group         Group         @relation(fields: [groupId], references: [id])
   knowledgeBase KnowledgeBase @relation(fields: [knowledgeBaseId], references: [id])
@@ -119,4 +129,5 @@ authorityEvidence String?  @db.Text
   
   createdAt         DateTime @default(now())
   updatedAt         DateTime @updatedAt
+ attachments Attachment[]
 }

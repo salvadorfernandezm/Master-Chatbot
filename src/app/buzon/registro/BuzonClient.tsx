@@ -97,7 +97,7 @@ function BuzonForm({ reglamento }: { reglamento: string }) {
               <p className="text-[11px] text-slate-300 mt-1">Al recibir respuesta de la autoridad, tendrás 72 horas para validar la solución o el caso se cerrará automáticamente.</p>
             </div>
             
-            <input name="evidence" type="file" className="w-full text-xs text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:bg-emerald-500 file:text-black font-bold cursor-pointer" />
+            <input name="evidence" type="file" multiple className="w-full text-xs text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:bg-emerald-500 file:text-black font-bold cursor-pointer" />
           </div>
           <button type="submit" disabled={status === "SENDING"} className="w-full bg-emerald-500 hover:bg-white text-black font-black py-5 rounded-[2rem] shadow-2xl transition-all uppercase tracking-widest disabled:opacity-50">
             {status === "SENDING" ? "Registrando..." : "Enviar Reporte y Ver Folio"}
