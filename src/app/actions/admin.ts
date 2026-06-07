@@ -249,7 +249,6 @@ export async function verifyDirectorPin(enteredPin: string) {
   return enteredPin === process.env.DIRECTOR_PIN;
 }
 
-// --- RESPUESTA DE LA AUTORIDAD (Cerrando el círculo) ---
 // --- RESPUESTA DE LA AUTORIDAD CON SUBIDA DE ARCHIVO REAL ---
 export async function submitAuthorityResponse(formData: FormData) {
   const id = formData.get("id") as string;
@@ -260,7 +259,6 @@ export async function submitAuthorityResponse(formData: FormData) {
 
   let publicUrl = null;
 
-  // 1. SI HAY UN ARCHIVO, LO SUBIMOS A LA BODEGA
   if (file && file.size > 0) {
     try {
       const { createClient } = await import('@supabase/supabase-js');
@@ -269,39 +267,57 @@ export async function submitAuthorityResponse(formData: FormData) {
         process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
       );
 
-      const fileName = `${id}-${Date.now()}-${file.name}`;
+      // Limpiamos el nombre del archivo de caracteres raros
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${id}-${Date.now()}.${fileExt}`;
+
       const { data, error } = await supabase.storage
-        .from('evidencias')
+        .from('evidencias') // Asegúrate que el bucket se llame así y sea PÚBLICO
         .upload(fileName, file);
 
       if (error) throw error;
 
-      // Obtenemos la dirección pública para que el alumno la vea
+      // Generamos la URL pública definitiva
       const { data: { publicUrl: url } } = supabase.storage
         .from('evidencias')
         .getPublicUrl(fileName);
       
       publicUrl = url;
+      console.log("✅ Evidencia subida con éxito:", publicUrl);
     } catch (e) {
-      console.error("Fallo al subir evidencia:", e);
+      console.error("❌ Error subiendo evidencia:", e);
     }
   }
 
   try {
-    await prisma.ticket.update({
+    const updatedTicket = await prisma.ticket.update({
       where: { id },
       data: {
         authorityResponse: responseText,
-        authorityEvidence: publicUrl, // Ahora guardamos el LINK real, no solo el nombre
+        authorityEvidence: publicUrl, // Aquí guardamos el link completo
         status: "RESUELTO",
         updatedAt: new Date(),
       },
     });
 
+    // --- NUEVO: ENVIAR CORREO AUTOMÁTICO AL ALUMNO SI DEJÓ SU MAIL ---
+    if (updatedTicket.studentEmail) {
+      const resend = new (await import('resend')).Resend(process.env.RESEND_API_KEY);
+      await resend.emails.send({
+        from: 'Buzon Etico <onboarding@resend.dev>',
+        to: [updatedTicket.studentEmail],
+        subject: `Respuesta a tu reporte: ${updatedTicket.folio}`,
+        html: `<p>Hola, la autoridad ha respondido a tu reporte con folio <strong>${updatedTicket.folio}</strong>. Puedes ver la respuesta y las evidencias aquí: <a href="https://master-chatbot-rho.vercel.app/seguimiento">Consultar Folio</a></p>`
+      });
+    }
+
     revalidatePath("/admin/buzon");
+    revalidatePath("/admin/directora");
     revalidatePath("/seguimiento");
+    revalidatePath("/buzon"); // Para la pizarra de novedades
     return { success: true };
   } catch (error) {
+    console.error("❌ Error en DB:", error);
     return { success: false };
   }
 }

@@ -2,8 +2,15 @@
 
 import Link from "next/link";
 
-export default function BuzonHubPage() {
-  const actions = [
+export default async function BuzonHubPage() {
+  // Traemos los últimos 3 tickets resueltos
+  const latestResolved = await prisma.ticket.findMany({
+    where: { status: "RESUELTO" },
+    orderBy: { updatedAt: 'desc' },
+    take: 3
+  });
+  
+const actions = [
     {
       title: "Enviar Sugerencia o Reporte",
       desc: "Tu voz es el motor del cambio. Reporta de forma segura y anónima.",
@@ -48,6 +55,27 @@ export default function BuzonHubPage() {
           <p className="text-slate-400 italic text-lg max-w-2xl mx-auto leading-relaxed">
             "Donde los que no tenían vez, hoy son escuchados. Un compromiso con la excelencia de nuestra Facultad."
           </p>
+ {latestResolved.length > 0 && (
+    <div className="mt-8 w-full max-w-2xl animate-in fade-in slide-in-from-bottom-2 duration-1000">
+      <p className="text-[10px] font-black text-emerald-500 uppercase tracking-[0.3em] mb-4 text-center">
+        🔔 Actividad Reciente
+      </p>
+      <div className="space-y-2">
+        {latestResolved.map((t) => (
+          <div key={t.id} className="bg-emerald-500/5 border border-emerald-500/20 p-3 rounded-2xl flex justify-between items-center shadow-sm">
+            <div className="flex items-center gap-3">
+              <span className="text-lg">✅</span>
+              <span className="text-xs font-bold text-slate-300">Folio: {t.folio}</span>
+            </div>
+            <span className="text-[9px] font-black bg-emerald-500 text-black px-2 py-0.5 rounded-full uppercase">
+              Resuelto - ¡Verifica!
+            </span>
+          </div>
+        ))}
+      </div>
+    </div>
+  )}
+
           <div className="h-1 w-32 bg-emerald-500 mx-auto mt-6 rounded-full shadow-[0_0_15px_rgba(16,185,129,0.5)]"></div>
         </header>
 
