@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, Suspense } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { createTicket } from "@/app/actions/admin";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
@@ -10,10 +10,9 @@ import { useSearchParams } from "next/navigation";
 function BuzonForm({ reglamento }: { reglamento: string }) {
   const searchParams = useSearchParams();
   const isTechnical = searchParams.get("type") === "SOPORTE_TECNICO";
-
   const [status, setStatus] = useState<"IDLE" | "SUCCESS" | "ERROR" | "SENDING">("IDLE");
   const [folio, setFolio] = useState("");
-  const [accepted, setAccepted] = useState(isTechnical); 
+  const [accepted, setAccepted] = useState(isTechnical);
 
   async function handleSubmit(formData: FormData) {
     setStatus("SENDING");
@@ -27,36 +26,22 @@ function BuzonForm({ reglamento }: { reglamento: string }) {
   }
 
   if (status === "SUCCESS") {
-  return (
-    <div className="min-h-screen bg-slate-950 flex items-center justify-center p-6 text-white text-center font-sans">
-      <div className="max-w-md w-full bg-slate-900 p-10 rounded-[3rem] shadow-2xl border-b-8 border-emerald-500 animate-in zoom-in duration-500">
-        <div className="text-6xl mb-6 text-emerald-500">✓</div>
-        <h1 className="text-2xl font-black uppercase mb-4 tracking-tighter">
-          {isTechnical ? "Reporte de Fallo Enviado" : "Voz Registrada"}
-        </h1>
-        
-        <div className="bg-black/50 p-6 rounded-3xl border border-white/10 mb-8 shadow-inner">
-          <p className="text-[10px] text-emerald-500 uppercase font-black tracking-widest mb-2">Folio de Seguimiento</p>
-          <p className="text-5xl font-black text-white tracking-tighter">{folio}</p>
+    return (
+      <div className="min-h-screen bg-slate-950 flex items-center justify-center p-6 text-white text-center">
+        <div className="max-w-md w-full bg-slate-900 p-10 rounded-[3rem] shadow-2xl border-b-8 border-emerald-500 animate-in zoom-in duration-500">
+          <div className="text-6xl mb-6 text-emerald-500">✓</div>
+          <h1 className="text-2xl font-black uppercase mb-4 tracking-tighter">Voz Registrada</h1>
+          <div className="bg-black/50 p-6 rounded-3xl border border-white/10 mb-8 shadow-inner">
+            <p className="text-[10px] text-emerald-500 uppercase font-black tracking-widest mb-2">Tu Folio de Seguimiento</p>
+            <p className="text-5xl font-black text-white tracking-tighter">{folio}</p>
+          </div>
+          <button onClick={() => window.location.assign("/buzon")} className="bg-emerald-600 hover:bg-emerald-500 px-8 py-3 rounded-2xl font-bold transition-all">
+            Volver al Portal
+          </button>
         </div>
-
-        {/* BOTÓN INTELIGENTE DE RETORNO */}
-        <button 
-          onClick={() => {
-            if (isTechnical) {
-              window.history.back(); // Regresa al chat de donde vino
-            } else {
-              window.location.assign("/buzon"); // Regresa al portal del alumno
-            }
-          }} 
-          className="w-full bg-emerald-600 hover:bg-emerald-500 py-4 rounded-2xl font-black uppercase text-xs tracking-widest transition-all shadow-lg"
-        >
-          {isTechnical ? "Regresar al Chat" : "Volver al Portal"}
-        </button>
       </div>
-    </div>
-  );
-}
+    );
+  }
 
   return (
     <div className="min-h-screen bg-slate-950 p-6 md:p-12 text-white font-sans">
@@ -64,7 +49,6 @@ function BuzonForm({ reglamento }: { reglamento: string }) {
         <Link href="/buzon" className="inline-flex items-center gap-2 text-slate-500 hover:text-emerald-400 transition-colors text-[10px] font-black uppercase tracking-[0.2em] mb-10 group">
            <span className="group-hover:-translate-x-1 transition-transform inline-block">←</span> Volver al Portal
         </Link>
-
         <header className="mb-10 text-center">
           <h1 className="text-3xl font-black uppercase tracking-widest text-emerald-500">
             {isTechnical ? "Reporte de Fallo Técnico" : "Buzón de Voz Ética"}
@@ -106,20 +90,16 @@ function BuzonForm({ reglamento }: { reglamento: string }) {
               <input name="studentName" type="text" placeholder="Nombre (Opcional)" className="w-full bg-black border-2 border-slate-800 p-4 rounded-2xl focus:border-emerald-500 outline-none text-sm" />
             </div>
             <textarea name="content" required rows={5} placeholder={isTechnical ? "Describe el fallo que encontraste..." : "Describe los hechos..."} className="w-full bg-black border-2 border-slate-800 p-4 rounded-2xl focus:border-emerald-500 outline-none resize-none text-sm"></textarea>
+            
+            {/* AVISO PREVIO DE 72 HORAS */}
+            <div className="bg-amber-500/10 border border-amber-500/30 p-4 rounded-2xl mb-4 text-center">
+              <p className="text-amber-500 text-[10px] font-black uppercase tracking-widest animate-pulse">⚠️ NOTA IMPORTANTE</p>
+              <p className="text-[11px] text-slate-300 mt-1">Al recibir respuesta de la autoridad, tendrás 72 horas para validar la solución o el caso se cerrará automáticamente.</p>
+            </div>
+            
+            <input name="evidence" type="file" className="w-full text-xs text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:bg-emerald-500 file:text-black font-bold cursor-pointer" />
           </div>
           <button type="submit" disabled={status === "SENDING"} className="w-full bg-emerald-500 hover:bg-white text-black font-black py-5 rounded-[2rem] shadow-2xl transition-all uppercase tracking-widest disabled:opacity-50">
-{/* AVISO PREVIO DE 72 HORAS */}
-<div className="bg-amber-500/10 border border-amber-500/30 p-4 rounded-2xl mb-4">
-  <p className="text-amber-500 text-[10px] font-black uppercase tracking-widest text-center animate-pulse">
-    ⚠️ NOTA IMPORTANTE
-  </p>
-  <p className="text-[11px] text-slate-300 text-center mt-1 leading-relaxed">
-    Al recibir respuesta de la autoridad, tendrás <strong>72 horas</strong> para validar la solución. 
-    De no hacerlo, el sistema cerrará el caso automáticamente como resuelto.
-  </p>
-</div>
-
-<button type="submit" ... >
             {status === "SENDING" ? "Registrando..." : "Enviar Reporte y Ver Folio"}
           </button>
         </form>
