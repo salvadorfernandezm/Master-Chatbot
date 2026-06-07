@@ -13,7 +13,7 @@ model User {
   name          String?
   email         String?   @unique
   password      String?
-  role          String?   @default("ADMIN") // <--- ESTA ES LA PIEZA QUE FALTABA
+  role          String?   @default("ADMIN")
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 }
@@ -68,7 +68,8 @@ model Chatbot {
   systemInstructions String?       @db.Text
   fallbackMessage    String?
   infoMessage        String?       @db.Text
-  inputPlaceholder   String?       // <--- RESCATADO
+  inputPlaceholder   String?
+  logoUrl            String?       // <--- AQUÍ ESTÁ EL CULPABLE REINSTALADO
   createdAt          DateTime      @default(now())
   updatedAt          DateTime      @updatedAt
   group              Group         @relation(fields: [groupId], references: [id])
@@ -105,7 +106,7 @@ model Attachment {
   id        String   @id @default(cuid())
   url       String
   name      String
-  type      String   // STUDENT o AUTHORITY
+  type      String
   ticketId  String
   ticket    Ticket   @relation(fields: [ticketId], references: [id], onDelete: Cascade)
   createdAt DateTime @default(now())
