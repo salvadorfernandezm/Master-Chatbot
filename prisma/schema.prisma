@@ -1,41 +1,29 @@
-generator client {
-  provider = "prisma-client-js"
-}
-
 datasource db {
   provider  = "postgresql"
   url       = env("DATABASE_URL")
   directUrl = env("DIRECT_URL")
 }
 
-model User {
-  id        String   @id @default(cuid())
-  name      String?
-  email     String   @unique
-  password  String
-  role      String   @default("ADMIN")
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+generator client {
+  provider = "prisma-client-js"
 }
 
-model Settings {
-  id                    String   @id @default(cuid())
-  organizationName      String   @default("Master Chatbot IA")
-  organizationLogo      String?
-  defaultWelcomeMessage String   @default("¡Hola! Soy el asistente del profesor y estoy aquí para ayudarte.")
-  timezone              String   @default("UTC")
-  createdAt             DateTime @default(now())
-  updatedAt             DateTime @updatedAt
-organizationBuzonInfo String? @db.Text
-isBuzonActive         Boolean @default(true)
+model User {
+  id            String    @id @default(cuid())
+  name          String?
+  email         String?   @unique
+  password      String?
+  role          String?   @default("ADMIN") // <--- ESTA ES LA PIEZA QUE FALTABA
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
 }
 
 model Group {
   id          String    @id @default(cuid())
   name        String
   description String?
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
   chatbots    Chatbot[]
 }
 
@@ -43,91 +31,94 @@ model KnowledgeBase {
   id          String     @id @default(cuid())
   name        String
   description String?
-  createdAt   DateTime   @default(now())
-  updatedAt   DateTime   @updatedAt
-  chatbots    Chatbot[]
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
   documents   Document[]
+  chatbots    Chatbot[]
 }
 
 model Document {
   id              String          @id @default(cuid())
   filename        String
   type            String
-  urlOrPath       String?
   knowledgeBaseId String
   createdAt       DateTime        @default(now())
-  knowledgeBase   KnowledgeBase   @relation(fields: [knowledgeBaseId], references: [id], onDelete: Cascade)
+  knowledgeBase   KnowledgeBase   @relation(fields: [knowledgeBaseId], references: [id])
   chunks          DocumentChunk[]
 }
 
 model DocumentChunk {
   id              String   @id @default(cuid())
-  content         String
+  content         String   @db.Text
   metadata        String
   embedding       String?
   documentId      String
-  knowledgeBaseId String
   document        Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  knowledgeBaseId String
 }
 
 model Chatbot {
-  id                 String   @id @default(cuid())
+  id                 String        @id @default(cuid())
   name               String
-  token              String   @unique
+  token              String        @unique
   groupId            String
   knowledgeBaseId    String
-  isActive           Boolean  @default(true)
+  isActive           Boolean       @default(true)
   welcomeMessage     String?
-  infoMessage        String?  @db.Text // Esta es tu nueva ocurrencia del botón de info
-  systemInstructions String?
+  systemInstructions String?       @db.Text
   fallbackMessage    String?
-  inputPlaceholder   String?
-  logoUrl            String?
-  createdAt          DateTime @default(now())
-  updatedAt          DateTime @updatedAt
-
-model Attachment {
-  id        String   @id @default(cuid())
-  url       String   // Link de Supabase Storage
-  name      String   // Nombre del archivo (ej: foto1.jpg)
-  type      String   // STUDENT o AUTHORITY (quién lo subió)
-  ticketId  String
-  ticket    Ticket   @relation(fields: [ticketId], references: [id], onDelete: Cascade)
-  createdAt DateTime @default(now())
-}
-
-  // RELACIONES
-  group         Group         @relation(fields: [groupId], references: [id])
-  knowledgeBase KnowledgeBase @relation(fields: [knowledgeBaseId], references: [id])
-  interactions  Interaction[] // <--- ESTA ES LA LÍNEA QUE FALTA PARA QUE EL ERROR SE VAYA
+  infoMessage        String?       @db.Text
+  inputPlaceholder   String?       // <--- RESCATADO
+  createdAt          DateTime      @default(now())
+  updatedAt          DateTime      @updatedAt
+  group              Group         @relation(fields: [groupId], references: [id])
+  knowledgeBase      KnowledgeBase @relation(fields: [knowledgeBaseId], references: [id])
+  interactions       Interaction[]
 }
 
 model Interaction {
   id        String   @id @default(cuid())
   chatbotId String
-  query     String
-  response  String
+  query     String   @db.Text
+  response  String   @db.Text
   createdAt DateTime @default(now())
   chatbot   Chatbot  @relation(fields: [chatbotId], references: [id], onDelete: Cascade)
 }
 
-// Modelo para el Buzón Inteligente (Versión Blindada)
 model Ticket {
-  id                String   @id @default(cuid())
-  folio             String   @unique // El código secreto (ej: "ETH-A1B2")
-  type              String   // GRAVE, ACADEMICA, LOGISTICA
-  content           String   @db.Text // Permite mensajes largos
-  studentName       String?  
-  studentEmail      String?  // <--- ESTA ES LA PIEZA QUE ARREGLA EL ERROR DE VERCEL
-  evidenceUrl       String?
-  status            String   @default("PENDIENTE") // PENDIENTE, RESUELTO
-  
-  // Gestión de la autoridad y satisfacción del alumno
-  authorityResponse String?  @db.Text
-authorityEvidence String?  @db.Text 
-  studentResolved   Boolean  @default(false)
-  
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
- attachments Attachment[]
+  id                String       @id @default(cuid())
+  folio             String       @unique
+  type              String
+  content           String       @db.Text
+  studentName       String?
+  studentEmail      String?
+  status            String       @default("PENDIENTE")
+  authorityResponse String?      @db.Text
+  authorityEvidence String?      @db.Text
+  studentResolved   Boolean      @default(false)
+  createdAt         DateTime     @default(now())
+  updatedAt         DateTime     @updatedAt
+  attachments       Attachment[]
+}
+
+model Attachment {
+  id        String   @id @default(cuid())
+  url       String
+  name      String
+  type      String   // STUDENT o AUTHORITY
+  ticketId  String
+  ticket    Ticket   @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+}
+
+model Settings {
+  id                    String   @id @default(cuid())
+  organizationName      String
+  organizationLogo      String?
+  organizationBuzonInfo String?  @db.Text
+  isBuzonActive         Boolean  @default(true)
+  defaultWelcomeMessage String?
+  timezone              String   @default("UTC")
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
 }
