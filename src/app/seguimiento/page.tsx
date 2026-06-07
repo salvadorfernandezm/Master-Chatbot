@@ -64,75 +64,81 @@ export default function SeguimientoPage() {
           {error && <p className="text-red-400 text-[10px] mt-4 font-bold uppercase ml-2">{error}</p>}
         </div>
 
-        {ticket && (
+      {ticket && (
           <div className="bg-slate-900 rounded-[2.5rem] border-b-8 border-emerald-500 overflow-hidden animate-in slide-in-from-bottom-4 duration-500 shadow-2xl">
             <div className="p-8 space-y-6">
+              
+              {/* 1. CABECERA DE ESTATUS */}
               <div className="flex justify-between items-center border-b border-white/5 pb-4">
                 <span className="text-[10px] font-black uppercase text-slate-500">Estatus</span>
                 <span className={`px-4 py-1 rounded-full text-[10px] font-black uppercase ${ticket.status === 'RESUELTO' ? 'bg-emerald-500 text-black' : 'bg-amber-500 text-white'}`}>
                     {ticket.status}
                 </span>
               </div>
+
+              {/* 2. AVISO DE LAS 72 HORAS (Solo si está resuelto y no ha votado) */}
+              {ticket.status === 'RESUELTO' && !ticket.studentResolved && (
+                <div className="bg-amber-500/10 border-2 border-amber-500/30 p-4 rounded-2xl animate-pulse">
+                  <p className="text-amber-500 text-[11px] font-black uppercase tracking-widest text-center">
+                    ⚠️ ACCIÓN REQUERIDA: Tienes 72 horas para validar esta solución.
+                  </p>
+                  <p className="text-[10px] text-slate-400 text-center mt-1">
+                    Si no manifiestas inconformidad, el sistema cerrará el caso por "Silencio Administrativo".
+                  </p>
+                </div>
+              )}
               
+              {/* 3. CONTENIDO DEL REPORTE */}
               <div className="bg-black/20 p-4 rounded-2xl border border-white/5">
-                <p className="text-[10px] font-black text-slate-500 mb-2 text-left uppercase">Tu reporte:</p>
-                <p className="text-slate-300 italic text-sm text-left">"{ticket.content}"</p>
+                <p className="text-[10px] font-black text-slate-500 mb-2 uppercase">Tu reporte original:</p>
+                <p className="text-slate-300 italic text-sm">"{ticket.content}"</p>
               </div>
 
-              {/* SECCIÓN DE RESPUESTA DE LA AUTORIDAD */}
+              {/* 4. RESPUESTA DE LA AUTORIDAD Y CLIP DE EVIDENCIA */}
               <div className="bg-emerald-500/5 p-6 rounded-3xl border border-emerald-500/20">
-                <p className="text-[10px] font-black uppercase text-emerald-500 mb-2 text-left">Respuesta de la Autoridad:</p>
-                <p className="text-sm text-white leading-relaxed text-left">
+                <p className="text-[10px] font-black uppercase text-emerald-500 mb-2">Respuesta Oficial:</p>
+                <p className="text-sm text-white leading-relaxed">
                     {ticket.authorityResponse || "Su reporte está en proceso de revisión."}
                 </p>
+
+                {/* EL CLIP AHORA ES UN LINK REAL A LA NUBE */}
+                {ticket.authorityEvidence && (
+                  <a 
+                    href={ticket.authorityEvidence} 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    className="mt-4 p-4 bg-white/5 border border-dashed border-emerald-500/30 rounded-2xl flex items-center gap-3 hover:bg-emerald-500/10 transition-all cursor-pointer group"
+                  >
+                    <div className="h-10 w-10 bg-emerald-500/20 rounded-xl flex items-center justify-center text-xl group-hover:scale-110 transition-transform">
+                      📎
+                    </div>
+                    <div className="flex-1">
+                      <p className="text-[9px] font-black text-emerald-500 uppercase tracking-widest">Ver Evidencia Adjunta</p>
+                      <p className="text-[10px] text-slate-400 italic">Haz clic para abrir archivo</p>
+                    </div>
+                  </a>
+                )}
               </div>
 
-{/* EVIDENCIA DE LA AUTORIDAD */}
-{ticket.authorityEvidence && (
-  <div className="mt-4 p-4 bg-white/5 border border-dashed border-emerald-500/30 rounded-2xl flex items-center gap-3">
-    <div className="h-10 w-10 bg-emerald-500/20 rounded-xl flex items-center justify-center text-xl">
-      📎
-    </div>
-    <div className="flex-1">
-      <p className="text-[9px] font-black text-emerald-500 uppercase tracking-widest">Evidencia de Resolución</p>
-      <p className="text-xs text-slate-200 font-bold">{ticket.authorityEvidence}</p>
-    </div>
-    {/* Nota: Aquí el alumno ve el nombre del archivo. Cuando activemos Storage, será un link de descarga */}
-  </div>
-)}
-
-              {/* BOTONES DE VALIDACIÓN: Solo aparecen si el estatus es RESUELTO y no se ha votado */}
+              {/* 5. BOTONES DE SATISFACCIÓN (SÍ / NO) */}
               {ticket.status === 'RESUELTO' && (
                 <div className="mt-8 pt-6 border-t border-white/5 text-center">
-                  {voted || ticket.voted ? (
+                  {ticket.studentResolved ? (
                     <div className="p-4 bg-emerald-500/10 rounded-2xl border border-emerald-500/20 text-emerald-400 font-bold text-sm uppercase">
-                        ✓ ¡Gracias! Tu valoración ha sido registrada.
+                        ✓ Gracias por tu validación. Caso cerrado satisfactoriamente.
                     </div>
                   ) : (
                     <>
                       <p className="text-[10px] font-black uppercase text-slate-500 mb-4 tracking-widest">¿Estás conforme con esta solución?</p>
                       <div className="flex gap-4">
-                        <button 
-                          onClick={() => handleVote(true)} 
-                          className="flex-1 bg-emerald-600 hover:bg-emerald-500 text-white py-4 rounded-2xl font-black uppercase text-xs transition-all shadow-lg"
-                        >
-                          SÍ, ESTOY CONFORME
-                        </button>
-                        <button 
-                          onClick={() => handleVote(false)} 
-                          className="flex-1 bg-red-600 hover:bg-red-500 text-white py-4 rounded-2xl font-black uppercase text-xs transition-all shadow-lg"
-                        >
-                          NO, SIGUE IGUAL
-                        </button>
+                        <button onClick={() => handleVote(true)} className="flex-1 bg-emerald-600 hover:bg-emerald-500 text-white py-4 rounded-2xl font-black uppercase text-xs transition-all shadow-lg">SÍ</button>
+                        <button onClick={() => handleVote(false)} className="flex-1 bg-red-600 hover:bg-red-500 text-white py-4 rounded-2xl font-black uppercase text-xs transition-all shadow-lg">NO</button>
                       </div>
                     </>
                   )}
                 </div>
               )}
+
             </div>
           </div>
         )}
-      </div>
-    </div>
-  );
-}

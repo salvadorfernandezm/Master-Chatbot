@@ -250,19 +250,41 @@ export async function verifyDirectorPin(enteredPin: string) {
 }
 
 // --- RESPUESTA DE LA AUTORIDAD (Cerrando el círculo) ---
+// --- RESPUESTA DE LA AUTORIDAD CON SUBIDA DE ARCHIVO REAL ---
 export async function submitAuthorityResponse(formData: FormData) {
   const id = formData.get("id") as string;
-  const responseText = formData.get("responseText") as string; // Coincide con el textarea
-  const file = formData.get("evidence") as File; // Coincide con el input file
+  const responseText = formData.get("responseText") as string;
+  const file = formData.get("evidence") as File;
 
-  if (!id || !responseText) {
-    console.error("❌ Faltan datos: ID o Respuesta vacía");
-    return { success: false };
-  }
+  if (!id || !responseText) return { success: false };
 
-  let evidenceUrl = null;
+  let publicUrl = null;
+
+  // 1. SI HAY UN ARCHIVO, LO SUBIMOS A LA BODEGA
   if (file && file.size > 0) {
-    evidenceUrl = `Evidencia: ${file.name}`;
+    try {
+      const { createClient } = await import('@supabase/supabase-js');
+      const supabase = createClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+      );
+
+      const fileName = `${id}-${Date.now()}-${file.name}`;
+      const { data, error } = await supabase.storage
+        .from('evidencias')
+        .upload(fileName, file);
+
+      if (error) throw error;
+
+      // Obtenemos la dirección pública para que el alumno la vea
+      const { data: { publicUrl: url } } = supabase.storage
+        .from('evidencias')
+        .getPublicUrl(fileName);
+      
+      publicUrl = url;
+    } catch (e) {
+      console.error("Fallo al subir evidencia:", e);
+    }
   }
 
   try {
@@ -270,18 +292,16 @@ export async function submitAuthorityResponse(formData: FormData) {
       where: { id },
       data: {
         authorityResponse: responseText,
-        authorityEvidence: evidenceUrl,
+        authorityEvidence: publicUrl, // Ahora guardamos el LINK real, no solo el nombre
         status: "RESUELTO",
         updatedAt: new Date(),
       },
     });
 
     revalidatePath("/admin/buzon");
-    revalidatePath("/admin/directora");
     revalidatePath("/seguimiento");
     return { success: true };
   } catch (error) {
-    console.error("❌ Error en base de datos:", error);
     return { success: false };
   }
 }
