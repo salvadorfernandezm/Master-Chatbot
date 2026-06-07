@@ -21,7 +21,6 @@ export const authOptions: NextAuthOptions = {
         });
 
         if (!user) {
-          // If no users exist in the database, let's create the very first admin user dynamically
           const count = await prisma.user.count();
           if (count === 0) {
             const hashedPassword = await bcrypt.hash(credentials.password, 10);
@@ -33,7 +32,13 @@ export const authOptions: NextAuthOptions = {
                 role: "ADMIN"
               }
             });
-            return { id: newUser.id, name: newUser.name, email: newUser.email, role: newUser.role };
+            // Corrección: Usamos ?? para evitar valores null
+            return { 
+              id: newUser.id, 
+              name: newUser.name ?? "Admin", 
+              email: newUser.email ?? "", 
+              role: newUser.role ?? "ADMIN" 
+            };
           }
           return null;
         }
@@ -44,7 +49,13 @@ export const authOptions: NextAuthOptions = {
           return null;
         }
 
-        return { id: user.id, name: user.name, email: user.email, role: user.role };
+        // CORRECCIÓN VITAL: Convertimos cualquier null en string o undefined
+        return { 
+          id: user.id, 
+          name: user.name ?? "Usuario", 
+          email: user.email ?? "", 
+          role: user.role ?? "ADMIN" 
+        };
       }
     })
   ],
@@ -61,13 +72,4 @@ export const authOptions: NextAuthOptions = {
     },
     async session({ session, token }) {
       if (session.user) {
-        session.user.id = token.id as string;
-        session.user.role = token.role as string;
-      }
-      return session;
-    }
-  },
-  pages: {
-    signIn: '/login', // We will create this page later
-  }
-};
+        session.user.
