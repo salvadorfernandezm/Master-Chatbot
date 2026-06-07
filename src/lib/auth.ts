@@ -32,7 +32,6 @@ export const authOptions: NextAuthOptions = {
                 role: "ADMIN"
               }
             });
-            // Corrección: Usamos ?? para evitar valores null
             return { 
               id: newUser.id, 
               name: newUser.name ?? "Admin", 
@@ -49,7 +48,6 @@ export const authOptions: NextAuthOptions = {
           return null;
         }
 
-        // CORRECCIÓN VITAL: Convertimos cualquier null en string o undefined
         return { 
           id: user.id, 
           name: user.name ?? "Usuario", 
@@ -66,10 +64,12 @@ export const authOptions: NextAuthOptions = {
     async jwt({ token, user }) {
       if (user) {
         token.id = user.id;
-        token.role = user.role;
+        token.role = (user as any).role;
       }
       return token;
     },
     async session({ session, token }) {
       if (session.user) {
-        session.user.
+        (session.user as any).id = token.id as string;
+        (session.user as any).role = (token.role as string) ?? "ADMIN";
+      }
