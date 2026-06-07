@@ -88,18 +88,19 @@ export default function DirectorPanelPage() {
                           <p className="text-sm text-slate-600 italic leading-relaxed">"{t.authorityResponse}"</p>
                           
                           {/* DISEÑO ELEGANTE DEL CLIP DE EVIDENCIA */}
-                          {t.authorityEvidence && (
-                            <div className="mt-3 p-3 bg-white rounded-xl border border-slate-200 flex items-center gap-2 w-fit">
-                              <span className="text-lg">📎</span>
-                              <div className="flex-1">
-                                <p className="text-[8px] font-black text-slate-500 uppercase">Archivo Adjunto</p>
-                                <p className="text-[11px] text-slate-700 font-bold">{t.authorityEvidence}</p>
-                              </div>
-                            </div>
-                          )}
-                        </div>
-                      )}
-                   </div>
+                         {/* BOTÓN DE EVIDENCIA PARA ADMINISTRADORES */}
+{t.authorityEvidence && (
+  <div className="mt-4">
+    <a 
+      href={t.authorityEvidence} 
+      target="_blank" 
+      rel="noopener noreferrer"
+      className="inline-flex items-center gap-2 bg-blue-600/20 text-blue-400 px-4 py-2 rounded-xl text-[10px] font-black uppercase hover:bg-blue-600 hover:text-white transition-all border border-blue-400/30"
+    >
+      <span>📎</span> Ver Evidencia Adjunta
+    </a>
+  </div>
+)}
 
                    <div className="text-right ml-4">
                       <div className={`px-4 py-1.5 rounded-full text-[10px] font-black uppercase ${t.status === 'RESUELTO' ? 'bg-emerald-500 text-white' : 'bg-amber-500 text-white'}`}>

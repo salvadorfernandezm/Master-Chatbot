@@ -97,20 +97,20 @@ export default function SeguimientoPage() {
                     {ticket.authorityResponse || "Su reporte está en proceso de revisión."}
                 </p>
 
-                {ticket.authorityEvidence && (
-                  <a 
-                    href={ticket.authorityEvidence} 
-                    target="_blank" 
-                    rel="noopener noreferrer"
-                    className="mt-4 p-4 bg-white/5 border border-dashed border-emerald-500/30 rounded-2xl flex items-center gap-3 hover:bg-emerald-500/10 transition-all cursor-pointer group"
-                  >
-                    <div className="h-10 w-10 bg-emerald-500/20 rounded-xl flex items-center justify-center text-xl group-hover:scale-110 transition-transform">📎</div>
-                    <div className="flex-1">
-                      <p className="text-[9px] font-black text-emerald-500 uppercase tracking-widest">Ver Evidencia Adjunta</p>
-                    </div>
-                  </a>
-                )}
-              </div>
+               {/* BOTÓN DE EVIDENCIA PARA EL ALUMNO */}
+{ticket.authorityEvidence && (
+  <div className="mt-6">
+    <p className="text-[9px] font-black text-emerald-500 uppercase tracking-widest mb-2 text-left">Comprobante de resolución:</p>
+    <a 
+      href={ticket.authorityEvidence} 
+      target="_blank" 
+      rel="noopener noreferrer"
+      className="flex items-center justify-center gap-3 bg-emerald-500 text-black p-4 rounded-2xl font-black uppercase text-xs shadow-lg hover:scale-105 transition-all w-full"
+    >
+      <span>👁️</span> VER EVIDENCIA ENVIADA POR LA AUTORIDAD
+    </a>
+  </div>
+)}
 
               {ticket.status === 'RESUELTO' && (
                 <div className="mt-8 pt-6 border-t border-white/5 text-center">

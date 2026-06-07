@@ -108,6 +108,18 @@ function BuzonForm({ reglamento }: { reglamento: string }) {
             <textarea name="content" required rows={5} placeholder={isTechnical ? "Describe el fallo que encontraste..." : "Describe los hechos..."} className="w-full bg-black border-2 border-slate-800 p-4 rounded-2xl focus:border-emerald-500 outline-none resize-none text-sm"></textarea>
           </div>
           <button type="submit" disabled={status === "SENDING"} className="w-full bg-emerald-500 hover:bg-white text-black font-black py-5 rounded-[2rem] shadow-2xl transition-all uppercase tracking-widest disabled:opacity-50">
+{/* AVISO PREVIO DE 72 HORAS */}
+<div className="bg-amber-500/10 border border-amber-500/30 p-4 rounded-2xl mb-4">
+  <p className="text-amber-500 text-[10px] font-black uppercase tracking-widest text-center animate-pulse">
+    ⚠️ NOTA IMPORTANTE
+  </p>
+  <p className="text-[11px] text-slate-300 text-center mt-1 leading-relaxed">
+    Al recibir respuesta de la autoridad, tendrás <strong>72 horas</strong> para validar la solución. 
+    De no hacerlo, el sistema cerrará el caso automáticamente como resuelto.
+  </p>
+</div>
+
+<button type="submit" ... >
             {status === "SENDING" ? "Registrando..." : "Enviar Reporte y Ver Folio"}
           </button>
         </form>

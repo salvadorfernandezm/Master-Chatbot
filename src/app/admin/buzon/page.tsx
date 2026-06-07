@@ -87,13 +87,19 @@ export default async function AdminBuzonPage() {
                     </div>
                     <p className="text-sm text-slate-700 italic leading-relaxed">"{ticket.authorityResponse}"</p>
                     
-                    {ticket.authorityEvidence && (
-                      <div className="mt-3 flex items-center gap-2 text-blue-600 font-bold text-[10px] uppercase">
-                        <span>📎</span> {ticket.authorityEvidence}
-                      </div>
-                    )}
-                  </div>
-                )}
+                   {/* BOTÓN DE EVIDENCIA PARA ADMINISTRADORES */}
+{t.authorityEvidence && (
+  <div className="mt-4">
+    <a 
+      href={t.authorityEvidence} 
+      target="_blank" 
+      rel="noopener noreferrer"
+      className="inline-flex items-center gap-2 bg-blue-600/20 text-blue-400 px-4 py-2 rounded-xl text-[10px] font-black uppercase hover:bg-blue-600 hover:text-white transition-all border border-blue-400/30"
+    >
+      <span>📎</span> Ver Evidencia Adjunta
+    </a>
+  </div>
+)}
 
               </div>
             </div>
