@@ -20,6 +20,7 @@ export const authOptions: NextAuthOptions = {
           where: { email: credentials.email }
         });
 
+        // Si el usuario no existe, creamos el primero si la base está vacía
         if (!user) {
           const count = await prisma.user.count();
           if (count === 0) {
@@ -42,7 +43,9 @@ export const authOptions: NextAuthOptions = {
           return null;
         }
 
-        const isPasswordValid = await bcrypt.compare(credentials.password, user.password);
+        // CORRECCIÓN VITAL AQUÍ:
+        // Añadimos "|| ''" para que nunca sea null y TypeScript no se queje
+        const isPasswordValid = await bcrypt.compare(credentials.password, user.password || "");
 
         if (!isPasswordValid) {
           return null;
@@ -79,4 +82,3 @@ export const authOptions: NextAuthOptions = {
   pages: {
     signIn: '/login',
   }
-};
