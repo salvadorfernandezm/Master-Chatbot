@@ -91,7 +91,6 @@ export async function submitAuthorityResponse(formData: FormData) {
   } catch (error) { return { success: false }; }
 }
 
-// ESTA ES LA QUE LE FALTABA A VERCEL:
 export async function setStudentSatisfaction(id: string, satisfied: boolean) {
   try {
     await prisma.ticket.update({
@@ -103,7 +102,6 @@ export async function setStudentSatisfaction(id: string, satisfied: boolean) {
     revalidatePath("/admin/directora");
     return { success: true };
   } catch (error) {
-    console.error("Error al guardar satisfacción:", error);
     return { success: false };
   }
 }
@@ -213,5 +211,44 @@ export async function addUrlDocument(formData: FormData) {
 }
 
 // ==========================================
-// 3. AJUSTES Y RESPALDO
-//
+// 3. SEGURIDAD, AJUSTES Y RESPALDO
+// ==========================================
+
+export async function verifyDirectorPin(pin: string) {
+  return pin === process.env.DIRECTOR_PIN;
+}
+
+export async function updateSettings(formData: FormData) {
+  const organizationName = formData.get("organizationName") as string;
+  const organizationLogo = formData.get("organizationLogo") as string;
+  const organizationBuzonInfo = formData.get("organizationBuzonInfo") as string;
+  const isBuzonActive = formData.get("isBuzonActive") === "true";
+  const settings = await prisma.settings.findFirst();
+  const data = { organizationName, organizationLogo, organizationBuzonInfo, isBuzonActive };
+  if (settings) await prisma.settings.update({ where: { id: settings.id }, data });
+  else await prisma.settings.create({ data });
+  revalidatePath("/admin/settings");
+}
+
+export async function exportFullBackup() {
+  const [groups, chatbots, kbs, docs] = await Promise.all([
+    prisma.group.findMany(),
+    prisma.chatbot.findMany(),
+    prisma.knowledgeBase.findMany(),
+    prisma.document.findMany(),
+  ]);
+  return { groups, chatbots, kbs, docs };
+}
+
+export async function importFullBackup(data: any): Promise<{ success: boolean; error?: string }> {
+  try {
+    const { groups, kbs, chatbots } = data;
+    if (groups) await prisma.group.createMany({ data: groups, skipDuplicates: true });
+    if (kbs) await prisma.knowledgeBase.createMany({ data: kbs, skipDuplicates: true });
+    if (chatbots) await prisma.chatbot.createMany({ data: chatbots, skipDuplicates: true });
+    revalidatePath("/admin");
+    return { success: true };
+  } catch (error: any) { 
+    return { success: false, error: error.message }; 
+  }
+}
