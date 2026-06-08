@@ -8,13 +8,12 @@ import { createClient } from '@supabase/supabase-js';
 import { Resend } from 'resend';
 
 // 1. INICIALIZACIÓN DE CLIENTES
+const resend = new Resend(process.env.RESEND_API_KEY);
+
+// Inicializamos Supabase de forma segura para que Vercel no explote
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
 const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "";
-
-// Solo creamos el cliente si las llaves existen, para no asustar a Vercel
-const supabase = supabaseUrl && supabaseKey 
-  ? createClient(supabaseUrl, supabaseKey)
-  : null;
+const supabase = (supabaseUrl && supabaseKey) ? createClient(supabaseUrl, supabaseKey) : null;
 
 // ==========================================
 // 1. GESTIÓN DEL BUZÓN (Tickets y Evidencias)
@@ -42,19 +41,23 @@ export async function createTicket(formData: FormData) {
       },
     });
 
-    for (const file of files) {
-      if (file.size > 0) {
-        const fileExt = file.name.split('.').pop();
-        const fileName = `student/${ticket.id}-${Date.now()}.${fileExt}`;
-        const { error: uploadError } = await supabase.storage.from('evidencias').upload(fileName, file);
-        if (!uploadError) {
-          const { data: { publicUrl } } = supabase.storage.from('evidencias').getPublicUrl(fileName);
-          await prisma.attachment.create({
-            data: { url: publicUrl, name: file.name, type: "STUDENT", ticketId: ticket.id }
-          });
+    // CLÁUSULA DE SEGURIDAD PARA TYPESCRIPT
+    if (supabase) {
+      for (const file of files) {
+        if (file.size > 0) {
+          const fileExt = file.name.split('.').pop();
+          const fileName = `student/${ticket.id}-${Date.now()}.${fileExt}`;
+          const { error: uploadError } = await supabase.storage.from('evidencias').upload(fileName, file);
+          if (!uploadError) {
+            const { data: { publicUrl } } = supabase.storage.from('evidencias').getPublicUrl(fileName);
+            await prisma.attachment.create({
+              data: { url: publicUrl, name: file.name, type: "STUDENT", ticketId: ticket.id }
+            });
+          }
         }
       }
     }
+
     revalidatePath("/admin/buzon");
     return { success: true, folio };
   } catch (error) {
@@ -73,16 +76,18 @@ export async function submitAuthorityResponse(formData: FormData) {
       data: { authorityResponse: responseText, status: "RESUELTO", updatedAt: new Date() },
     });
 
-    for (const file of files) {
-      if (file.size > 0) {
-        const fileExt = file.name.split('.').pop();
-        const fileName = `authority/${id}-${Date.now()}.${fileExt}`;
-        const { error: uploadError } = await supabase.storage.from('evidencias').upload(fileName, file);
-        if (!uploadError) {
-          const { data: { publicUrl } } = supabase.storage.from('evidencias').getPublicUrl(fileName);
-          await prisma.attachment.create({
-            data: { url: publicUrl, name: file.name, type: "AUTHORITY", ticketId: id }
-          });
+    if (supabase) {
+      for (const file of files) {
+        if (file.size > 0) {
+          const fileExt = file.name.split('.').pop();
+          const fileName = `authority/${id}-${Date.now()}.${fileExt}`;
+          const { error: uploadError } = await supabase.storage.from('evidencias').upload(fileName, file);
+          if (!uploadError) {
+            const { data: { publicUrl } } = supabase.storage.from('evidencias').getPublicUrl(fileName);
+            await prisma.attachment.create({
+              data: { url: publicUrl, name: file.name, type: "AUTHORITY", ticketId: id }
+            });
+          }
         }
       }
     }
@@ -103,9 +108,7 @@ export async function setStudentSatisfaction(id: string, satisfied: boolean) {
     revalidatePath("/admin/buzon");
     revalidatePath("/admin/directora");
     return { success: true };
-  } catch (error) {
-    return { success: false };
-  }
+  } catch (error) { return { success: false }; }
 }
 
 export async function updateTicketStatus(id: string, newStatus: string) {
@@ -242,7 +245,7 @@ export async function exportFullBackup() {
   return { groups, chatbots, kbs, docs };
 }
 
-export async function importFullBackup(data: any): Promise<{ success: boolean; error?: string }> {
+export async function importFullBackup(data: any) {
   try {
     const { groups, kbs, chatbots } = data;
     if (groups) await prisma.group.createMany({ data: groups, skipDuplicates: true });
@@ -250,7 +253,5 @@ export async function importFullBackup(data: any): Promise<{ success: boolean; e
     if (chatbots) await prisma.chatbot.createMany({ data: chatbots, skipDuplicates: true });
     revalidatePath("/admin");
     return { success: true };
-  } catch (error: any) { 
-    return { success: false, error: error.message }; 
-  }
+  } catch (error: any) { return { success: false, error: error.message }; }
 }
