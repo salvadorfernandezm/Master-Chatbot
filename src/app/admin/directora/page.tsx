@@ -38,34 +38,50 @@ export default function DirectorPanelPage() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 font-sans pb-20">
+    <div className="min-h-screen bg-slate-50 font-sans pb-20 text-slate-900">
       <header className="bg-slate-900 text-white p-8 shadow-2xl flex justify-between items-center">
-        <h1 className="text-2xl font-black uppercase text-emerald-400">Panel de Dirección</h1>
-        <button onClick={() => window.location.reload()} className="text-xs bg-white/10 px-4 py-2 rounded-lg font-bold">SALIR</button>
+        <h1 className="text-2xl font-black uppercase text-emerald-400 tracking-widest">Panel de Dirección</h1>
+        <button onClick={() => window.location.reload()} className="text-xs bg-white/10 px-4 py-2 rounded-lg font-bold hover:bg-white/20">SALIR</button>
       </header>
 
-      <div className="max-w-6xl mx-auto p-8 space-y-6">
+      <div className="max-w-6xl mx-auto p-8 space-y-6 text-left">
         {loading ? <p className="text-center italic animate-pulse">Cargando...</p> : 
           tickets.map((t) => (
-            <div key={t.id} className="bg-white rounded-[3rem] p-8 border border-slate-100 shadow-xl relative overflow-hidden">
+            <div key={t.id} className="bg-white rounded-[3rem] p-8 border border-slate-100 shadow-xl relative overflow-hidden transition-all hover:shadow-2xl">
               <div className={`absolute top-0 left-0 w-2 h-full ${t.type === 'GRAVE' ? 'bg-red-500' : 'bg-blue-500'}`}></div>
-              <div className="flex justify-between items-start">
-                <div className="flex-1 text-left">
-                  <span className="bg-slate-100 text-slate-600 px-3 py-1 rounded-full text-[10px] font-black uppercase mr-2">{t.type}</span>
-                  <span className="text-[10px] text-slate-400 font-bold uppercase">FOLIO: {t.folio}</span>
-                  <p className="text-slate-700 italic font-serif text-lg mt-4">"{t.content}"</p>
+              
+              <div className="flex flex-col md:flex-row justify-between items-start gap-4">
+                <div className="flex-1">
+                  <div className="flex items-center gap-3 mb-4">
+                    <span className="bg-slate-100 text-slate-600 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest">{t.type}</span>
+                    <span className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">FOLIO: {t.folio}</span>
+                  </div>
                   
+                  <p className="text-slate-700 italic font-serif text-lg leading-relaxed">"{t.content}"</p>
+
+                  {/* GALERÍA DE ARCHIVOS SUBIDOS POR EL ALUMNO */}
+                  {t.attachments && t.attachments.length > 0 && (
+                    <div className="mt-4 flex flex-wrap gap-2">
+                      {t.attachments.map((file: any) => (
+                        <a key={file.id} href={file.url} target="_blank" className="bg-blue-50 text-blue-700 px-3 py-1.5 rounded-xl text-[10px] font-bold border border-blue-100 flex items-center gap-1 hover:bg-blue-100 transition-all">
+                          📎 {file.name}
+                        </a>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* RESPUESTA DE LA AUTORIDAD */}
                   {t.authorityResponse && (
                     <div className="mt-6 p-6 bg-slate-50 rounded-[2rem] border border-slate-200">
-                      <p className="text-[10px] font-black text-slate-400 uppercase">Respuesta del Funcionario:</p>
+                      <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Respuesta del Funcionario:</p>
                       <p className="text-sm text-slate-600 italic">"{t.authorityResponse}"</p>
-                      {t.authorityEvidence && (
-                        <div className="mt-4"><a href={t.authorityEvidence} target="_blank" className="text-[10px] bg-blue-100 text-blue-700 p-2 rounded-lg font-bold uppercase">📎 Ver Evidencia</a></div>
-                      )}
                     </div>
                   )}
                 </div>
-                <div className={`px-4 py-1.5 rounded-full text-[10px] font-black uppercase ${t.status === 'RESUELTO' ? 'bg-emerald-500 text-white' : 'bg-amber-500 text-white'}`}>{t.status}</div>
+                
+                <div className={`px-4 py-1.5 rounded-full text-[10px] font-black uppercase ${t.status === 'RESUELTO' ? 'bg-emerald-500 text-white' : 'bg-amber-500 text-white'}`}>
+                  {t.status}
+                </div>
               </div>
             </div>
           ))

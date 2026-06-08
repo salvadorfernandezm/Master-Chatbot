@@ -97,8 +97,8 @@ function ResponderForm() {
                   Adjuntar Comprobante de Resolución (Opcional)
                 </label>
                 <input 
-                  type="file" 
-                  name="evidence"
+                   name="evidence"
+type="file"
 multiple
                   className="text-xs text-slate-600 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-[10px] file:font-black file:bg-emerald-500 file:text-white hover:file:bg-emerald-600 cursor-pointer"
                 />

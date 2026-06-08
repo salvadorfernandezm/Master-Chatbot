@@ -104,9 +104,9 @@ model Ticket {
 
 model Attachment {
   id        String   @id @default(cuid())
-  url       String
-  name      String
-  type      String
+  url       String   // Link real de Supabase
+  name      String   // Nombre del archivo
+  type      String   // "STUDENT" o "AUTHORITY"
   ticketId  String
   ticket    Ticket   @relation(fields: [ticketId], references: [id], onDelete: Cascade)
   createdAt DateTime @default(now())

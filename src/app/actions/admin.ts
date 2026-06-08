@@ -7,25 +7,44 @@ import { randomBytes } from "crypto";
 
 // --- 1. GESTIÓN DEL BUZÓN (Tickets) ---
 export async function createTicket(formData: FormData) {
-  const type = formData.get("type") as string;
-  const content = formData.get("content") as string;
-  const studentName = formData.get("studentName") as string;
-  const studentEmail = formData.get("studentEmail") as string;
-  const file = formData.get("evidence") as File;
-
-  const folio = `ETH-${Math.random().toString(36).substring(2, 7).toUpperCase()}`;
+  const id = formData.get("id") as string;
+  const responseText = formData.get("responseText") as string;
+  const files = formData.getAll("evidence") as File[]; // Nota el "getAll"
 
   try {
-    await prisma.ticket.create({
-      data: {
-        folio, type, content,
-        studentName: studentName || "Anónimo",
-        studentEmail: studentEmail || null,
-        status: "PENDIENTE",
-      },
+    // 1. Actualizamos el texto de la respuesta
+    await prisma.ticket.update({
+      where: { id },
+      data: { authorityResponse: responseText, status: "RESUELTO" }
     });
+
+    // 2. Subimos cada archivo al Storage
+    for (const file of files) {
+      if (file.size > 0) {
+        const fileExt = file.name.split('.').pop();
+        const fileName = `authority/${id}-${Date.now()}.${fileExt}`;
+        
+        const { data, error } = await supabase.storage
+          .from('evidencias')
+          .upload(fileName, file);
+
+        if (!error) {
+          const { data: { publicUrl } } = supabase.storage.from('evidencias').getPublicUrl(fileName);
+          
+          // Guardamos el link en la nueva tabla
+          await prisma.attachment.create({
+            data: {
+              url: publicUrl,
+              name: file.name,
+              type: "AUTHORITY",
+              ticketId: id
+            }
+          });
+        }
+      }
+    }
     revalidatePath("/admin/buzon");
-    return { success: true, folio };
+    return { success: true };
   } catch (error) { return { success: false }; }
 }
 
@@ -38,12 +57,43 @@ export async function updateTicketStatus(id: string, newStatus: string) {
 export async function submitAuthorityResponse(formData: FormData) {
   const id = formData.get("id") as string;
   const responseText = formData.get("responseText") as string;
-  await prisma.ticket.update({
-    where: { id },
-    data: { authorityResponse: responseText, status: "RESUELTO", updatedAt: new Date() }
-  });
-  revalidatePath("/admin/buzon");
-  return { success: true };
+  const files = formData.getAll("evidence") as File[]; // Nota el "getAll"
+
+  try {
+    // 1. Actualizamos el texto de la respuesta
+    await prisma.ticket.update({
+      where: { id },
+      data: { authorityResponse: responseText, status: "RESUELTO" }
+    });
+
+    // 2. Subimos cada archivo al Storage
+    for (const file of files) {
+      if (file.size > 0) {
+        const fileExt = file.name.split('.').pop();
+        const fileName = `authority/${id}-${Date.now()}.${fileExt}`;
+        
+        const { data, error } = await supabase.storage
+          .from('evidencias')
+          .upload(fileName, file);
+
+        if (!error) {
+          const { data: { publicUrl } } = supabase.storage.from('evidencias').getPublicUrl(fileName);
+          
+          // Guardamos el link en la nueva tabla
+          await prisma.attachment.create({
+            data: {
+              url: publicUrl,
+              name: file.name,
+              type: "AUTHORITY",
+              ticketId: id
+            }
+          });
+        }
+      }
+    }
+    revalidatePath("/admin/buzon");
+    return { success: true };
+  } catch (error) { return { success: false }; }
 }
 
 export async function setStudentSatisfaction(id: string, satisfied: boolean) {

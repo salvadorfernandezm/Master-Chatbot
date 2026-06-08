@@ -76,8 +76,19 @@ function BuzonFormContent({ reglamento }: { reglamento: string }) {
             <input name="studentEmail" type="email" placeholder="Correo (Opcional)" className="w-full bg-black border-2 border-slate-800 p-4 rounded-2xl text-sm" />
             <input name="studentName" type="text" placeholder="Nombre (Opcional)" className="w-full bg-black border-2 border-slate-800 p-4 rounded-2xl text-sm" />
             <textarea name="content" required rows={5} placeholder="Describe los hechos..." className="w-full bg-black border-2 border-slate-800 p-4 rounded-2xl text-sm resize-none"></textarea>
+            
+            {/* AQUÍ ESTÁ EL BOTÓN DEL CLIP REINSTALADO */}
+            <div className="space-y-2">
+              <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-2">Adjuntar evidencias (puedes elegir varias)</label>
+              <input 
+                name="evidence" 
+                type="file" 
+                multiple 
+                className="w-full text-xs text-slate-400 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-[10px] file:font-black file:bg-emerald-500 file:text-black hover:file:bg-white transition-all cursor-pointer" 
+              />
+            </div>
           </div>
-          <button type="submit" disabled={status === "SENDING"} className="w-full bg-emerald-500 text-black font-black py-5 rounded-[2rem] uppercase disabled:opacity-50">
+          <button type="submit" disabled={status === "SENDING"} className="w-full bg-emerald-500 text-black font-black py-5 rounded-[2rem] uppercase disabled:opacity-50 shadow-lg hover:bg-white transition-all">
             {status === "SENDING" ? "Enviando..." : "Enviar Reporte"}
           </button>
         </form>
