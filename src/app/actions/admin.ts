@@ -4,46 +4,89 @@ import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
 import { processFile, processUrl } from "@/lib/documentProcessor";
 import { randomBytes } from "crypto";
+import { createClient } from '@supabase/supabase-js';
+import { Resend } from 'resend';
 
-// --- 1. GESTIÓN DEL BUZÓN (Tickets) ---
+// 1. INICIALIZACIÓN DE CLIENTES (La pieza que faltaba)
+const resend = new Resend(process.env.RESEND_API_KEY);
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+);
+
+// ==========================================
+// 1. GESTIÓN DEL BUZÓN (Tickets y Múltiples Evidencias)
+// ==========================================
+
 export async function createTicket(formData: FormData) {
-  const id = formData.get("id") as string;
-  const responseText = formData.get("responseText") as string;
-  const files = formData.getAll("evidence") as File[]; // Nota el "getAll"
+  const type = formData.get("type") as string;
+  const content = formData.get("content") as string;
+  const studentName = formData.get("studentName") as string;
+  const studentEmail = formData.get("studentEmail") as string;
+  const files = formData.getAll("evidence") as File[]; 
+
+  if (!content || !type) return { success: false, error: "Faltan datos" };
+  const folio = `ETH-${Math.random().toString(36).substring(2, 7).toUpperCase()}`;
 
   try {
-    // 1. Actualizamos el texto de la respuesta
-    await prisma.ticket.update({
-      where: { id },
-      data: { authorityResponse: responseText, status: "RESUELTO" }
+    const ticket = await prisma.ticket.create({
+      data: {
+        folio,
+        type,
+        content,
+        studentName: studentName || "Anónimo Protegido",
+        studentEmail: studentEmail || null,
+        status: "PENDIENTE",
+      },
     });
 
-    // 2. Subimos cada archivo al Storage
     for (const file of files) {
       if (file.size > 0) {
         const fileExt = file.name.split('.').pop();
-        const fileName = `authority/${id}-${Date.now()}.${fileExt}`;
-        
-        const { data, error } = await supabase.storage
-          .from('evidencias')
-          .upload(fileName, file);
-
-        if (!error) {
+        const fileName = `student/${ticket.id}-${Date.now()}.${fileExt}`;
+        const { error: uploadError } = await supabase.storage.from('evidencias').upload(fileName, file);
+        if (!uploadError) {
           const { data: { publicUrl } } = supabase.storage.from('evidencias').getPublicUrl(fileName);
-          
-          // Guardamos el link en la nueva tabla
           await prisma.attachment.create({
-            data: {
-              url: publicUrl,
-              name: file.name,
-              type: "AUTHORITY",
-              ticketId: id
-            }
+            data: { url: publicUrl, name: file.name, type: "STUDENT", ticketId: ticket.id }
           });
         }
       }
     }
     revalidatePath("/admin/buzon");
+    return { success: true, folio };
+  } catch (error) {
+    return { success: false };
+  }
+}
+
+export async function submitAuthorityResponse(formData: FormData) {
+  const id = formData.get("id") as string;
+  const responseText = formData.get("responseText") as string;
+  const files = formData.getAll("evidence") as File[];
+
+  try {
+    await prisma.ticket.update({
+      where: { id },
+      data: { authorityResponse: responseText, status: "RESUELTO", updatedAt: new Date() },
+    });
+
+    for (const file of files) {
+      if (file.size > 0) {
+        const fileExt = file.name.split('.').pop();
+        const fileName = `authority/${id}-${Date.now()}.${fileExt}`;
+        const { error: uploadError } = await supabase.storage.from('evidencias').upload(fileName, file);
+        if (!uploadError) {
+          const { data: { publicUrl } } = supabase.storage.from('evidencias').getPublicUrl(fileName);
+          await prisma.attachment.create({
+            data: { url: publicUrl, name: file.name, type: "AUTHORITY", ticketId: id }
+          });
+        }
+      }
+    }
+    revalidatePath("/admin/buzon");
+    revalidatePath("/admin/directora");
+    revalidatePath("/seguimiento");
     return { success: true };
   } catch (error) { return { success: false }; }
 }
@@ -51,58 +94,13 @@ export async function createTicket(formData: FormData) {
 export async function updateTicketStatus(id: string, newStatus: string) {
   await prisma.ticket.update({ where: { id }, data: { status: newStatus } });
   revalidatePath("/admin/buzon");
-  return { success: true };
+  revalidatePath("/admin/directora");
 }
 
-export async function submitAuthorityResponse(formData: FormData) {
-  const id = formData.get("id") as string;
-  const responseText = formData.get("responseText") as string;
-  const files = formData.getAll("evidence") as File[]; // Nota el "getAll"
+// ==========================================
+// 2. GESTIÓN DE GRUPOS
+// ==========================================
 
-  try {
-    // 1. Actualizamos el texto de la respuesta
-    await prisma.ticket.update({
-      where: { id },
-      data: { authorityResponse: responseText, status: "RESUELTO" }
-    });
-
-    // 2. Subimos cada archivo al Storage
-    for (const file of files) {
-      if (file.size > 0) {
-        const fileExt = file.name.split('.').pop();
-        const fileName = `authority/${id}-${Date.now()}.${fileExt}`;
-        
-        const { data, error } = await supabase.storage
-          .from('evidencias')
-          .upload(fileName, file);
-
-        if (!error) {
-          const { data: { publicUrl } } = supabase.storage.from('evidencias').getPublicUrl(fileName);
-          
-          // Guardamos el link en la nueva tabla
-          await prisma.attachment.create({
-            data: {
-              url: publicUrl,
-              name: file.name,
-              type: "AUTHORITY",
-              ticketId: id
-            }
-          });
-        }
-      }
-    }
-    revalidatePath("/admin/buzon");
-    return { success: true };
-  } catch (error) { return { success: false }; }
-}
-
-export async function setStudentSatisfaction(id: string, satisfied: boolean) {
-  await prisma.ticket.update({ where: { id }, data: { studentResolved: satisfied } });
-  revalidatePath("/seguimiento");
-  return { success: true };
-}
-
-// --- 2. GESTIÓN DE GRUPOS ---
 export async function createGroup(formData: FormData) {
   const name = formData.get("name") as string;
   const description = formData.get("description") as string;
@@ -123,14 +121,17 @@ export async function deleteGroup(id: string) {
   revalidatePath("/admin/groups");
 }
 
-// --- 3. GESTIÓN DE CHATBOTS ---
+// ==========================================
+// 3. GESTIÓN DE CHATBOTS
+// ==========================================
+
 export async function createChatbot(formData: FormData) {
   const name = formData.get("name") as string;
   const groupId = formData.get("groupId") as string;
   const knowledgeBaseId = formData.get("knowledgeBaseId") as string;
   const manualToken = formData.get("manualToken") as string;
   const token = manualToken?.trim() || randomBytes(4).toString("hex");
-  await prisma.chatbot.create({ data: { name, token, groupId, knowledgeBaseId, isActive: true } });
+  await prisma.chatbot.create({ data: { name, token, groupId, knowledgeBaseId } });
   revalidatePath("/admin/chatbots");
 }
 
@@ -138,9 +139,12 @@ export async function updateChatbot(formData: FormData) {
   const id = formData.get("id") as string;
   const updateData: any = {};
   const fields = ["name", "welcomeMessage", "systemInstructions", "inputPlaceholder", "fallbackMessage", "infoMessage", "logoUrl"];
-  fields.forEach(f => { if (formData.has(f)) updateData[f] = formData.get(f) as string; });
-  const active = formData.get("isActive");
-  if (active !== null) updateData.isActive = active === "true";
+  fields.forEach(field => {
+    const value = formData.get(field);
+    if (value !== null) updateData[field] = value as string;
+  });
+  const isActiveStr = formData.get("isActive");
+  if (isActiveStr !== null) updateData.isActive = isActiveStr === "true";
   await prisma.chatbot.update({ where: { id }, data: updateData });
   revalidatePath("/admin/chatbots");
 }
@@ -150,7 +154,10 @@ export async function deleteChatbot(id: string) {
   revalidatePath("/admin/chatbots");
 }
 
-// --- 4. GESTIÓN DE CONOCIMIENTO ---
+// ==========================================
+// 4. GESTIÓN DE CONOCIMIENTO
+// ==========================================
+
 export async function createKnowledgeBase(formData: FormData) {
   const name = formData.get("name") as string;
   const description = formData.get("description") as string;
@@ -174,13 +181,16 @@ export async function deleteKnowledgeBase(id: string) {
 export async function uploadFileDocument(formData: FormData) {
   const file = formData.get("file") as File;
   const knowledgeBaseId = formData.get("knowledgeBaseId") as string;
+  if (!file || !knowledgeBaseId) return;
   const buffer = Buffer.from(await file.arrayBuffer());
-  const doc = await prisma.document.create({ data: { filename: file.name, type: "PDF", knowledgeBaseId } });
-  await processFile(buffer, file.name, "PDF", knowledgeBaseId, doc.id);
+  const type = file.name.toLowerCase().endsWith('.pdf') ? 'PDF' : (file.name.toLowerCase().endsWith('.xlsx') ? 'EXCEL' : 'WORD');
+  const doc = await prisma.document.create({ data: { filename: file.name, type, knowledgeBaseId } });
+  await processFile(buffer, file.name, type, knowledgeBaseId, doc.id);
   revalidatePath(`/admin/knowledge/${knowledgeBaseId}`);
 }
 
 export async function deleteDocument(id: string, knowledgeBaseId: string) {
+  await prisma.documentChunk.deleteMany({ where: { documentId: id } });
   await prisma.document.delete({ where: { id } });
   revalidatePath(`/admin/knowledge/${knowledgeBaseId}`);
 }
@@ -193,23 +203,29 @@ export async function addUrlDocument(formData: FormData) {
   revalidatePath(`/admin/knowledge/${knowledgeBaseId}`);
 }
 
-// --- 5. SEGURIDAD Y RESPALDO ---
-export async function verifyDirectorPin(pin: string) {
-  return pin === process.env.DIRECTOR_PIN;
-}
+// ==========================================
+// 5. AJUSTES Y RESPALDO
+// ==========================================
 
 export async function updateSettings(formData: FormData) {
   const organizationName = formData.get("organizationName") as string;
+  const organizationLogo = formData.get("organizationLogo") as string;
   const organizationBuzonInfo = formData.get("organizationBuzonInfo") as string;
-  const active = formData.get("isBuzonActive") === "true";
+  const isBuzonActive = formData.get("isBuzonActive") === "true";
   const settings = await prisma.settings.findFirst();
-  if (settings) await prisma.settings.update({ where: { id: settings.id }, data: { organizationName, organizationBuzonInfo, isBuzonActive: active } });
-  else await prisma.settings.create({ data: { organizationName, organizationBuzonInfo, isBuzonActive: active } });
+  const data = { organizationName, organizationLogo, organizationBuzonInfo, isBuzonActive };
+  if (settings) await prisma.settings.update({ where: { id: settings.id }, data });
+  else await prisma.settings.create({ data });
   revalidatePath("/admin/settings");
 }
 
 export async function exportFullBackup() {
-  const [groups, chatbots, kbs, docs] = await Promise.all([prisma.group.findMany(), prisma.chatbot.findMany(), prisma.knowledgeBase.findMany(), prisma.document.findMany()]);
+  const [groups, chatbots, kbs, docs] = await Promise.all([
+    prisma.group.findMany(),
+    prisma.chatbot.findMany(),
+    prisma.knowledgeBase.findMany(),
+    prisma.document.findMany(),
+  ]);
   return { groups, chatbots, kbs, docs };
 }
 
@@ -219,6 +235,7 @@ export async function importFullBackup(data: any) {
     if (groups) await prisma.group.createMany({ data: groups, skipDuplicates: true });
     if (kbs) await prisma.knowledgeBase.createMany({ data: kbs, skipDuplicates: true });
     if (chatbots) await prisma.chatbot.createMany({ data: chatbots, skipDuplicates: true });
+    revalidatePath("/admin");
     return { success: true };
   } catch (error: any) { return { success: false, error: error.message }; }
 }
