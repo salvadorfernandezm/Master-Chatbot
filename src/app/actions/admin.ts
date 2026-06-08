@@ -8,11 +8,13 @@ import { createClient } from '@supabase/supabase-js';
 import { Resend } from 'resend';
 
 // 1. INICIALIZACIÓN DE CLIENTES
-const resend = new Resend(process.env.RESEND_API_KEY);
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-);
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
+const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "";
+
+// Solo creamos el cliente si las llaves existen, para no asustar a Vercel
+const supabase = supabaseUrl && supabaseKey 
+  ? createClient(supabaseUrl, supabaseKey)
+  : null;
 
 // ==========================================
 // 1. GESTIÓN DEL BUZÓN (Tickets y Evidencias)
