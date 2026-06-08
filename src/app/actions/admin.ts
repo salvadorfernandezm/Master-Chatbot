@@ -7,7 +7,7 @@ import { randomBytes } from "crypto";
 import { createClient } from '@supabase/supabase-js';
 import { Resend } from 'resend';
 
-// 1. INICIALIZACIÓN DE CLIENTES (La pieza que faltaba)
+// 1. INICIALIZACIÓN DE CLIENTES
 const resend = new Resend(process.env.RESEND_API_KEY);
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -15,7 +15,7 @@ const supabase = createClient(
 );
 
 // ==========================================
-// 1. GESTIÓN DEL BUZÓN (Tickets y Múltiples Evidencias)
+// 1. GESTIÓN DEL BUZÓN (Tickets y Evidencias)
 // ==========================================
 
 export async function createTicket(formData: FormData) {
@@ -91,6 +91,23 @@ export async function submitAuthorityResponse(formData: FormData) {
   } catch (error) { return { success: false }; }
 }
 
+// ESTA ES LA QUE LE FALTABA A VERCEL:
+export async function setStudentSatisfaction(id: string, satisfied: boolean) {
+  try {
+    await prisma.ticket.update({
+      where: { id },
+      data: { studentResolved: satisfied }
+    });
+    revalidatePath("/seguimiento");
+    revalidatePath("/admin/buzon");
+    revalidatePath("/admin/directora");
+    return { success: true };
+  } catch (error) {
+    console.error("Error al guardar satisfacción:", error);
+    return { success: false };
+  }
+}
+
 export async function updateTicketStatus(id: string, newStatus: string) {
   await prisma.ticket.update({ where: { id }, data: { status: newStatus } });
   revalidatePath("/admin/buzon");
@@ -98,7 +115,7 @@ export async function updateTicketStatus(id: string, newStatus: string) {
 }
 
 // ==========================================
-// 2. GESTIÓN DE GRUPOS
+// 2. GESTIÓN DE CHATBOTS, GRUPOS Y CONOCIMIENTO
 // ==========================================
 
 export async function createGroup(formData: FormData) {
@@ -120,10 +137,6 @@ export async function deleteGroup(id: string) {
   await prisma.group.delete({ where: { id } });
   revalidatePath("/admin/groups");
 }
-
-// ==========================================
-// 3. GESTIÓN DE CHATBOTS
-// ==========================================
 
 export async function createChatbot(formData: FormData) {
   const name = formData.get("name") as string;
@@ -153,10 +166,6 @@ export async function deleteChatbot(id: string) {
   await prisma.chatbot.delete({ where: { id } });
   revalidatePath("/admin/chatbots");
 }
-
-// ==========================================
-// 4. GESTIÓN DE CONOCIMIENTO
-// ==========================================
 
 export async function createKnowledgeBase(formData: FormData) {
   const name = formData.get("name") as string;
@@ -204,38 +213,5 @@ export async function addUrlDocument(formData: FormData) {
 }
 
 // ==========================================
-// 5. AJUSTES Y RESPALDO
-// ==========================================
-
-export async function updateSettings(formData: FormData) {
-  const organizationName = formData.get("organizationName") as string;
-  const organizationLogo = formData.get("organizationLogo") as string;
-  const organizationBuzonInfo = formData.get("organizationBuzonInfo") as string;
-  const isBuzonActive = formData.get("isBuzonActive") === "true";
-  const settings = await prisma.settings.findFirst();
-  const data = { organizationName, organizationLogo, organizationBuzonInfo, isBuzonActive };
-  if (settings) await prisma.settings.update({ where: { id: settings.id }, data });
-  else await prisma.settings.create({ data });
-  revalidatePath("/admin/settings");
-}
-
-export async function exportFullBackup() {
-  const [groups, chatbots, kbs, docs] = await Promise.all([
-    prisma.group.findMany(),
-    prisma.chatbot.findMany(),
-    prisma.knowledgeBase.findMany(),
-    prisma.document.findMany(),
-  ]);
-  return { groups, chatbots, kbs, docs };
-}
-
-export async function importFullBackup(data: any) {
-  try {
-    const { groups, kbs, chatbots } = data;
-    if (groups) await prisma.group.createMany({ data: groups, skipDuplicates: true });
-    if (kbs) await prisma.knowledgeBase.createMany({ data: kbs, skipDuplicates: true });
-    if (chatbots) await prisma.chatbot.createMany({ data: chatbots, skipDuplicates: true });
-    revalidatePath("/admin");
-    return { success: true };
-  } catch (error: any) { return { success: false, error: error.message }; }
-}
+// 3. AJUSTES Y RESPALDO
+//
