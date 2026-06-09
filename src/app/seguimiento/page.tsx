@@ -88,11 +88,11 @@ export default function SeguimientoPage() {
                 <p className="text-slate-300 italic text-sm">"{ticket.content}"</p>
               </div>
 
-              <div className="bg-emerald-500/5 p-6 rounded-3xl border border-emerald-500/20">
+              <div className="bg-emerald-500/5 p-6 rounded-3xl border border-emerald-500/20 text-left">
                 <p className="text-[10px] font-black uppercase text-emerald-500 mb-2">Respuesta de la Autoridad:</p>
                 <p className="text-sm text-white leading-relaxed">{ticket.authorityResponse || "Su reporte está en proceso de revisión."}</p>
 
-                {/* GALERÍA DE EVIDENCIAS (NUEVO) */}
+                {/* GALERÍA DE EVIDENCIAS */}
                 {ticket.attachments && ticket.attachments.length > 0 && (
                   <div className="mt-6 space-y-3 border-t border-white/5 pt-4">
                     <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest text-left">Documentos y Evidencias:</p>
@@ -100,4 +100,37 @@ export default function SeguimientoPage() {
                       {ticket.attachments.map((file: any) => (
                         <a 
                           key={file.id} 
-                          href={file.url}
+                          href={file.url} 
+                          target="_blank" 
+                          rel="noopener noreferrer"
+                          className="flex items-center gap-2 bg-white/5 border border-white/10 hover:bg-emerald-500/10 px-3 py-2 rounded-xl text-[10px] font-bold text-slate-300 transition-all"
+                        >
+                          <span>{file.type === 'STUDENT' ? '📁' : '📜'}</span>
+                          {file.name}
+                        </a>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* BOTONES DE SATISFACCIÓN */}
+              {ticket.status === 'RESUELTO' && (
+                <div className="mt-8 pt-6 border-t border-white/5 text-center">
+                  {voted || ticket.studentResolved ? (
+                    <div className="p-4 bg-emerald-500/10 rounded-2xl border border-emerald-500/20 text-emerald-400 font-bold text-sm uppercase">✓ Caso cerrado satisfactoriamente.</div>
+                  ) : (
+                    <div className="flex gap-4">
+                      <button onClick={() => handleVote(true)} className="flex-1 bg-emerald-600 text-white py-4 rounded-2xl font-black uppercase text-xs shadow-lg">SÍ, CONFORME</button>
+                      <button onClick={() => handleVote(false)} className="flex-1 bg-red-600 text-white py-4 rounded-2xl font-black uppercase text-xs shadow-lg">NO, INCONFORME</button>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
