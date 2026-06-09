@@ -22,6 +22,7 @@ function BuzonFormContent({ reglamento }: { reglamento: string }) {
       setFolio(result.folio);
       setStatus("SUCCESS");
     } else {
+      alert("Error al enviar el reporte. Por favor revisa los datos.");
       setStatus("ERROR");
     }
   }
@@ -29,14 +30,14 @@ function BuzonFormContent({ reglamento }: { reglamento: string }) {
   if (status === "SUCCESS") {
     return (
       <div className="min-h-screen bg-slate-950 flex items-center justify-center p-6 text-white text-center font-sans">
-        <div className="max-w-md w-full bg-slate-900 p-10 rounded-[3rem] shadow-2xl border-b-8 border-emerald-500">
+        <div className="max-w-md w-full bg-slate-900 p-10 rounded-[3rem] shadow-2xl border-b-8 border-emerald-500 animate-in zoom-in duration-500">
           <div className="text-6xl mb-6 text-emerald-500">✓</div>
           <h1 className="text-2xl font-black uppercase mb-4">Voz Registrada</h1>
           <div className="bg-black/50 p-6 rounded-3xl border border-white/10 mb-8 shadow-inner">
             <p className="text-[10px] text-emerald-500 uppercase font-black tracking-widest mb-2">Tu Folio de Seguimiento</p>
-            <p className="text-5xl font-black text-white">{folio}</p>
+            <p className="text-5xl font-black text-white tracking-tighter">{folio}</p>
           </div>
-          <button onClick={() => window.location.assign("/buzon")} className="bg-emerald-600 px-8 py-3 rounded-2xl font-bold">
+          <button onClick={() => window.location.assign("/buzon")} className="bg-emerald-600 hover:bg-emerald-500 px-8 py-3 rounded-2xl font-bold transition-all">
             Volver al Portal
           </button>
         </div>
@@ -53,7 +54,7 @@ function BuzonFormContent({ reglamento }: { reglamento: string }) {
 
         <header className="mb-10 text-center">
           <h1 className="text-3xl font-black uppercase tracking-widest text-emerald-500">
-            {isTechnical ? "Reporte Técnico" : "Buzón Ético"}
+            {isTechnical ? "Reporte de Fallo Técnico" : "Buzón de Voz Ética"}
           </h1>
         </header>
 
@@ -72,14 +73,32 @@ function BuzonFormContent({ reglamento }: { reglamento: string }) {
 
         <form action={handleSubmit} className={accepted ? "space-y-6" : "hidden"}>
           <div className="bg-slate-900 p-8 rounded-[2.5rem] shadow-xl border border-white/5 space-y-6">
-            <input type="hidden" name="type" value={isTechnical ? "SOPORTE_TECNICO" : "ACADEMICA"} />
-            <input name="studentEmail" type="email" placeholder="Correo (Opcional)" className="w-full bg-black border-2 border-slate-800 p-4 rounded-2xl text-sm" />
-            <input name="studentName" type="text" placeholder="Nombre (Opcional)" className="w-full bg-black border-2 border-slate-800 p-4 rounded-2xl text-sm" />
-            <textarea name="content" required rows={5} placeholder="Describe los hechos..." className="w-full bg-black border-2 border-slate-800 p-4 rounded-2xl text-sm resize-none"></textarea>
             
-            {/* AQUÍ ESTÁ EL BOTÓN DEL CLIP REINSTALADO */}
+            {/* SELECTOR DE TIPO (Recuperado y mejorado) */}
+            <div>
+              <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest block mb-2 ml-2">Categoría del reporte</label>
+              <select 
+                name="type" 
+                defaultValue={isTechnical ? "SOPORTE_TECNICO" : "ACADEMICA"}
+                className="w-full bg-black border-2 border-slate-800 p-4 rounded-2xl focus:border-emerald-500 outline-none text-sm text-white"
+              >
+                <option value="ACADEMICA">Asunto Académico</option>
+                <option value="LOGISTICA">Instalaciones / Logística</option>
+                <option value="GRAVE">Situación Grave / Ética</option>
+                <option value="SOPORTE_TECNICO">Fallo Técnico en el Chat</option>
+              </select>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <input name="studentEmail" type="email" placeholder="Tu Correo (Opcional)" className="w-full bg-black border-2 border-slate-800 p-4 rounded-2xl text-sm" />
+              <input name="studentName" type="text" placeholder="Tu Nombre (Opcional)" className="w-full bg-black border-2 border-slate-800 p-4 rounded-2xl text-sm" />
+            </div>
+            
+            <textarea name="content" required rows={5} placeholder="Describe los hechos con el mayor detalle posible..." className="w-full bg-black border-2 border-slate-800 p-4 rounded-2xl text-sm resize-none"></textarea>
+            
+            {/* EL CLIP MULTIPLE (Asegurado) */}
             <div className="space-y-2">
-              <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-2">Adjuntar evidencias (puedes elegir varias)</label>
+              <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-2">Adjuntar evidencias (Selecciona varias con Ctrl+Clic)</label>
               <input 
                 name="evidence" 
                 type="file" 
@@ -88,8 +107,9 @@ function BuzonFormContent({ reglamento }: { reglamento: string }) {
               />
             </div>
           </div>
+          
           <button type="submit" disabled={status === "SENDING"} className="w-full bg-emerald-500 text-black font-black py-5 rounded-[2rem] uppercase disabled:opacity-50 shadow-lg hover:bg-white transition-all">
-            {status === "SENDING" ? "Enviando..." : "Enviar Reporte"}
+            {status === "SENDING" ? "Enviando..." : "Enviar Reporte y Generar Folio"}
           </button>
         </form>
       </div>
@@ -99,7 +119,7 @@ function BuzonFormContent({ reglamento }: { reglamento: string }) {
 
 export default function BuzonClient({ reglamento }: { reglamento: string }) {
   return (
-    <Suspense fallback={<div className="text-white text-center p-20">Cargando...</div>}>
+    <Suspense fallback={<div className="text-white text-center p-20 italic">Cargando formulario...</div>}>
       <BuzonFormContent reglamento={reglamento} />
     </Suspense>
   );

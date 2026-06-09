@@ -41,7 +41,7 @@ export async function createTicket(formData: FormData) {
       },
     });
 
-    // CLÁUSULA DE SEGURIDAD PARA TYPESCRIPT
+    // 1. Subida de archivos (Ya debería estar bien)
     if (supabase) {
       for (const file of files) {
         if (file.size > 0) {
@@ -58,9 +58,38 @@ export async function createTicket(formData: FormData) {
       }
     }
 
+    // 2. NOTIFICACIÓN POR CORREO (Asegúrate de que este bloque esté aquí)
+    let emailDestino = process.env.EMAIL_INGENIERO; // Fallback
+    if (type === "ACADEMICA") emailDestino = process.env.EMAIL_SECRETARIA_ACADEMICA;
+    else if (type === "LOGISTICA") emailDestino = process.env.EMAIL_SECRETARIA_ADMINISTRATIVA;
+    else if (type === "GRAVE") emailDestino = process.env.EMAIL_DIRECCION;
+    else if (type === "SOPORTE_TECNICO") emailDestino = process.env.EMAIL_INGENIERO;
+
+    // Solo enviamos si tenemos la API Key y un destino
+    if (process.env.RESEND_API_KEY && emailDestino) {
+      const { Resend } = await import('resend');
+      const resend = new Resend(process.env.RESEND_API_KEY);
+      
+      await resend.emails.send({
+        from: 'Buzon Etico <onboarding@resend.dev>',
+        to: [emailDestino as string],
+        subject: `Nuevo Reporte [${type}]: ${folio}`,
+        html: `
+          <div style="font-family: sans-serif; padding: 20px;">
+            <h2>Nuevo Reporte Recibido</h2>
+            <p><strong>Folio:</strong> ${folio}</p>
+            <p><strong>Tipo:</strong> ${type}</p>
+            <p><strong>Mensaje:</strong> ${content}</p>
+            <a href="https://master-chatbot-rho.vercel.app/admin/buzon" style="background: #10b981; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;">Ver en el Panel</a>
+          </div>
+        `
+      });
+    }
+
     revalidatePath("/admin/buzon");
     return { success: true, folio };
   } catch (error) {
+    console.error("Error en createTicket:", error);
     return { success: false };
   }
 }
