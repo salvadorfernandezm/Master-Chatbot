@@ -28,6 +28,23 @@ export default function AdminBuzonPage() {
                   <span className="bg-slate-100 text-slate-600 px-3 py-1 rounded-full text-[10px] font-black uppercase mr-2">{ticket.type}</span>
                   <span className="text-[10px] text-slate-400 font-bold uppercase">FOLIO: {ticket.folio}</span>
                   <p className="text-slate-700 italic font-serif text-lg mt-4">"{ticket.content}"</p>
+
+{/* ARCHIVOS ADJUNTOS EN TU PANEL */}
+{ticket.attachments && ticket.attachments.length > 0 && (
+  <div className="mt-4 flex flex-wrap gap-2">
+    {ticket.attachments.map((file: any) => (
+      <a 
+        key={file.id} 
+        href={file.url} 
+        target="_blank" 
+        rel="noopener noreferrer"
+        className="inline-flex items-center gap-2 bg-blue-50 text-blue-700 px-3 py-1.5 rounded-xl text-[10px] font-bold border border-blue-100 hover:bg-blue-100 transition-all"
+      >
+        📎 {file.name} ({file.type === 'STUDENT' ? 'Alumno' : 'Autoridad'})
+      </a>
+    ))}
+  </div>
+)}
                   
                   {ticket.authorityResponse && (
                     <div className="mt-6 p-6 bg-emerald-50/50 rounded-[2rem] border border-emerald-100">

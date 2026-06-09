@@ -77,36 +77,31 @@ export default function SeguimientoPage() {
                 <p className="text-slate-300 italic text-sm">"{ticket.content}"</p>
               </div>
 
-              <div className="bg-emerald-500/5 p-6 rounded-3xl border border-emerald-500/20 text-left">
-                <p className="text-[10px] font-black uppercase text-emerald-500 mb-2">Respuesta Oficial:</p>
-                <p className="text-sm text-white leading-relaxed">{ticket.authorityResponse || "Su reporte está en proceso de revisión."}</p>
+            {/* RESPUESTA DE LA AUTORIDAD Y EVIDENCIAS */}
+<div className="bg-emerald-500/5 p-6 rounded-3xl border border-emerald-500/20">
+  <p className="text-[10px] font-black uppercase text-emerald-500 mb-2">Respuesta de la Autoridad:</p>
+  <p className="text-sm text-white leading-relaxed">
+      {ticket.authorityResponse || "Su reporte está en proceso de revisión."}
+  </p>
 
-                {ticket.authorityEvidence && (
-                  <div className="mt-6">
-                    <p className="text-[9px] font-black text-emerald-500 uppercase mb-2">Comprobante de resolución:</p>
-                    <a href={ticket.authorityEvidence} target="_blank" rel="noopener noreferrer" className="flex items-center justify-center gap-3 bg-emerald-500 text-black p-4 rounded-2xl font-black uppercase text-xs shadow-lg hover:scale-105 transition-all w-full">
-                      <span>👁️</span> VER EVIDENCIA ENVIADA POR LA AUTORIDAD
-                    </a>
-                  </div>
-                )}
-              </div>
-
-              {ticket.status === 'RESUELTO' && (
-                <div className="mt-8 pt-6 border-t border-white/5 text-center">
-                  {voted || ticket.studentResolved ? (
-                    <div className="p-4 bg-emerald-500/10 rounded-2xl text-emerald-400 font-bold text-sm uppercase">✓ Caso Cerrado Satisfactoriamente.</div>
-                  ) : (
-                    <div className="flex gap-4">
-                      <button onClick={() => handleVote(true)} className="flex-1 bg-emerald-600 text-white py-4 rounded-2xl font-black uppercase text-xs">SÍ, CONFORME</button>
-                      <button onClick={() => handleVote(false)} className="flex-1 bg-red-600 text-white py-4 rounded-2xl font-black uppercase text-xs">NO, INCONFORME</button>
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
-          </div>
-        )}
+  {/* GALERÍA DE ARCHIVOS ADJUNTOS (ALUMNO Y AUTORIDAD) */}
+  {ticket.attachments && ticket.attachments.length > 0 && (
+    <div className="mt-6 space-y-3 border-t border-white/5 pt-4">
+      <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest">Documentos y Evidencias:</p>
+      <div className="flex flex-wrap gap-2">
+        {ticket.attachments.map((file: any) => (
+          <a 
+            key={file.id} 
+            href={file.url} 
+            target="_blank" 
+            rel="noopener noreferrer"
+            className="flex items-center gap-2 bg-white/5 border border-white/10 hover:bg-emerald-500/10 hover:border-emerald-500/30 px-3 py-2 rounded-xl text-[10px] font-bold text-slate-300 transition-all"
+          >
+            <span>{file.type === 'STUDENT' ? '📁' : '📜'}</span>
+            {file.name}
+          </a>
+        ))}
       </div>
     </div>
-  );
-}
+  )}
+</div>

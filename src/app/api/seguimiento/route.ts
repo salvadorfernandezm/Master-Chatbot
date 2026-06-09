@@ -9,14 +9,8 @@ export async function GET(req: Request) {
 
   const ticket = await prisma.ticket.findUnique({
     where: { folio: folio.toUpperCase() },
-    select: {
-      id: true,
-      content: true,
-      status: true,
-      authorityResponse: true,
-      authorityEvidence: true, // <--- ¡AQUÍ ESTÁ LA LLAVE DE LA FOTO!
-      studentResolved: true,
-      createdAt: true
+    include: {
+      attachments: true // <--- TRAE TODOS LOS CLIPS (ALUMNO Y AUTORIDAD)
     }
   });
 

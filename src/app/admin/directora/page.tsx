@@ -49,6 +49,23 @@ export default function DirectorPanelPage() {
           tickets.map((t) => (
             <div key={t.id} className="bg-white rounded-[3rem] p-8 border border-slate-100 shadow-xl relative overflow-hidden transition-all hover:shadow-2xl">
               <div className={`absolute top-0 left-0 w-2 h-full ${t.type === 'GRAVE' ? 'bg-red-500' : 'bg-blue-500'}`}></div>
+
+{/* ARCHIVOS ADJUNTOS PARA LA DIRECTORA */}
+{t.attachments && t.attachments.length > 0 && (
+  <div className="mt-4 flex flex-wrap gap-2">
+    {t.attachments.map((file: any) => (
+      <a 
+        key={file.id} 
+        href={file.url} 
+        target="_blank" 
+        rel="noopener noreferrer"
+        className="inline-flex items-center gap-2 bg-slate-100 text-slate-700 px-3 py-1.5 rounded-xl text-[10px] font-bold border border-slate-200 hover:bg-slate-200 transition-all"
+      >
+        📎 {file.name}
+      </a>
+    ))}
+  </div>
+)}
               
               <div className="flex flex-col md:flex-row justify-between items-start gap-4">
                 <div className="flex-1">
