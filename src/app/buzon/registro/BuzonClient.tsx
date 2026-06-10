@@ -35,7 +35,7 @@ function BuzonFormContent({ reglamento }: { reglamento: string }) {
           <h1 className="text-2xl font-black uppercase mb-4">Voz Registrada</h1>
           <div className="bg-black/50 p-6 rounded-3xl border border-white/10 mb-8 shadow-inner">
             <p className="text-[10px] text-emerald-500 uppercase font-black tracking-widest mb-2">Tu Folio de Seguimiento</p>
-            <p className="text-5xl font-black text-white tracking-tighter">{folio}</p>
+            <p className="text-5xl font-black text-white">{folio}</p>
           </div>
           <button onClick={() => window.location.assign("/buzon")} className="bg-emerald-600 hover:bg-emerald-500 px-8 py-3 rounded-2xl font-bold transition-all">
             Volver al Portal
@@ -74,40 +74,50 @@ function BuzonFormContent({ reglamento }: { reglamento: string }) {
         <form action={handleSubmit} className={accepted ? "space-y-6" : "hidden"}>
           <div className="bg-slate-900 p-8 rounded-[2.5rem] shadow-xl border border-white/5 space-y-6">
             
-            {/* SELECTOR DE TIPO (Recuperado y mejorado) */}
-           <div>
-  <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest block mb-2 ml-2">Categoría del reporte</label>
-  <select name="type" defaultValue={isTechnical ? "SOPORTE_TECNICO" : "ACADEMICA"} className="...">
-    {isTechnical ? (
-      <option value="SOPORTE_TECNICO">Fallo Técnico en el Chat</option>
-    ) : (
-      <>
-        <option value="ACADEMICA">Asunto Académico</option>
-        <option value="LOGISTICA">Instalaciones / Logística</option>
-        <option value="GRAVE">Situación Grave / Ética</option>
-      </>
-    )}
-  </select>
-</div>
+            {/* SELECTOR DE CATEGORÍA */}
+            {!isTechnical ? (
+              <div>
+                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest block mb-2 ml-2">Categoría</label>
+                <select name="type" className="w-full bg-black border-2 border-slate-800 p-4 rounded-2xl focus:border-emerald-500 outline-none text-sm text-white">
+                  <option value="ACADEMICA">Asunto Académico</option>
+                  <option value="LOGISTICA">Instalaciones / Logística</option>
+                  <option value="GRAVE">Situación Grave / Ética</option>
+                </select>
+              </div>
+            ) : (
+              <input type="hidden" name="type" value="SOPORTE_TECNICO" />
+            )}
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <input name="studentEmail" type="email" placeholder="Tu Correo (Opcional)" className="w-full bg-black border-2 border-slate-800 p-4 rounded-2xl text-sm" />
-              <input name="studentName" type="text" placeholder="Tu Nombre (Opcional)" className="w-full bg-black border-2 border-slate-800 p-4 rounded-2xl text-sm" />
+              <input name="studentEmail" type="email" placeholder="Correo (Opcional)" className="w-full bg-black border-2 border-slate-800 p-4 rounded-2xl text-sm" />
+              <input name="studentName" type="text" placeholder="Nombre (Opcional)" className="w-full bg-black border-2 border-slate-800 p-4 rounded-2xl text-sm" />
             </div>
+
+            <textarea name="content" required rows={5} placeholder="Describe los hechos..." className="w-full bg-black border-2 border-slate-800 p-4 rounded-2xl text-sm resize-none"></textarea>
             
-            <textarea name="content" required rows={5} placeholder="Describe los hechos con el mayor detalle posible..." className="w-full bg-black border-2 border-slate-800 p-4 rounded-2xl text-sm resize-none"></textarea>
-            
-            {/* EL CLIP MULTIPLE (Asegurado) */}
+            {/* CLIP MULTIPLE CON INSTRUCCIONES */}
             <div className="space-y-2">
-  <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-2">Adjuntar evidencias</label>
-  <input name="evidence" type="file" multiple className="..." />
-  <p className="text-[9px] text-amber-500 italic px-2">
-    * Para subir varios archivos, selecciónalos juntos manteniendo la tecla Ctrl (PC) o marcando varios en tu móvil.
-  </p>
-</div>
+              <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-2">Adjuntar evidencias</label>
+              <input 
+                name="evidence" 
+                type="file" 
+                multiple 
+                className="w-full text-xs text-slate-400 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-[10px] file:font-black file:bg-emerald-500 file:text-black hover:file:bg-white transition-all cursor-pointer" 
+              />
+              <p className="text-[9px] text-amber-500 italic px-2">
+                * Para subir varios archivos, selecciónalos juntos manteniendo la tecla Ctrl (PC) o marcando varios en tu móvil.
+              </p>
+            </div>
+
+            {/* AVISO 72 HORAS */}
+            <div className="bg-amber-500/10 border border-amber-500/30 p-4 rounded-2xl text-center">
+              <p className="text-amber-500 text-[10px] font-black uppercase tracking-widest animate-pulse">⚠️ NOTA IMPORTANTE</p>
+              <p className="text-[11px] text-slate-300 mt-1">Tendrás 72 horas para validar la solución una vez que la autoridad responda.</p>
+            </div>
+          </div>
           
-          <button type="submit" disabled={status === "SENDING"} className="w-full bg-emerald-500 text-black font-black py-5 rounded-[2rem] uppercase disabled:opacity-50 shadow-lg hover:bg-white transition-all">
-            {status === "SENDING" ? "Enviando..." : "Enviar Reporte y Generar Folio"}
+          <button type="submit" disabled={status === "SENDING"} className="w-full bg-emerald-500 text-black font-black py-5 rounded-[2rem] uppercase shadow-lg hover:bg-white transition-all disabled:opacity-50">
+            {status === "SENDING" ? "Enviando..." : "Enviar Reporte"}
           </button>
         </form>
       </div>
@@ -117,7 +127,7 @@ function BuzonFormContent({ reglamento }: { reglamento: string }) {
 
 export default function BuzonClient({ reglamento }: { reglamento: string }) {
   return (
-    <Suspense fallback={<div className="text-white text-center p-20 italic">Cargando formulario...</div>}>
+    <Suspense fallback={<div className="text-white text-center p-20 italic font-sans">Cargando formulario...</div>}>
       <BuzonFormContent reglamento={reglamento} />
     </Suspense>
   );
