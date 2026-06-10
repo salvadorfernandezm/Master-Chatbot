@@ -7,7 +7,7 @@ import { randomBytes } from "crypto";
 import { createClient } from '@supabase/supabase-js';
 import { Resend } from 'resend';
 
-// 1. INICIALIZACIÓN DE CLIENTES (Seguros para Vercel)
+// 1. INICIALIZACIÓN DE CLIENTES
 const resend = new Resend(process.env.RESEND_API_KEY);
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
 const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "";
@@ -25,12 +25,9 @@ export async function createTicket(formData: FormData) {
   const files = formData.getAll("evidence") as File[]; 
 
   if (!content || !type) return { success: false, error: "Faltan datos" };
-  
-  // Generamos el Folio Único
   const folio = `ETH-${Math.random().toString(36).substring(2, 7).toUpperCase()}`;
 
   try {
-    // A. Creamos el ticket en la Base de Datos
     const ticket = await prisma.ticket.create({
       data: {
         folio,
@@ -42,7 +39,6 @@ export async function createTicket(formData: FormData) {
       },
     });
 
-    // B. Subimos archivos si hay (Lógica Múltiple)
     if (supabase) {
       for (const file of files) {
         if (file.size > 0) {
@@ -58,41 +54,9 @@ export async function createTicket(formData: FormData) {
         }
       }
     }
-
-    // C. SISTEMA NERVIOSO: Notificación por Correo
-    let emailDestino = process.env.EMAIL_INGENIERO; // Fallback
-    if (type === "ACADEMICA") emailDestino = process.env.EMAIL_SECRETARIA_ACADEMICA;
-    else if (type === "LOGISTICA") emailDestino = process.env.EMAIL_SECRETARIA_ADMINISTRATIVA;
-    else if (type === "GRAVE") emailDestino = process.env.EMAIL_DIRECCION;
-    else if (type === "SOPORTE_TECNICO") emailDestino = process.env.EMAIL_INGENIERO;
-
-    const linkDeRespuesta = `https://master-chatbot-rho.vercel.app/admin/responder?folio=${folio}`;
-
-    if (process.env.RESEND_API_KEY && emailDestino) {
-      await resend.emails.send({
-        from: 'Buzon Etico <onboarding@resend.dev>',
-        to: [emailDestino as string],
-        subject: `Nuevo Reporte [${type}]: ${folio}`,
-        html: `
-          <div style="font-family: sans-serif; padding: 20px; border: 1px solid #e2e8f0; border-radius: 20px;">
-            <h2 style="color: #10b981;">Nuevo Reporte Recibido</h2>
-            <p><strong>Folio:</strong> ${folio}</p>
-            <p><strong>Tipo:</strong> ${type}</p>
-            <p><strong>Mensaje:</strong> ${content}</p>
-            <br/>
-            <a href="${linkDeRespuesta}" style="background: #0f172a; color: white; padding: 12px 25px; text-decoration: none; border-radius: 10px; font-weight: bold; display: inline-block;">
-              Responder y Resolver este caso
-            </a>
-          </div>
-        `
-      });
-    }
-
     revalidatePath("/admin/buzon");
-    revalidatePath("/buzon");
     return { success: true, folio };
   } catch (error) {
-    console.error("Error en createTicket:", error);
     return { success: false };
   }
 }
@@ -103,7 +67,7 @@ export async function submitAuthorityResponse(formData: FormData) {
   const files = formData.getAll("evidence") as File[];
 
   try {
-    const ticket = await prisma.ticket.update({
+    await prisma.ticket.update({
       where: { id },
       data: { authorityResponse: responseText, status: "RESUELTO", updatedAt: new Date() },
     });
@@ -134,8 +98,6 @@ export async function setStudentSatisfaction(id: string, satisfied: boolean) {
   try {
     await prisma.ticket.update({ where: { id }, data: { studentResolved: satisfied } });
     revalidatePath("/seguimiento");
-    revalidatePath("/admin/buzon");
-    revalidatePath("/admin/directora");
     return { success: true };
   } catch (error) { return { success: false }; }
 }
@@ -143,11 +105,10 @@ export async function setStudentSatisfaction(id: string, satisfied: boolean) {
 export async function updateTicketStatus(id: string, newStatus: string) {
   await prisma.ticket.update({ where: { id }, data: { status: newStatus } });
   revalidatePath("/admin/buzon");
-  revalidatePath("/admin/directora");
 }
 
 // ==========================================
-// 2. GESTIÓN DE CHATBOTS, GRUPOS Y CONOCIMIENTO
+// 2. GESTIÓN DE CHATBOTS Y GRUPOS
 // ==========================================
 
 export async function createGroup(formData: FormData) {
@@ -199,6 +160,10 @@ export async function deleteChatbot(id: string) {
   revalidatePath("/admin/chatbots");
 }
 
+// ==========================================
+// 3. GESTIÓN DE CONOCIMIENTO (Bases, Archivos y URLs)
+// ==========================================
+
 export async function createKnowledgeBase(formData: FormData) {
   const name = formData.get("name") as string;
   const description = formData.get("description") as string;
@@ -215,6 +180,8 @@ export async function updateKnowledgeBase(formData: FormData) {
 }
 
 export async function deleteKnowledgeBase(id: string) {
+  await prisma.documentChunk.deleteMany({ where: { knowledgeBaseId: id } });
+  await prisma.document.deleteMany({ where: { knowledgeBaseId: id } });
   await prisma.knowledgeBase.delete({ where: { id } });
   revalidatePath("/admin/knowledge");
 }
@@ -236,8 +203,22 @@ export async function deleteDocument(id: string, knowledgeBaseId: string) {
   revalidatePath(`/admin/knowledge/${knowledgeBaseId}`);
 }
 
+// AQUÍ ESTÁ LA QUE FALTABA:
+export async function addUrlDocument(formData: FormData) {
+  const url = formData.get("url") as string;
+  const knowledgeBaseId = formData.get("knowledgeBaseId") as string;
+  if (!url || !knowledgeBaseId) return;
+
+  const doc = await prisma.document.create({
+    data: { filename: url, type: "URL", knowledgeBaseId }
+  });
+
+  await processUrl(url, knowledgeBaseId, doc.id);
+  revalidatePath(`/admin/knowledge/${knowledgeBaseId}`);
+}
+
 // ==========================================
-// 3. SEGURIDAD, AJUSTES Y RESPALDO
+// 4. CONFIGURACIÓN, SEGURIDAD Y RESPALDO
 // ==========================================
 
 export async function verifyDirectorPin(pin: string) {
@@ -250,9 +231,8 @@ export async function updateSettings(formData: FormData) {
   const organizationBuzonInfo = formData.get("organizationBuzonInfo") as string;
   const isBuzonActive = formData.get("isBuzonActive") === "true";
   const settings = await prisma.settings.findFirst();
-  const data = { organizationName, organizationLogo, organizationBuzonInfo, isBuzonActive };
-  if (settings) await prisma.settings.update({ where: { id: settings.id }, data });
-  else await prisma.settings.create({ data });
+  if (settings) await prisma.settings.update({ where: { id: settings.id }, data: { organizationName, organizationLogo, organizationBuzonInfo, isBuzonActive } });
+  else await prisma.settings.create({ data: { organizationName, organizationLogo, organizationBuzonInfo, isBuzonActive } });
   revalidatePath("/admin/settings");
 }
 
@@ -266,7 +246,7 @@ export async function exportFullBackup() {
   return { groups, chatbots, kbs, docs };
 }
 
-export async function importFullBackup(data: any) {
+export async function importFullBackup(data: any): Promise<{ success: boolean; error?: string }> {
   try {
     const { groups, kbs, chatbots } = data;
     if (groups) await prisma.group.createMany({ data: groups, skipDuplicates: true });
@@ -274,5 +254,7 @@ export async function importFullBackup(data: any) {
     if (chatbots) await prisma.chatbot.createMany({ data: chatbots, skipDuplicates: true });
     revalidatePath("/admin");
     return { success: true };
-  } catch (error: any) { return { success: false, error: error.message }; }
+  } catch (error: any) { 
+    return { success: false, error: error.message }; 
+  }
 }
