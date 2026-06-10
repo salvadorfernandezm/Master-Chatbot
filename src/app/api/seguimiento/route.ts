@@ -7,12 +7,12 @@ export async function GET(req: Request) {
 
   if (!folio) return NextResponse.json({ error: "Folio requerido" }, { status: 400 });
 
-  const ticket = await prisma.ticket.findUnique({
-    where: { folio: folio.toUpperCase() },
-    include: {
-      attachments: true // <--- TRAE TODOS LOS CLIPS (ALUMNO Y AUTORIDAD)
-    }
-  });
+ const ticket = await prisma.ticket.findUnique({
+  where: { folio: folio.toUpperCase() },
+  include: {
+    attachments: true // <--- ESTO LIBERA LAS FOTOS PARA EL ALUMNO
+  }
+});
 
   if (!ticket) return NextResponse.json({ error: "No se encontró el folio" }, { status: 404 });
 

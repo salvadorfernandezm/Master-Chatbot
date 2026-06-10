@@ -75,19 +75,20 @@ function BuzonFormContent({ reglamento }: { reglamento: string }) {
           <div className="bg-slate-900 p-8 rounded-[2.5rem] shadow-xl border border-white/5 space-y-6">
             
             {/* SELECTOR DE TIPO (Recuperado y mejorado) */}
-            <div>
-              <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest block mb-2 ml-2">Categoría del reporte</label>
-              <select 
-                name="type" 
-                defaultValue={isTechnical ? "SOPORTE_TECNICO" : "ACADEMICA"}
-                className="w-full bg-black border-2 border-slate-800 p-4 rounded-2xl focus:border-emerald-500 outline-none text-sm text-white"
-              >
-                <option value="ACADEMICA">Asunto Académico</option>
-                <option value="LOGISTICA">Instalaciones / Logística</option>
-                <option value="GRAVE">Situación Grave / Ética</option>
-                <option value="SOPORTE_TECNICO">Fallo Técnico en el Chat</option>
-              </select>
-            </div>
+           <div>
+  <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest block mb-2 ml-2">Categoría del reporte</label>
+  <select name="type" defaultValue={isTechnical ? "SOPORTE_TECNICO" : "ACADEMICA"} className="...">
+    {isTechnical ? (
+      <option value="SOPORTE_TECNICO">Fallo Técnico en el Chat</option>
+    ) : (
+      <>
+        <option value="ACADEMICA">Asunto Académico</option>
+        <option value="LOGISTICA">Instalaciones / Logística</option>
+        <option value="GRAVE">Situación Grave / Ética</option>
+      </>
+    )}
+  </select>
+</div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <input name="studentEmail" type="email" placeholder="Tu Correo (Opcional)" className="w-full bg-black border-2 border-slate-800 p-4 rounded-2xl text-sm" />
@@ -98,15 +99,12 @@ function BuzonFormContent({ reglamento }: { reglamento: string }) {
             
             {/* EL CLIP MULTIPLE (Asegurado) */}
             <div className="space-y-2">
-              <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-2">Adjuntar evidencias (Selecciona varias con Ctrl+Clic)</label>
-              <input 
-                name="evidence" 
-                type="file" 
-                multiple 
-                className="w-full text-xs text-slate-400 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-[10px] file:font-black file:bg-emerald-500 file:text-black hover:file:bg-white transition-all cursor-pointer" 
-              />
-            </div>
-          </div>
+  <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-2">Adjuntar evidencias</label>
+  <input name="evidence" type="file" multiple className="..." />
+  <p className="text-[9px] text-amber-500 italic px-2">
+    * Para subir varios archivos, selecciónalos juntos manteniendo la tecla Ctrl (PC) o marcando varios en tu móvil.
+  </p>
+</div>
           
           <button type="submit" disabled={status === "SENDING"} className="w-full bg-emerald-500 text-black font-black py-5 rounded-[2rem] uppercase disabled:opacity-50 shadow-lg hover:bg-white transition-all">
             {status === "SENDING" ? "Enviando..." : "Enviar Reporte y Generar Folio"}
