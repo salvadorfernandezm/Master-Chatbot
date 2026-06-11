@@ -25,7 +25,7 @@ export default function AdminBuzonPage() {
       <header className="bg-slate-950 p-8 rounded-[2.5rem] text-white shadow-2xl flex justify-between items-center border-b-8 border-emerald-500">
         <div className="text-left">
           <h1 className="text-3xl font-black uppercase tracking-widest text-emerald-50">Gestión General</h1>
-          <p className="text-slate-400 text-xs italic mt-2 uppercase tracking-tighter">Administración total de voces y fallos técnicos.</p>
+          <p className="text-slate-400 text-xs italic mt-2 uppercase tracking-tighter">Administración de voces y fallos técnicos.</p>
         </div>
         <div className="bg-white/10 px-6 py-2 rounded-3xl text-2xl font-black text-emerald-400">
           {tickets.length}
@@ -34,13 +34,13 @@ export default function AdminBuzonPage() {
 
       <div className="grid grid-cols-1 gap-8">
         {loading ? (
-          <p className="text-center italic text-slate-500 py-20 animate-pulse text-lg">Cargando la base de datos...</p>
+          <p className="text-center italic text-slate-500 py-20 animate-pulse text-lg">Cargando...</p>
         ) : tickets.length === 0 ? (
           <div className="bg-white p-20 rounded-[3rem] border-4 border-dashed border-slate-100 text-center">
-             <p className="text-slate-300 text-xl italic font-serif text-lg">No hay actividad en el buzón todavía.</p>
+             <p className="text-slate-300 text-xl italic font-serif">Sin reportes nuevos.</p>
           </div>
         ) : (
-          tickets.map((ticket) => (
+          tickets.map((ticket: any) => (
             <div key={ticket.id} className="bg-white rounded-[3rem] shadow-xl border-2 border-slate-50 overflow-hidden hover:shadow-2xl transition-all duration-500 group">
               <div className="p-10">
                 
@@ -110,7 +110,6 @@ export default function AdminBuzonPage() {
                     </div>
                     <p className="text-sm text-slate-700 italic leading-relaxed">"{ticket.authorityResponse}"</p>
                     
-                    {/* Evidencia de la autoridad (campo simplificado) */}
                     {ticket.authorityEvidence && (
                       <div className="mt-3 flex items-center gap-2">
                         <a 
