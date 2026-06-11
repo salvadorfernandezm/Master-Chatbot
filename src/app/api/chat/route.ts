@@ -17,14 +17,28 @@ export async function POST(req: Request) {
 
     if (!chatbot) return NextResponse.json({ error: "Chatbot no encontrado" }, { status: 404 });
 
-    // 1. CARGAR CONTEXTO
+    // 1. CARGAR CONTEXTO (40 fragmentos para máxima precisión)
     await loadStoreFromDB(chatbot.knowledgeBaseId, prisma);
     const vectorContexts = await searchVectorStore(message, chatbot.knowledgeBaseId, 40);
     const contextText = vectorContexts.map((v: any) => v.pageContent).join("\n\n");
 
-    const systemPrompt = `Eres un asistente académico experto. Usa este contexto: ${contextText}. Responde de forma clara.`;
+    // 2. DETECTAR TIPO DE CHAT PARA EL PROMPT
+    const isGrades = chatbot.name.toLowerCase().includes("calificaci") || chatbot.name.toLowerCase().includes("ética");
+    const isAPA = chatbot.name.toLowerCase().includes("apa");
 
-    // 2. LLAMADA A GOOGLE
+    let specificInstructions = "";
+    if (isGrades) {
+      specificInstructions = "REGLA DE PROMEDIO: Si una nota es sobre 12, divídela entre 1.2. Si es sobre 5, multiplícala por 2. Muestra el desglose.";
+    } else if (isAPA) {
+      specificInstructions = "Eres experto en APA 7. Cita páginas y usa ejemplos del contexto. Si no está la regla, di que no se encuentra en el manual.";
+    }
+
+    const systemPrompt = `Eres "${chatbot.name}", el asistente del Prof. Salvador. 
+    ${specificInstructions}
+    Usa este contexto: ${contextText}. 
+    Instrucciones adicionales del admin: ${chatbot.systemInstructions || ""}`;
+
+    // 3. LLAMADA A GOOGLE
     const modelName = "gemini-flash-latest"; 
     const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${apiKey}`;
 
@@ -38,27 +52,18 @@ export async function POST(req: Request) {
     });
 
     const data = await response.json();
-    if (!response.ok) throw new Error(data.error?.message || "Error Google");
-
     const reply = data.candidates[0].content.parts[0].text;
 
-    // --- EL TAQUÍGRAFO (Analíticas) ---
+    // 4. GUARDAR ANALÍTICAS
     try {
       await prisma.interaction.create({
-        data: {
-          chatbotId: chatbot.id,
-          query: message.substring(0, 500),
-          response: reply.substring(0, 2000)
-        }
+        data: { chatbotId: chatbot.id, query: message.substring(0, 500), response: reply.substring(0, 2000) }
       });
-    } catch (e) {
-      console.error("Error analíticas:", e);
-    }
+    } catch (e) { console.error("Error analíticas:", e); }
 
     return NextResponse.json({ reply });
 
   } catch (error: any) {
-    console.error("❌ FALLO:", error.message);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ error: "Reintentando..." }, { status: 500 });
   }
 }
