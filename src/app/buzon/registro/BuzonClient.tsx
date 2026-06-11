@@ -95,19 +95,15 @@ function BuzonFormContent({ reglamento }: { reglamento: string }) {
 
             <textarea name="content" required rows={5} placeholder="Describe los hechos..." className="w-full bg-black border-2 border-slate-800 p-4 rounded-2xl text-sm resize-none"></textarea>
             
-            {/* CLIP MULTIPLE CON INSTRUCCIONES */}
-            <div className="space-y-2">
-              <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-2">Adjuntar evidencias</label>
-              <input 
-                name="evidence" 
-                type="file" 
-                multiple 
-                className="w-full text-xs text-slate-400 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-[10px] file:font-black file:bg-emerald-500 file:text-black hover:file:bg-white transition-all cursor-pointer" 
-              />
-              <p className="text-[9px] text-amber-500 italic px-2">
-                * Para subir varios archivos, selecciónalos juntos manteniendo la tecla Ctrl (PC) o marcando varios en tu móvil.
-              </p>
-            </div>
+          {/* INSTRUCCIONES DEL CLIP MEJORADAS */}
+<div className="bg-amber-50 p-4 rounded-2xl border border-amber-200 mt-2">
+  <p className="text-sm text-amber-800 font-bold flex items-center gap-2">
+    <span>💡</span> Instrucciones para evidencias:
+  </p>
+  <p className="text-sm text-amber-700 mt-1 leading-relaxed">
+    Debes mandar todas tus evidencias en <strong>un solo envío</strong>. Selecciónalas todas juntas manteniendo la tecla <strong>Ctrl</strong> (en PC) o marcando varias fotos en tu móvil.
+  </p>
+</div>
 
             {/* AVISO 72 HORAS */}
             <div className="bg-amber-500/10 border border-amber-500/30 p-4 rounded-2xl text-center">

@@ -72,21 +72,17 @@ export async function submitAuthorityResponse(formData: FormData) {
       data: { authorityResponse: responseText, status: "RESUELTO", updatedAt: new Date() },
     });
 
-    if (supabase) {
-      for (const file of files) {
-        if (file.size > 0) {
-          const fileExt = file.name.split('.').pop();
-          const fileName = `authority/${id}-${Date.now()}.${fileExt}`;
-          const { error: uploadError } = await supabase.storage.from('evidencias').upload(fileName, file);
-          if (!uploadError) {
-            const { data: { publicUrl } } = supabase.storage.from('evidencias').getPublicUrl(fileName);
-            await prisma.attachment.create({
-              data: { url: publicUrl, name: file.name, type: "AUTHORITY", ticketId: id }
-            });
-          }
-        }
-      }
+    // NOTIFICAR AL ALUMNO
+    const updatedTicket = await prisma.ticket.findUnique({ where: { id } });
+    if (updatedTicket?.studentEmail) {
+      await resend.emails.send({
+        from: 'Buzon Etico <onboarding@resend.dev>',
+        to: [updatedTicket.studentEmail],
+        subject: `Respuesta a tu reporte: ${updatedTicket.folio}`,
+        html: `<p>Hola, la autoridad ha respondido a tu reporte <strong>${updatedTicket.folio}</strong>. Puedes ver la solución y evidencias aquí: <a href="https://master-chatbot-rho.vercel.app/seguimiento">Ver seguimiento</a></p>`
+      });
     }
+
     revalidatePath("/admin/buzon");
     revalidatePath("/admin/directora");
     revalidatePath("/seguimiento");

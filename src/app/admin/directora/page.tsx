@@ -74,18 +74,25 @@ export default function DirectorPanelPage() {
                     <span className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">FOLIO: {t.folio}</span>
                   </div>
                   
-                  <p className="text-slate-700 italic font-serif text-lg leading-relaxed">"{t.content}"</p>
+                  <p className="text-slate-700 italic font-serif text-lg mt-4">"{ticket.content}"</p>
 
-                  {/* GALERÍA DE ARCHIVOS SUBIDOS POR EL ALUMNO */}
-                  {t.attachments && t.attachments.length > 0 && (
-                    <div className="mt-4 flex flex-wrap gap-2">
-                      {t.attachments.map((file: any) => (
-                        <a key={file.id} href={file.url} target="_blank" className="bg-blue-50 text-blue-700 px-3 py-1.5 rounded-xl text-[10px] font-bold border border-blue-100 flex items-center gap-1 hover:bg-blue-100 transition-all">
-                          📎 {file.name}
-                        </a>
-                      ))}
-                    </div>
-                  )}
+                 {/* GALERÍA DE EVIDENCIAS DEL ALUMNO (Añade esto) */}
+{ticket.attachments && ticket.attachments.length > 0 && (
+  <div className="mt-4 flex flex-wrap gap-2 border-t border-slate-100 pt-4">
+    {ticket.attachments.map((file: any) => (
+      <a 
+        key={file.id} 
+        href={file.url} 
+        target="_blank" 
+        rel="noopener noreferrer"
+        className="bg-blue-50 text-blue-700 px-3 py-1.5 rounded-xl text-[10px] font-bold border border-blue-100 flex items-center gap-1 hover:bg-blue-100 transition-all"
+      >
+        📎 {file.name} ({file.type === 'STUDENT' ? 'Alumno' : 'Autoridad'})
+      </a>
+    ))}
+  </div>
+)}
+{/* ... resto del código (respuesta de autoridad, etc) ... */}
 
                   {/* RESPUESTA DE LA AUTORIDAD */}
                   {t.authorityResponse && (
