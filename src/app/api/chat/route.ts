@@ -67,3 +67,5 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Reintentando..." }, { status: 500 });
   }
 }
+
+// Forzando sincronizacion final v2
