@@ -34,10 +34,10 @@ export default function AdminBuzonPage() {
 
       <div className="grid grid-cols-1 gap-8">
         {loading ? (
-          <p className="text-center italic text-slate-500 py-20 animate-pulse text-lg">Cargando la base de datos...</p>
+          <p className="text-center italic text-slate-500 py-20 animate-pulse text-lg">Cargando...</p>
         ) : tickets.length === 0 ? (
           <div className="bg-white p-20 rounded-[3rem] border-4 border-dashed border-slate-100 text-center">
-             <p className="text-slate-300 text-xl italic font-serif text-lg">No hay actividad en el buzón todavía.</p>
+             <p className="text-slate-300 text-xl italic font-serif">Sin reportes nuevos.</p>
           </div>
         ) : (
           tickets.map((ticket: any) => (
@@ -65,7 +65,7 @@ export default function AdminBuzonPage() {
                       )}
                     </h3>
 
-                    {/* Mensaje del alumno */}
+                    {/* Mensaje del alumno - LINEA 77 CORREGIDA */}
                     <div className="bg-slate-50/50 p-6 rounded-[2rem] border border-slate-100 italic text-slate-600 leading-relaxed text-md relative group-hover:bg-white transition-colors duration-300 shadow-inner">
                       <span className="absolute -top-4 -left-2 text-6xl text-slate-200 pointer-events-none opacity-50 font-serif">“</span>
                       <p className="relative z-10">{ticket.content}</p>
@@ -110,7 +110,7 @@ export default function AdminBuzonPage() {
                     </div>
                     <p className="text-sm text-slate-700 italic leading-relaxed">"{ticket.authorityResponse}"</p>
                     
-                    {/* Evidencia de la autoridad */}
+                    {/* Evidencia de la autoridad (si existe) */}
                     {ticket.authorityEvidence && (
                       <div className="mt-3 flex items-center gap-2">
                         <a 
