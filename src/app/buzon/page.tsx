@@ -1,118 +1,92 @@
-export const dynamic = 'force-dynamic';
-export const revalidate = 0;
+"use client";
 
-import { prisma } from "@/lib/prisma"; // <--- ESTA ERA LA LLAVE QUE FALTABA
+import { useState, useEffect } from "react";
+import { createTicket } from "@/app/actions/admin";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 import Link from "next/link";
 
-export default async function BuzonHubPage() {
-  // Traemos los últimos 3 reportes resueltos para la Pizarra de Novedades
-  const latestResolved = await prisma.ticket.findMany({
-    where: { status: "RESUELTO" },
-    orderBy: { updatedAt: 'desc' },
-    take: 3
-  });
+export default function BuzonPublico() {
+  const [isInfoOpen, setIsInfoOpen] = useState(false);
+  const [settings, setSettings] = useState<any>(null);
+  const [status, setStatus] = useState<"idle" | "success" | "error">("idle");
+  const [folio, setFolio] = useState("");
 
-  const actions = [
-    {
-      title: "Enviar Sugerencia o Reporte",
-      desc: "Tu voz es el motor del cambio. Reporta de forma segura y anónima.",
-      icon: "✍️",
-      href: "/buzon/registro",
-      color: "from-emerald-500 to-teal-600",
-      btnText: "Iniciar Reporte"
-    },
-    {
-      title: "Seguimiento de Folio",
-      desc: "¿Ya reportaste? Consulta aquí qué ha respondido la autoridad.",
-      icon: "🔍",
-      href: "/seguimiento",
-      color: "from-blue-500 to-indigo-600",
-      btnText: "Ver mi Estatus"
-    },
-    {
-      title: "Analíticas Públicas",
-      desc: "Transparencia total: Gráficas y datos del impacto del buzón.",
-      icon: "📊",
-      href: "/admin/analytics",
-      color: "from-purple-500 to-purple-700",
-      btnText: "Explorar Datos"
-    },
-    {
-      title: "Portal de Gestión (Directora)",
-      desc: "Acceso exclusivo para la revisión y resolución de casos.",
-      icon: "🏛️",
-      href: "/admin/directora",
-      color: "from-slate-700 to-slate-900",
-      btnText: "Entrar a Gestión"
+  useEffect(() => {
+    async function fetchSettings() {
+      try {
+        const res = await fetch('/api/settings');
+        const data = await res.json();
+        setSettings(data);
+      } catch (err) {
+        console.error("Error cargando configuración:", err);
+      }
     }
-  ];
+    fetchSettings();
+  }, []);
+
+  async function handleSubmit(formData: FormData) {
+    setStatus("idle");
+    const result = await createTicket(formData);
+    if (result && result.success) {
+      setFolio(result.folio);
+      setStatus("success");
+    } else {
+      setStatus("error");
+    }
+  }
+
+  if (status === "success") {
+    return (
+      <div className="min-h-screen bg-slate-950 flex items-center justify-center p-6 text-white text-center font-sans">
+        <div className="max-w-md w-full bg-slate-900 p-10 rounded-[3rem] shadow-2xl border-b-8 border-emerald-500">
+          <div className="text-6xl mb-6">✅</div>
+          <h1 className="text-2xl font-black uppercase mb-4">Reporte Recibido</h1>
+          <div className="bg-black/50 p-6 rounded-3xl border border-white/10 mb-8">
+            <p className="text-[10px] text-emerald-500 uppercase font-black tracking-widest mb-2">Tu Folio de Seguimiento</p>
+            <p className="text-5xl font-black text-white">{folio}</p>
+          </div>
+          <Link href="/buzon" onClick={() => setStatus("idle")} className="bg-emerald-600 hover:bg-emerald-500 px-8 py-3 rounded-2xl font-bold transition-all">
+            Enviar otro reporte
+          </Link>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div className="min-h-screen bg-slate-950 p-6 md:p-12 text-white font-sans flex flex-col items-center justify-center">
-      <div className="max-w-5xl w-full">
-        <header className="text-center mb-10 animate-in fade-in slide-in-from-top-4 duration-1000">
-          <h1 className="text-5xl font-black uppercase tracking-[0.2em] mb-4 text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-teal-200">
-            Centro de Voz Ética
-          </h1>
-          <p className="text-slate-400 italic text-lg max-w-2xl mx-auto leading-relaxed">
-            "Donde los que no tenían vez, hoy son escuchados."
-          </p>
-          <div className="h-1 w-32 bg-emerald-500 mx-auto mt-6 rounded-full shadow-[0_0_15px_rgba(16,185,129,0.5)]"></div>
+    <div className="min-h-screen bg-slate-950 p-6 md:p-12 text-white font-sans flex flex-col items-center">
+      <div className="max-w-3xl w-full">
+        <header className="text-center mb-10">
+          <h1 className="text-4xl font-black uppercase tracking-widest text-emerald-500">Sistema de Voz Ética</h1>
+          <p className="text-slate-400 italic mt-2">Tu identidad está protegida.</p>
         </header>
 
-        {/* PIZARRA DE NOVEDADES (Aviso para alumnos) */}
-        {latestResolved.length > 0 && (
-          <div className="mb-12 w-full max-w-2xl mx-auto animate-in fade-in slide-in-from-bottom-2 duration-1000">
-            <p className="text-[10px] font-black text-emerald-500 uppercase tracking-[0.3em] mb-4 text-center">
-              🔔 Actividad Reciente
-            </p>
-            <div className="space-y-2">
-              {latestResolved.map((t) => (
-                <div key={t.id} className="bg-emerald-500/5 border border-emerald-500/20 p-3 rounded-2xl flex justify-between items-center shadow-sm">
-                  <div className="flex items-center gap-3">
-                    <span className="text-lg">✅</span>
-                    <span className="text-xs font-bold text-slate-300 uppercase">Folio: {t.folio}</span>
-                  </div>
-                  <span className="text-[9px] font-black bg-emerald-500 text-black px-2 py-0.5 rounded-full uppercase">
-                    Resuelto - ¡Verifica!
-                  </span>
-                </div>
-              ))}
+        <form action={handleSubmit} className="space-y-6">
+          <div className="bg-slate-900 p-8 rounded-[2.5rem] shadow-xl border border-white/5 space-y-6">
+            <div>
+              <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest block mb-2 ml-2">Categoría</label>
+              <select name="type" className="w-full bg-black border-2 border-slate-800 p-4 rounded-2xl text-sm outline-none focus:border-emerald-500">
+                <option value="ACADEMICA">Asunto Académico</option>
+                <option value="LOGISTICA">Instalaciones / Logística</option>
+                <option value="GRAVE">Situación Grave / Ética</option>
+              </select>
             </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <input name="studentEmail" type="email" placeholder="Correo (Opcional)" className="w-full bg-black border-2 border-slate-800 p-4 rounded-2xl text-sm outline-none focus:border-emerald-500" />
+              <input name="studentName" type="text" placeholder="Nombre (Opcional)" className="w-full bg-black border-2 border-slate-800 p-4 rounded-2xl text-sm outline-none focus:border-emerald-500" />
+            </div>
+
+            <textarea name="content" required rows={5} placeholder="Describe los hechos..." className="w-full bg-black border-2 border-slate-800 p-4 rounded-2xl text-sm outline-none focus:border-emerald-500 resize-none"></textarea>
+            
+            <input name="evidence" type="file" multiple className="w-full text-xs text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:bg-emerald-500 file:text-black font-bold cursor-pointer" />
           </div>
-        )}
 
-        {/* REJILLA DE ACCIONES */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-          {actions.map((action, index) => (
-            <div 
-              key={index}
-              className="bg-slate-900/50 border border-white/10 rounded-[3rem] p-8 hover:border-emerald-500/50 transition-all duration-500 group relative overflow-hidden"
-            >
-              <div className={`absolute top-0 right-0 w-32 h-32 bg-gradient-to-br ${action.color} opacity-5 blur-3xl group-hover:opacity-20 transition-opacity`}></div>
-              
-              <div className="flex items-start gap-6">
-                <div className="text-5xl">{action.icon}</div>
-                <div className="space-y-3">
-                  <h2 className="text-xl font-black uppercase tracking-tight text-emerald-50">{action.title}</h2>
-                  <p className="text-sm text-slate-400 leading-relaxed">{action.desc}</p>
-                  <Link 
-                    href={action.href}
-                    className={`inline-block mt-4 px-6 py-2 bg-gradient-to-r ${action.color} rounded-xl font-bold text-xs uppercase tracking-widest shadow-lg active:scale-95 transition-all`}
-                  >
-                    {action.btnText}
-                  </Link>
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
-
-        <footer className="mt-20 text-center border-t border-white/5 pt-8">
-            <button className="text-[10px] text-slate-600 uppercase font-bold tracking-[0.3em]">
-               Sistema de Gestión Universitaria • UJED 2026
-            </button>
-        </footer>
+          <button type="submit" className="w-full bg-emerald-500 text-black font-black py-5 rounded-[2rem] uppercase hover:bg-white transition-all">
+            Enviar Reporte
+          </button>
+        </form>
       </div>
     </div>
   );
