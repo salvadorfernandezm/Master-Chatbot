@@ -21,8 +21,9 @@ export default function AdminBuzonPage() {
 
   return (
     <div className="space-y-8 max-w-6xl mx-auto pb-20 font-sans text-left text-slate-900">
+      {/* Encabezado Principal */}
       <header className="bg-slate-950 p-8 rounded-[2.5rem] text-white shadow-2xl flex justify-between items-center border-b-8 border-emerald-500">
-        <div>
+        <div className="text-left">
           <h1 className="text-3xl font-black uppercase tracking-widest text-emerald-50">Gestión General</h1>
           <p className="text-slate-400 text-xs italic mt-2 uppercase tracking-tighter">Administración de voces y fallos técnicos.</p>
         </div>
@@ -33,10 +34,10 @@ export default function AdminBuzonPage() {
 
       <div className="grid grid-cols-1 gap-8">
         {loading ? (
-          <p className="text-center italic text-slate-500 py-20 animate-pulse text-lg">Cargando...</p>
+          <p className="text-center italic text-slate-500 py-20 animate-pulse text-lg">Cargando la base de datos...</p>
         ) : tickets.length === 0 ? (
           <div className="bg-white p-20 rounded-[3rem] border-4 border-dashed border-slate-100 text-center">
-             <p className="text-slate-300 text-xl italic font-serif text-lg">No hay reportes todavía.</p>
+             <p className="text-slate-300 text-xl italic font-serif text-lg">No hay actividad en el buzón todavía.</p>
           </div>
         ) : (
           tickets.map((ticket: any) => (
@@ -111,7 +112,7 @@ export default function AdminBuzonPage() {
                     {ticket.authorityEvidence && (
                       <div className="mt-3">
                         <a href={ticket.authorityEvidence} target="_blank" rel="noopener noreferrer" className="text-blue-600 font-bold text-[10px] uppercase hover:underline">
-                          📎 Ver comprobante oficial
+                          <span>📎</span> Ver comprobante oficial
                         </a>
                       </div>
                     )}
