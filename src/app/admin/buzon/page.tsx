@@ -41,7 +41,7 @@ export default function AdminBuzonPage() {
           </div>
         ) : (
           tickets.map((ticket: any) => (
-            <div key={ticket.id} className="bg-white rounded-[3rem] shadow-xl border-2 border-slate-50 overflow-hidden hover:shadow-2xl transition-all duration-500">
+            <div key={ticket.id} className="bg-white rounded-[3rem] shadow-xl border-2 border-slate-50 overflow-hidden hover:shadow-2xl transition-all duration-500 group">
               <div className="p-10">
                 
                 <div className="flex flex-col md:flex-row justify-between gap-6 mb-6">
@@ -71,7 +71,7 @@ export default function AdminBuzonPage() {
                       <p className="relative z-10">{ticket.content}</p>
                     </div>
 
-                    {/* GALERÍA DE EVIDENCIAS */}
+                    {/* GALERÍA DE EVIDENCIAS DEL ALUMNO */}
                     {ticket.attachments && ticket.attachments.length > 0 && (
                       <div className="mt-4 flex flex-wrap gap-2 border-t border-slate-100 pt-4">
                         {ticket.attachments.map((file: any) => (
@@ -89,6 +89,7 @@ export default function AdminBuzonPage() {
                     )}
                   </div>
 
+                  {/* Estado del Ticket */}
                   <div className="w-full md:w-48 text-right self-start">
                     <div className={`text-sm font-black p-3 rounded-2xl text-center shadow-lg uppercase tracking-wider ${
                       ticket.status === 'PENDIENTE' ? 'bg-amber-500 text-white' : 'bg-emerald-600 text-white'
@@ -100,18 +101,24 @@ export default function AdminBuzonPage() {
 
                 {/* RESPUESTA DE LA AUTORIDAD */}
                 {ticket.authorityResponse && (
-                  <div className="mt-6 p-6 bg-emerald-50/50 rounded-[2rem] border border-emerald-100 relative text-left">
+                  <div className="mt-6 p-6 bg-emerald-50/50 rounded-[2rem] border border-emerald-100 relative">
                     <div className="flex justify-between items-center mb-3">
                         <p className="text-[10px] font-black text-emerald-700 uppercase tracking-widest">Respuesta Registrada:</p>
                         <span className={`px-3 py-1 rounded-full text-[9px] font-black uppercase ${ticket.studentResolved ? 'bg-emerald-200 text-emerald-800' : 'bg-amber-100 text-amber-700'}`}>
-                            {ticket.studentResolved ? "✅ Satisfecho" : "⏳ En espera"}
+                            {ticket.studentResolved ? "✅ Alumno Satisfecho" : "⏳ Esperando Validación"}
                         </span>
                     </div>
                     <p className="text-sm text-slate-700 italic leading-relaxed">"{ticket.authorityResponse}"</p>
                     
+                    {/* Evidencia de la autoridad */}
                     {ticket.authorityEvidence && (
-                      <div className="mt-3">
-                        <a href={ticket.authorityEvidence} target="_blank" rel="noopener noreferrer" className="text-blue-600 font-bold text-[10px] uppercase hover:underline">
+                      <div className="mt-3 flex items-center gap-2">
+                        <a 
+                          href={ticket.authorityEvidence} 
+                          target="_blank" 
+                          rel="noopener noreferrer" 
+                          className="text-blue-600 font-bold text-[10px] uppercase hover:underline flex items-center gap-1"
+                        >
                           <span>📎</span> Ver comprobante oficial
                         </a>
                       </div>
