@@ -68,42 +68,81 @@ export async function createTicket(formData: FormData): Promise<{ success: boole
 }
 
 // --- 2. FUNCIÓN PARA LA AUTORIDAD (Responder Reporte) ---
-export async function submitAuthorityResponse(formData: FormData) {
-  const id = formData.get("id") as string;
-  const responseText = formData.get("responseText") as string;
-  const files = formData.getAll("evidence") as File[];
+export async function createTicket(formData: FormData): Promise<{ success: boolean; folio: string }> {
+  const type = formData.get("type") as string;
+  const content = formData.get("content") as string;
+  const studentName = formData.get("studentName") as string;
+  const studentEmail = formData.get("studentEmail") as string;
+  const files = formData.getAll("evidence") as File[]; 
+
+  if (!content || !type) return { success: false, folio: "" };
+
+  const folio = `ETH-${Math.random().toString(36).substring(2, 7).toUpperCase()}`;
 
   try {
-    await prisma.ticket.update({
-      where: { id },
-      data: { 
-        authorityResponse: responseText, 
-        status: "RESUELTO", 
-        updatedAt: new Date() 
+    const ticket = await prisma.ticket.create({
+      data: {
+        folio,
+        type,
+        content,
+        studentName: studentName || "Anónimo Protegido",
+        studentEmail: studentEmail || null,
+        status: "PENDIENTE",
       },
     });
 
+    // Subida de evidencias a Supabase
     if (supabase) {
       for (const file of files) {
         if (file.size > 0) {
           const fileExt = file.name.split('.').pop();
-          const fileName = `authority/${id}-${Date.now()}.${fileExt}`;
+          const fileName = `student/${ticket.id}-${Date.now()}.${fileExt}`;
           const { error: uploadError } = await supabase.storage.from('evidencias').upload(fileName, file);
           if (!uploadError) {
             const { data: { publicUrl } } = supabase.storage.from('evidencias').getPublicUrl(fileName);
             await prisma.attachment.create({
-              data: { url: publicUrl, name: file.name, type: "AUTHORITY", ticketId: id }
+              data: { url: publicUrl, name: file.name, type: "STUDENT", ticketId: ticket.id }
             });
           }
         }
       }
     }
+
+    // --- SISTEMA NERVIOSO CENTRAL: ENVÍO DE CORREO ---
+    let emailDestino = process.env.EMAIL_INGENIERO; // Tu correo por defecto
+    if (type === "ACADEMICA") emailDestino = process.env.EMAIL_SECRETARIA_ACADEMICA;
+    else if (type === "LOGISTICA") emailDestino = process.env.EMAIL_SECRETARIA_ADMINISTRATIVA;
+    else if (type === "GRAVE") emailDestino = process.env.EMAIL_DIRECCION;
+    else if (type === "SOPORTE_TECNICO") emailDestino = process.env.EMAIL_INGENIERO;
+
+    const linkDeRespuesta = `https://master-chatbot-rho.vercel.app/admin/responder?folio=${folio}`;
+
+    if (process.env.RESEND_API_KEY && emailDestino) {
+      await resend.emails.send({
+        from: 'Buzon Etico <onboarding@resend.dev>',
+        to: [emailDestino as string],
+        subject: `Nuevo Reporte [${type}]: ${folio}`,
+        html: `
+          <div style="font-family: sans-serif; padding: 20px; border: 1px solid #e2e8f0; border-radius: 20px;">
+            <h2 style="color: #10b981;">Nuevo Reporte Recibido</h2>
+            <p><strong>Folio:</strong> ${folio}</p>
+            <p><strong>Tipo:</strong> ${type}</p>
+            <p><strong>Mensaje:</strong> ${content}</p>
+            <br/>
+            <a href="${linkDeRespuesta}" style="background: #0f172a; color: white; padding: 12px 25px; text-decoration: none; border-radius: 10px; font-weight: bold; display: inline-block;">
+              Responder y Resolver este caso
+            </a>
+          </div>
+        `
+      });
+    }
+
     revalidatePath("/admin/buzon");
-    revalidatePath("/admin/directora");
-    revalidatePath("/seguimiento");
-    return { success: true };
-  } catch (error) { 
-    return { success: false }; 
+    return { success: true, folio: ticket.folio };
+
+  } catch (error) {
+    console.error("Error al crear ticket:", error);
+    return { success: false, folio: "" };
   }
 }
 

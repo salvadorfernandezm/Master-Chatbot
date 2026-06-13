@@ -58,18 +58,13 @@ function BuzonFormContent({ reglamento }: { reglamento: string }) {
           </h1>
         </header>
 
-        {!isTechnical && (
-          <section className={`bg-slate-900 border border-white/10 rounded-[2.5rem] p-8 mb-8 transition-all ${accepted ? 'hidden' : 'block'}`}>
-            <h2 className="text-xl font-bold text-white uppercase mb-4">Reglamento</h2>
-            <div className="prose prose-invert prose-sm max-h-[400px] overflow-y-auto mb-8 text-slate-300">
-              <ReactMarkdown remarkPlugins={[remarkGfm]}>{reglamento}</ReactMarkdown>
-            </div>
-            <label className="flex items-center gap-4 cursor-pointer bg-emerald-500/10 p-6 rounded-3xl">
-              <input type="checkbox" checked={accepted} onChange={(e) => setAccepted(e.target.checked)} className="w-6 h-6 border-emerald-500" />
-              <span>He leído y acepto las condiciones.</span>
-            </label>
-          </section>
-        )}
+       {/* SOLO MOSTRAR AVISO SI NO ES TÉCNICO */}
+{!isTechnical && (
+  <div className="bg-amber-500/10 border border-amber-500/30 p-4 rounded-2xl mb-4 text-center">
+    <p className="text-amber-500 text-[10px] font-black uppercase tracking-widest animate-pulse">⚠️ NOTA IMPORTANTE</p>
+    <p className="text-[11px] text-slate-300 mt-1">Al recibir respuesta de la autoridad, tendrás 72 horas para validar la solución o el caso se cerrará automáticamente.</p>
+  </div>
+)}
 
         <form action={handleSubmit} className={accepted ? "space-y-6" : "hidden"}>
           <div className="bg-slate-900 p-8 rounded-[2.5rem] shadow-xl border border-white/5 space-y-6">
