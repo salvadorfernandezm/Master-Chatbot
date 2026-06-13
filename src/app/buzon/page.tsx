@@ -1,92 +1,104 @@
-"use client";
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
 
-import { useState, useEffect } from "react";
-import { createTicket } from "@/app/actions/admin";
+import { prisma } from "@/lib/prisma";
+import Link from "next/link";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
-import Link from "next/link";
 
-export default function BuzonPublico() {
-  const [isInfoOpen, setIsInfoOpen] = useState(false);
-  const [settings, setSettings] = useState<any>(null);
-  const [status, setStatus] = useState<"idle" | "success" | "error">("idle");
-  const [folio, setFolio] = useState("");
+export default async function BuzonHubPage() {
+  // Traemos los ajustes (Reglamento y Nombre)
+  const settings = await prisma.settings.findFirst();
+  
+  // Traemos los últimos 3 reportes resueltos
+  const latestResolved = await prisma.ticket.findMany({
+    where: { status: "RESUELTO" },
+    orderBy: { updatedAt: 'desc' },
+    take: 3
+  });
 
-  useEffect(() => {
-    async function fetchSettings() {
-      try {
-        const res = await fetch('/api/settings');
-        const data = await res.json();
-        setSettings(data);
-      } catch (err) {
-        console.error("Error cargando configuración:", err);
-      }
+  const actions = [
+    {
+      title: "Iniciar Reporte",
+      desc: "Reporta de forma segura y anónima.",
+      icon: "✍️",
+      href: "/buzon/registro",
+      color: "from-emerald-500 to-teal-600",
+    },
+    {
+      title: "Seguimiento",
+      desc: "¿Ya reportaste? Consulta tu estatus.",
+      icon: "🔍",
+      href: "/seguimiento",
+      color: "from-blue-500 to-indigo-600",
+    },
+    {
+      title: "Analíticas",
+      desc: "Datos públicos del impacto del buzón.",
+      icon: "📊",
+      href: "/admin/analytics",
+      color: "from-purple-500 to-purple-700",
+    },
+    {
+      title: "Dirección",
+      desc: "Acceso exclusivo para gestión.",
+      icon: "🏛️",
+      href: "/admin/directora",
+      color: "from-slate-700 to-slate-900",
     }
-    fetchSettings();
-  }, []);
-
-  async function handleSubmit(formData: FormData) {
-    setStatus("idle");
-    const result = await createTicket(formData);
-    if (result && result.success) {
-      setFolio(result.folio);
-      setStatus("success");
-    } else {
-      setStatus("error");
-    }
-  }
-
-  if (status === "success") {
-    return (
-      <div className="min-h-screen bg-slate-950 flex items-center justify-center p-6 text-white text-center font-sans">
-        <div className="max-w-md w-full bg-slate-900 p-10 rounded-[3rem] shadow-2xl border-b-8 border-emerald-500">
-          <div className="text-6xl mb-6">✅</div>
-          <h1 className="text-2xl font-black uppercase mb-4">Reporte Recibido</h1>
-          <div className="bg-black/50 p-6 rounded-3xl border border-white/10 mb-8">
-            <p className="text-[10px] text-emerald-500 uppercase font-black tracking-widest mb-2">Tu Folio de Seguimiento</p>
-            <p className="text-5xl font-black text-white">{folio}</p>
-          </div>
-          <Link href="/buzon" onClick={() => setStatus("idle")} className="bg-emerald-600 hover:bg-emerald-500 px-8 py-3 rounded-2xl font-bold transition-all">
-            Enviar otro reporte
-          </Link>
-        </div>
-      </div>
-    );
-  }
+  ];
 
   return (
     <div className="min-h-screen bg-slate-950 p-6 md:p-12 text-white font-sans flex flex-col items-center">
-      <div className="max-w-3xl w-full">
+      <div className="max-w-5xl w-full">
         <header className="text-center mb-10">
-          <h1 className="text-4xl font-black uppercase tracking-widest text-emerald-500">Sistema de Voz Ética</h1>
-          <p className="text-slate-400 italic mt-2">Tu identidad está protegida.</p>
+          <h1 className="text-5xl font-black uppercase tracking-tight mb-2 text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-teal-200">
+            {settings?.organizationName || "Centro de Voz Ética"}
+          </h1>
+          <div className="h-1 w-24 bg-emerald-500 mx-auto rounded-full"></div>
         </header>
 
-        <form action={handleSubmit} className="space-y-6">
-          <div className="bg-slate-900 p-8 rounded-[2.5rem] shadow-xl border border-white/5 space-y-6">
-            <div>
-              <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest block mb-2 ml-2">Categoría</label>
-              <select name="type" className="w-full bg-black border-2 border-slate-800 p-4 rounded-2xl text-sm outline-none focus:border-emerald-500">
-                <option value="ACADEMICA">Asunto Académico</option>
-                <option value="LOGISTICA">Instalaciones / Logística</option>
-                <option value="GRAVE">Situación Grave / Ética</option>
-              </select>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-start">
+          
+          {/* COLUMNA IZQUIERDA: REGLAMENTO VISIBLE DESDE EL INICIO */}
+          <div className="bg-slate-900/50 border border-white/10 rounded-[2.5rem] p-8 shadow-2xl">
+            <h2 className="text-emerald-500 font-black text-xs uppercase tracking-[0.2em] mb-4">📜 Reglamento del Buzón</h2>
+            <div className="prose prose-invert prose-sm max-h-[400px] overflow-y-auto pr-4 custom-scrollbar text-slate-300 italic font-serif leading-relaxed">
+              <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                {settings?.organizationBuzonInfo || "Cargando reglamento..."}
+              </ReactMarkdown>
             </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <input name="studentEmail" type="email" placeholder="Correo (Opcional)" className="w-full bg-black border-2 border-slate-800 p-4 rounded-2xl text-sm outline-none focus:border-emerald-500" />
-              <input name="studentName" type="text" placeholder="Nombre (Opcional)" className="w-full bg-black border-2 border-slate-800 p-4 rounded-2xl text-sm outline-none focus:border-emerald-500" />
-            </div>
-
-            <textarea name="content" required rows={5} placeholder="Describe los hechos..." className="w-full bg-black border-2 border-slate-800 p-4 rounded-2xl text-sm outline-none focus:border-emerald-500 resize-none"></textarea>
-            
-            <input name="evidence" type="file" multiple className="w-full text-xs text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:bg-emerald-500 file:text-black font-bold cursor-pointer" />
           </div>
 
-          <button type="submit" className="w-full bg-emerald-500 text-black font-black py-5 rounded-[2rem] uppercase hover:bg-white transition-all">
-            Enviar Reporte
-          </button>
-        </form>
+          {/* COLUMNA DERECHA: BOTONES Y NOVEDADES */}
+          <div className="space-y-8">
+            <div className="grid grid-cols-2 gap-4">
+              {actions.map((action, index) => (
+                <Link key={index} href={action.href} className="group">
+                  <div className="bg-slate-900 border border-white/10 p-6 rounded-3xl hover:border-emerald-500/50 transition-all h-full shadow-lg hover:-translate-y-1">
+                    <div className="text-3xl mb-3">{action.icon}</div>
+                    <h3 className="text-sm font-black uppercase text-emerald-50 group-hover:text-emerald-400 transition-colors">{action.title}</h3>
+                  </div>
+                </Link>
+              ))}
+            </div>
+
+            {/* PIZARRA DE NOVEDADES */}
+            {latestResolved.length > 0 && (
+              <div className="bg-emerald-500/5 border border-emerald-500/20 p-6 rounded-[2.5rem]">
+                <p className="text-[10px] font-black text-emerald-500 uppercase tracking-widest mb-4">🔔 Resoluciones Recientes</p>
+                <div className="space-y-2">
+                  {latestResolved.map((t) => (
+                    <div key={t.id} className="flex justify-between items-center bg-black/20 p-3 rounded-2xl border border-white/5">
+                      <span className="text-xs font-bold text-slate-400">Folio: {t.folio}</span>
+                      <span className="text-[9px] font-black bg-emerald-500 text-black px-2 py-0.5 rounded-full uppercase">Resuelto</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
       </div>
     </div>
   );
