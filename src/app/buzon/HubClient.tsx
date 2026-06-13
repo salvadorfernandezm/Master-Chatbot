@@ -14,27 +14,24 @@ export default function HubClient({ settings, latestResolved }: { settings: any,
       desc: "Reporta de forma segura y anónima.",
       icon: "✍️",
       href: "/buzon/registro",
-      color: "from-emerald-500 to-teal-600",
     },
     {
       title: "Seguimiento",
       desc: "¿Ya reportaste? Consulta tu estatus.",
       icon: "🔍",
       href: "/seguimiento",
-      color: "from-blue-500 to-indigo-600",
     },
     {
       title: "Analíticas",
-      desc: "Datos públicos del impacto del buzón.",
-      icon: "admin/analytics", // Por ahora a admin, luego haremos el público
-      color: "from-purple-500 to-purple-700",
+      desc: "Datos públicos de impacto.",
+      icon: "📊",
+      href: "/admin/analytics",
     },
     {
       title: "Dirección",
-      desc: "Acceso exclusivo para gestión.",
+      desc: "Acceso exclusivo de gestión.",
       icon: "🏛️",
       href: "/admin/directora",
-      color: "from-slate-700 to-slate-900",
     }
   ];
 
@@ -54,13 +51,12 @@ export default function HubClient({ settings, latestResolved }: { settings: any,
           <div className="space-y-6">
             <div className="bg-slate-900 border border-white/10 rounded-[2.5rem] p-8 shadow-2xl">
               <h2 className="text-emerald-500 font-black text-xs uppercase tracking-[0.2em] mb-4">📜 Reglamento del Buzón</h2>
-              <div className="prose prose-invert prose-sm max-h-[350px] overflow-y-auto pr-4 custom-scrollbar text-slate-300 italic font-serif leading-relaxed mb-6">
+              <div className="prose prose-invert prose-sm max-h-[350px] overflow-y-auto pr-4 custom-scrollbar text-slate-300 italic font-serif leading-relaxed mb-6 text-left">
                 <ReactMarkdown remarkPlugins={[remarkGfm]}>
                   {settings?.organizationBuzonInfo || "Cargando reglamento..."}
                 </ReactMarkdown>
               </div>
               
-              {/* LA PALOMITA MÁGICA */}
               <label className="flex items-center gap-4 cursor-pointer group bg-emerald-500/5 p-5 rounded-2xl border border-emerald-500/20 hover:bg-emerald-500/10 transition-all">
                 <input 
                   type="checkbox" 
@@ -68,13 +64,13 @@ export default function HubClient({ settings, latestResolved }: { settings: any,
                   onChange={(e) => setAccepted(e.target.checked)}
                   className="w-7 h-7 rounded-lg border-2 border-emerald-500 bg-transparent checked:bg-emerald-500 transition-all cursor-pointer"
                 />
-                <span className="text-sm font-bold text-emerald-50">He leído el reglamento y manifiesto mi conformidad.</span>
+                <span className="text-sm font-bold text-emerald-50 text-left">He leído el reglamento y manifiesto mi conformidad.</span>
               </label>
             </div>
           </div>
 
           {/* COLUMNA DERECHA: BOTONES Y NOVEDADES */}
-          <div className="space-y-8">
+          <div className="space-y-8 text-left">
             <div className={`grid grid-cols-2 gap-4 transition-all duration-500 ${accepted ? 'opacity-100' : 'opacity-30 pointer-events-none grayscale'}`}>
               {actions.map((action, index) => (
                 <Link key={index} href={action.href} className="group">
@@ -94,7 +90,7 @@ export default function HubClient({ settings, latestResolved }: { settings: any,
                   {latestResolved.map((t) => (
                     <div key={t.id} className="flex justify-between items-center bg-black/20 p-3 rounded-2xl border border-white/5">
                       <span className="text-xs font-bold text-slate-400">Folio: {t.folio}</span>
-                      <span className="text-[9px] font-black bg-emerald-500 text-black px-2 py-0.5 rounded-full uppercase">Resuelto</span>
+                      <span className="text-[9px] font-black bg-emerald-500 text-black px-2 py-0.5 rounded-full uppercase text-center">Resuelto</span>
                     </div>
                   ))}
                 </div>
