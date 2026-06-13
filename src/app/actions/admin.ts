@@ -17,14 +17,16 @@ const supabase = (supabaseUrl && supabaseKey) ? createClient(supabaseUrl, supaba
 // 1. GESTIÓN DEL BUZÓN (Tickets y Evidencias)
 // ==========================================
 
-export async function createTicket(formData: FormData) {
+// --- 1. FUNCIÓN PARA EL ALUMNO (Crear Reporte) ---
+export async function createTicket(formData: FormData): Promise<{ success: boolean; folio: string }> {
   const type = formData.get("type") as string;
   const content = formData.get("content") as string;
   const studentName = formData.get("studentName") as string;
   const studentEmail = formData.get("studentEmail") as string;
   const files = formData.getAll("evidence") as File[]; 
 
-  if (!content || !type) return { success: false, error: "Faltan datos" };
+  if (!content || !type) return { success: false, folio: "" };
+
   const folio = `ETH-${Math.random().toString(36).substring(2, 7).toUpperCase()}`;
 
   try {
@@ -39,7 +41,7 @@ export async function createTicket(formData: FormData) {
       },
     });
 
-    if (supabase) {
+   if (supabase) {
       for (const file of files) {
         if (file.size > 0) {
           const fileExt = file.name.split('.').pop();
@@ -54,13 +56,18 @@ export async function createTicket(formData: FormData) {
         }
       }
     }
-    revalidatePath("/admin/buzon");
-    return { success: true, folio };
+     revalidatePath("/admin/buzon");
+    // RETORNO DE ÉXITO: Siempre mandamos el folio
+    return { success: true, folio: ticket.folio };
+
   } catch (error) {
-    return { success: false };
+    console.error("Error al crear ticket:", error);
+    // RETORNO DE FALLO: Mandamos un texto vacío para que setFolio no llore
+    return { success: false, folio: "" };
   }
 }
 
+// --- 2. FUNCIÓN PARA LA AUTORIDAD (Responder Reporte) ---
 export async function submitAuthorityResponse(formData: FormData) {
   const id = formData.get("id") as string;
   const responseText = formData.get("responseText") as string;
@@ -69,25 +76,35 @@ export async function submitAuthorityResponse(formData: FormData) {
   try {
     await prisma.ticket.update({
       where: { id },
-      data: { authorityResponse: responseText, status: "RESUELTO", updatedAt: new Date() },
+      data: { 
+        authorityResponse: responseText, 
+        status: "RESUELTO", 
+        updatedAt: new Date() 
+      },
     });
 
-    // NOTIFICAR AL ALUMNO
-    const updatedTicket = await prisma.ticket.findUnique({ where: { id } });
-    if (updatedTicket?.studentEmail) {
-      await resend.emails.send({
-        from: 'Buzon Etico <onboarding@resend.dev>',
-        to: [updatedTicket.studentEmail],
-        subject: `Respuesta a tu reporte: ${updatedTicket.folio}`,
-        html: `<p>Hola, la autoridad ha respondido a tu reporte <strong>${updatedTicket.folio}</strong>. Puedes ver la solución y evidencias aquí: <a href="https://master-chatbot-rho.vercel.app/seguimiento">Ver seguimiento</a></p>`
-      });
+    if (supabase) {
+      for (const file of files) {
+        if (file.size > 0) {
+          const fileExt = file.name.split('.').pop();
+          const fileName = `authority/${id}-${Date.now()}.${fileExt}`;
+          const { error: uploadError } = await supabase.storage.from('evidencias').upload(fileName, file);
+          if (!uploadError) {
+            const { data: { publicUrl } } = supabase.storage.from('evidencias').getPublicUrl(fileName);
+            await prisma.attachment.create({
+              data: { url: publicUrl, name: file.name, type: "AUTHORITY", ticketId: id }
+            });
+          }
+        }
+      }
     }
-
     revalidatePath("/admin/buzon");
     revalidatePath("/admin/directora");
     revalidatePath("/seguimiento");
     return { success: true };
-  } catch (error) { return { success: false }; }
+  } catch (error) { 
+    return { success: false }; 
+  }
 }
 
 export async function setStudentSatisfaction(id: string, satisfied: boolean) {
