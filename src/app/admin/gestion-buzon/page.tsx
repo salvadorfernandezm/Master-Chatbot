@@ -7,7 +7,7 @@ export default function AdminBuzonPage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetch('/api/buzon/directora') 
+    fetch('/api/buzon/admin') 
       .then(res => res.json())
       .then(data => { 
         setTickets(data); 

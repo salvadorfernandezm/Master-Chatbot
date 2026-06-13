@@ -58,11 +58,15 @@ function BuzonFormContent({ reglamento }: { reglamento: string }) {
           </h1>
         </header>
 
-       {/* SOLO MOSTRAR AVISO SI NO ES TÉCNICO */}
+     {/* 1. Esconder instrucciones de evidencias si es técnico */}
 {!isTechnical && (
-  <div className="bg-amber-500/10 border border-amber-500/30 p-4 rounded-2xl mb-4 text-center">
-    <p className="text-amber-500 text-[10px] font-black uppercase tracking-widest animate-pulse">⚠️ NOTA IMPORTANTE</p>
-    <p className="text-[11px] text-slate-300 mt-1">Al recibir respuesta de la autoridad, tendrás 72 horas para validar la solución o el caso se cerrará automáticamente.</p>
+  <div className="bg-amber-50 p-4 rounded-2xl border border-amber-200 mt-2">
+    <p className="text-sm text-amber-800 font-bold flex items-center gap-2">
+      <span>💡</span> Instrucciones para evidencias:
+    </p>
+    <p className="text-sm text-amber-700 mt-1 leading-relaxed">
+      Debes mandar todas tus evidencias en <strong>un solo envío</strong>...
+    </p>
   </div>
 )}
 
@@ -100,12 +104,13 @@ function BuzonFormContent({ reglamento }: { reglamento: string }) {
   </p>
 </div>
 
-            {/* AVISO 72 HORAS */}
-            <div className="bg-amber-500/10 border border-amber-500/30 p-4 rounded-2xl text-center">
-              <p className="text-amber-500 text-[10px] font-black uppercase tracking-widest animate-pulse">⚠️ NOTA IMPORTANTE</p>
-              <p className="text-[11px] text-slate-300 mt-1">Tendrás 72 horas para validar la solución una vez que la autoridad responda.</p>
-            </div>
-          </div>
+           {/* 2. Esconder aviso de 72 horas si es técnico */}
+{!isTechnical && (
+  <div className="bg-amber-500/10 border border-amber-500/30 p-4 rounded-2xl mb-4 text-center">
+    <p className="text-amber-500 text-[10px] font-black uppercase tracking-widest animate-pulse">⚠️ NOTA IMPORTANTE</p>
+    <p className="text-[11px] text-slate-300 mt-1">Al recibir respuesta de la autoridad, tendrás 72 horas para validar...</p>
+  </div>
+)}
           
           <button type="submit" disabled={status === "SENDING"} className="w-full bg-emerald-500 text-black font-black py-5 rounded-[2rem] uppercase shadow-lg hover:bg-white transition-all disabled:opacity-50">
             {status === "SENDING" ? "Enviando..." : "Enviar Reporte"}
