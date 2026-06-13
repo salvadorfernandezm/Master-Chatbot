@@ -14,10 +14,9 @@ const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "";
 const supabase = (supabaseUrl && supabaseKey) ? createClient(supabaseUrl, supabaseKey) : null;
 
 // ==========================================
-// 1. GESTIÓN DEL BUZÓN (Tickets y Evidencias)
+// 1. GESTIÓN DEL BUZÓN (Tickets, Correos y Evidencias)
 // ==========================================
 
-// --- 1. FUNCIÓN PARA EL ALUMNO (Crear Reporte) ---
 export async function createTicket(formData: FormData): Promise<{ success: boolean; folio: string }> {
   const type = formData.get("type") as string;
   const content = formData.get("content") as string;
@@ -26,7 +25,6 @@ export async function createTicket(formData: FormData): Promise<{ success: boole
   const files = formData.getAll("evidence") as File[]; 
 
   if (!content || !type) return { success: false, folio: "" };
-
   const folio = `ETH-${Math.random().toString(36).substring(2, 7).toUpperCase()}`;
 
   try {
@@ -41,57 +39,6 @@ export async function createTicket(formData: FormData): Promise<{ success: boole
       },
     });
 
-   if (supabase) {
-      for (const file of files) {
-        if (file.size > 0) {
-          const fileExt = file.name.split('.').pop();
-          const fileName = `student/${ticket.id}-${Date.now()}.${fileExt}`;
-          const { error: uploadError } = await supabase.storage.from('evidencias').upload(fileName, file);
-          if (!uploadError) {
-            const { data: { publicUrl } } = supabase.storage.from('evidencias').getPublicUrl(fileName);
-            await prisma.attachment.create({
-              data: { url: publicUrl, name: file.name, type: "STUDENT", ticketId: ticket.id }
-            });
-          }
-        }
-      }
-    }
-     revalidatePath("/admin/buzon");
-    // RETORNO DE ÉXITO: Siempre mandamos el folio
-    return { success: true, folio: ticket.folio };
-
-  } catch (error) {
-    console.error("Error al crear ticket:", error);
-    // RETORNO DE FALLO: Mandamos un texto vacío para que setFolio no llore
-    return { success: false, folio: "" };
-  }
-}
-
-// --- 2. FUNCIÓN PARA LA AUTORIDAD (Responder Reporte) ---
-export async function createTicket(formData: FormData): Promise<{ success: boolean; folio: string }> {
-  const type = formData.get("type") as string;
-  const content = formData.get("content") as string;
-  const studentName = formData.get("studentName") as string;
-  const studentEmail = formData.get("studentEmail") as string;
-  const files = formData.getAll("evidence") as File[]; 
-
-  if (!content || !type) return { success: false, folio: "" };
-
-  const folio = `ETH-${Math.random().toString(36).substring(2, 7).toUpperCase()}`;
-
-  try {
-    const ticket = await prisma.ticket.create({
-      data: {
-        folio,
-        type,
-        content,
-        studentName: studentName || "Anónimo Protegido",
-        studentEmail: studentEmail || null,
-        status: "PENDIENTE",
-      },
-    });
-
-    // Subida de evidencias a Supabase
     if (supabase) {
       for (const file of files) {
         if (file.size > 0) {
@@ -109,7 +56,7 @@ export async function createTicket(formData: FormData): Promise<{ success: boole
     }
 
     // --- SISTEMA NERVIOSO CENTRAL: ENVÍO DE CORREO ---
-    let emailDestino = process.env.EMAIL_INGENIERO; // Tu correo por defecto
+    let emailDestino = process.env.EMAIL_INGENIERO;
     if (type === "ACADEMICA") emailDestino = process.env.EMAIL_SECRETARIA_ACADEMICA;
     else if (type === "LOGISTICA") emailDestino = process.env.EMAIL_SECRETARIA_ADMINISTRATIVA;
     else if (type === "GRAVE") emailDestino = process.env.EMAIL_DIRECCION;
@@ -139,17 +86,64 @@ export async function createTicket(formData: FormData): Promise<{ success: boole
 
     revalidatePath("/admin/buzon");
     return { success: true, folio: ticket.folio };
-
   } catch (error) {
     console.error("Error al crear ticket:", error);
     return { success: false, folio: "" };
   }
 }
 
+// ESTA ES LA QUE VERCEL NO ENCONTRABA:
+export async function submitAuthorityResponse(formData: FormData) {
+  const id = formData.get("id") as string;
+  const responseText = formData.get("responseText") as string;
+  const files = formData.getAll("evidence") as File[];
+
+  try {
+    await prisma.ticket.update({
+      where: { id },
+      data: { authorityResponse: responseText, status: "RESUELTO", updatedAt: new Date() },
+    });
+
+    if (supabase) {
+      for (const file of files) {
+        if (file.size > 0) {
+          const fileExt = file.name.split('.').pop();
+          const fileName = `authority/${id}-${Date.now()}.${fileExt}`;
+          const { error: uploadError } = await supabase.storage.from('evidencias').upload(fileName, file);
+          if (!uploadError) {
+            const { data: { publicUrl } } = supabase.storage.from('evidencias').getPublicUrl(fileName);
+            await prisma.attachment.create({
+              data: { url: publicUrl, name: file.name, type: "AUTHORITY", ticketId: id }
+            });
+          }
+        }
+      }
+    }
+
+    // NOTIFICAR AL ALUMNO
+    const ticket = await prisma.ticket.findUnique({ where: { id } });
+    if (ticket?.studentEmail) {
+        await resend.emails.send({
+            from: 'Buzon Etico <onboarding@resend.dev>',
+            to: [ticket.studentEmail],
+            subject: `Respuesta a tu reporte: ${ticket.folio}`,
+            html: `<p>La autoridad ha respondido a tu reporte <strong>${ticket.folio}</strong>. Puedes verla aquí: <a href="https://master-chatbot-rho.vercel.app/seguimiento">Ver seguimiento</a></p>`
+        }).catch(e => console.error("Error enviando mail al alumno:", e));
+    }
+
+    revalidatePath("/admin/buzon");
+    revalidatePath("/admin/directora");
+    revalidatePath("/seguimiento");
+    return { success: true };
+  } catch (error) { return { success: false }; }
+}
+
 export async function setStudentSatisfaction(id: string, satisfied: boolean) {
   try {
     await prisma.ticket.update({ where: { id }, data: { studentResolved: satisfied } });
     revalidatePath("/seguimiento");
+    revalidatePath("/admin/buzon");
+    revalidatePath("/admin/directora");
     return { success: true };
   } catch (error) { return { success: false }; }
 }
@@ -157,10 +151,11 @@ export async function setStudentSatisfaction(id: string, satisfied: boolean) {
 export async function updateTicketStatus(id: string, newStatus: string) {
   await prisma.ticket.update({ where: { id }, data: { status: newStatus } });
   revalidatePath("/admin/buzon");
+  revalidatePath("/admin/directora");
 }
 
 // ==========================================
-// 2. GESTIÓN DE CHATBOTS Y GRUPOS
+// 2. GESTIÓN DE CHATBOTS, GRUPOS Y CONOCIMIENTO
 // ==========================================
 
 export async function createGroup(formData: FormData) {
@@ -212,10 +207,6 @@ export async function deleteChatbot(id: string) {
   revalidatePath("/admin/chatbots");
 }
 
-// ==========================================
-// 3. GESTIÓN DE CONOCIMIENTO (Bases, Archivos y URLs)
-// ==========================================
-
 export async function createKnowledgeBase(formData: FormData) {
   const name = formData.get("name") as string;
   const description = formData.get("description") as string;
@@ -232,8 +223,6 @@ export async function updateKnowledgeBase(formData: FormData) {
 }
 
 export async function deleteKnowledgeBase(id: string) {
-  await prisma.documentChunk.deleteMany({ where: { knowledgeBaseId: id } });
-  await prisma.document.deleteMany({ where: { knowledgeBaseId: id } });
   await prisma.knowledgeBase.delete({ where: { id } });
   revalidatePath("/admin/knowledge");
 }
@@ -255,22 +244,16 @@ export async function deleteDocument(id: string, knowledgeBaseId: string) {
   revalidatePath(`/admin/knowledge/${knowledgeBaseId}`);
 }
 
-// AQUÍ ESTÁ LA QUE FALTABA:
 export async function addUrlDocument(formData: FormData) {
   const url = formData.get("url") as string;
   const knowledgeBaseId = formData.get("knowledgeBaseId") as string;
-  if (!url || !knowledgeBaseId) return;
-
-  const doc = await prisma.document.create({
-    data: { filename: url, type: "URL", knowledgeBaseId }
-  });
-
+  const doc = await prisma.document.create({ data: { filename: url, type: "URL", knowledgeBaseId } });
   await processUrl(url, knowledgeBaseId, doc.id);
   revalidatePath(`/admin/knowledge/${knowledgeBaseId}`);
 }
 
 // ==========================================
-// 4. CONFIGURACIÓN, SEGURIDAD Y RESPALDO
+// 3. SEGURIDAD, AJUSTES Y RESPALDO
 // ==========================================
 
 export async function verifyDirectorPin(pin: string) {
@@ -283,8 +266,9 @@ export async function updateSettings(formData: FormData) {
   const organizationBuzonInfo = formData.get("organizationBuzonInfo") as string;
   const isBuzonActive = formData.get("isBuzonActive") === "true";
   const settings = await prisma.settings.findFirst();
-  if (settings) await prisma.settings.update({ where: { id: settings.id }, data: { organizationName, organizationLogo, organizationBuzonInfo, isBuzonActive } });
-  else await prisma.settings.create({ data: { organizationName, organizationLogo, organizationBuzonInfo, isBuzonActive } });
+  const data = { organizationName, organizationLogo, organizationBuzonInfo, isBuzonActive };
+  if (settings) await prisma.settings.update({ where: { id: settings.id }, data });
+  else await prisma.settings.create({ data });
   revalidatePath("/admin/settings");
 }
 
@@ -306,7 +290,5 @@ export async function importFullBackup(data: any): Promise<{ success: boolean; e
     if (chatbots) await prisma.chatbot.createMany({ data: chatbots, skipDuplicates: true });
     revalidatePath("/admin");
     return { success: true };
-  } catch (error: any) { 
-    return { success: false, error: error.message }; 
-  }
+  } catch (error: any) { return { success: false, error: error.message }; }
 }
