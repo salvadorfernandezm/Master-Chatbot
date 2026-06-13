@@ -1,23 +1,12 @@
-export const dynamic = 'force-dynamic';
-export const revalidate = 0;
+"use client";
 
-import { prisma } from "@/lib/prisma";
-import HubClient from "./HubClient";
+import { useState } from "react";
+import Link from "next/link";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 
-export default async function BuzonHubPage() {
-  // Traemos los datos del servidor
-  const settings = await prisma.settings.findFirst();
-  const latestResolved = await prisma.ticket.findMany({
-    where: { status: "RESUELTO" },
-    orderBy: { updatedAt: 'desc' },
-    take: 3
-  });
-
-  // Se los pasamos al componente de cliente
-  return (
-    <HubClient settings={settings} latestResolved={latestResolved} />
-  );
-}
+export default function HubClient({ settings, latestResolved }: { settings: any, latestResolved: any[] }) {
+  const [accepted, setAccepted] = useState(false);
 
   const actions = [
     {
@@ -37,8 +26,7 @@ export default async function BuzonHubPage() {
     {
       title: "Analíticas",
       desc: "Datos públicos del impacto del buzón.",
-      icon: "📊",
-      href: "/admin/analytics",
+      icon: "admin/analytics", // Por ahora a admin, luego haremos el público
       color: "from-purple-500 to-purple-700",
     },
     {
@@ -51,8 +39,8 @@ export default async function BuzonHubPage() {
   ];
 
   return (
-    <div className="min-h-screen bg-slate-950 p-6 md:p-12 text-white font-sans flex flex-col items-center">
-      <div className="max-w-5xl w-full">
+    <div className="min-h-screen bg-slate-950 p-6 md:p-12 text-white font-sans flex flex-col items-center justify-center">
+      <div className="max-w-6xl w-full">
         <header className="text-center mb-10">
           <h1 className="text-5xl font-black uppercase tracking-tight mb-2 text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-teal-200">
             {settings?.organizationName || "Centro de Voz Ética"}
@@ -62,19 +50,32 @@ export default async function BuzonHubPage() {
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-start">
           
-          {/* COLUMNA IZQUIERDA: REGLAMENTO VISIBLE DESDE EL INICIO */}
-          <div className="bg-slate-900/50 border border-white/10 rounded-[2.5rem] p-8 shadow-2xl">
-            <h2 className="text-emerald-500 font-black text-xs uppercase tracking-[0.2em] mb-4">📜 Reglamento del Buzón</h2>
-            <div className="prose prose-invert prose-sm max-h-[400px] overflow-y-auto pr-4 custom-scrollbar text-slate-300 italic font-serif leading-relaxed">
-              <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                {settings?.organizationBuzonInfo || "Cargando reglamento..."}
-              </ReactMarkdown>
+          {/* COLUMNA IZQUIERDA: REGLAMENTO + PALOMITA */}
+          <div className="space-y-6">
+            <div className="bg-slate-900 border border-white/10 rounded-[2.5rem] p-8 shadow-2xl">
+              <h2 className="text-emerald-500 font-black text-xs uppercase tracking-[0.2em] mb-4">📜 Reglamento del Buzón</h2>
+              <div className="prose prose-invert prose-sm max-h-[350px] overflow-y-auto pr-4 custom-scrollbar text-slate-300 italic font-serif leading-relaxed mb-6">
+                <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                  {settings?.organizationBuzonInfo || "Cargando reglamento..."}
+                </ReactMarkdown>
+              </div>
+              
+              {/* LA PALOMITA MÁGICA */}
+              <label className="flex items-center gap-4 cursor-pointer group bg-emerald-500/5 p-5 rounded-2xl border border-emerald-500/20 hover:bg-emerald-500/10 transition-all">
+                <input 
+                  type="checkbox" 
+                  checked={accepted}
+                  onChange={(e) => setAccepted(e.target.checked)}
+                  className="w-7 h-7 rounded-lg border-2 border-emerald-500 bg-transparent checked:bg-emerald-500 transition-all cursor-pointer"
+                />
+                <span className="text-sm font-bold text-emerald-50">He leído el reglamento y manifiesto mi conformidad.</span>
+              </label>
             </div>
           </div>
 
           {/* COLUMNA DERECHA: BOTONES Y NOVEDADES */}
           <div className="space-y-8">
-            <div className="grid grid-cols-2 gap-4">
+            <div className={`grid grid-cols-2 gap-4 transition-all duration-500 ${accepted ? 'opacity-100' : 'opacity-30 pointer-events-none grayscale'}`}>
               {actions.map((action, index) => (
                 <Link key={index} href={action.href} className="group">
                   <div className="bg-slate-900 border border-white/10 p-6 rounded-3xl hover:border-emerald-500/50 transition-all h-full shadow-lg hover:-translate-y-1">
