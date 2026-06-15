@@ -75,36 +75,50 @@ function BuzonFormContent({ reglamento }: { reglamento: string }) {
         )}
 
         <form action={handleSubmit} className={accepted ? "space-y-6" : "hidden"}>
-          <div className="bg-slate-900 p-8 rounded-[2.5rem] shadow-xl border border-white/5 space-y-6">
-            <input type="hidden" name="type" value={isTechnical ? "SOPORTE_TECNICO" : "ACADEMICA"} />
-            
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <input name="studentEmail" type="email" placeholder="Correo (Opcional)" className="w-full bg-black border-2 border-slate-800 p-4 rounded-2xl text-sm outline-none focus:border-emerald-500" />
-              <input name="studentName" type="text" placeholder="Nombre (Opcional)" className="w-full bg-black border-2 border-slate-800 p-4 rounded-2xl text-sm outline-none focus:border-emerald-500" />
-            </div>
-
-            <textarea name="content" required rows={5} placeholder={isTechnical ? "Describe el fallo técnico aquí..." : "Describe los hechos..."} className="w-full bg-black border-2 border-slate-800 p-4 rounded-2xl text-sm outline-none focus:border-emerald-500 resize-none"></textarea>
-            
-            {/* INSTRUCCIONES CONDICIONALES */}
-            {!isTechnical && (
-              <div className="bg-amber-50/10 p-4 rounded-2xl border border-amber-500/30">
-                <p className="text-[11px] text-amber-500 font-bold uppercase tracking-widest">💡 Instrucciones para evidencias</p>
-                <p className="text-[10px] text-slate-300 mt-1">Envía todas las evidencias juntas (Ctrl+Click en PC o selección múltiple en móvil).</p>
-                <p className="text-[10px] text-amber-400 mt-2 font-bold italic">⚠️ Tienes 72 horas para validar la respuesta una vez recibida.</p>
-              </div>
-            )}
-
-            <input name="evidence" type="file" multiple className="w-full text-xs text-slate-400 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-[10px] file:font-black file:bg-emerald-500 file:text-black hover:file:bg-white transition-all cursor-pointer" />
-          </div>
-          
-          <button type="submit" disabled={status === "SENDING"} className="w-full bg-emerald-500 text-black font-black py-5 rounded-[2rem] uppercase hover:bg-white transition-all shadow-lg disabled:opacity-50">
-            {status === "SENDING" ? "Enviando..." : "Enviar Reporte"}
-          </button>
-        </form>
-      </div>
+  <div className="bg-slate-900 p-8 rounded-[2.5rem] shadow-xl border border-white/5 space-y-6">
+    <input type="hidden" name="type" value={isTechnical ? "SOPORTE_TECNICO" : "DENUNCIA"} />
+    
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <input name="studentEmail" type="email" placeholder="Correo (Opcional)" className="w-full bg-black border-2 border-slate-800 p-4 rounded-2xl text-sm outline-none focus:border-emerald-500" />
+      <input name="studentName" type="text" placeholder="Nombre (Opcional)" className="w-full bg-black border-2 border-slate-800 p-4 rounded-2xl text-sm outline-none focus:border-emerald-500" />
     </div>
-  );
-}
+
+ {/* PUNTO A: SELECCIÓN DE CATEGORÍA (Solo aparece si NO es fallo técnico) */}
+    {!isTechnical && (
+      <div className="space-y-2">
+        <label className="text-[10px] font-black uppercase text-emerald-500 tracking-widest ml-2">Categoría del reporte</label>
+        <select 
+          name="category" 
+          required 
+          className="w-full bg-black border-2 border-slate-800 p-4 rounded-2xl text-sm outline-none focus:border-emerald-500 text-white appearance-none"
+        >
+          <option value="" disabled selected>Selecciona el tipo de reporte...</option>
+          <option value="ACADEMICO">Académico</option>
+          <option value="LOGISTICA">Logística</option>
+          <option value="GRAVE">Grave / Ética</option>
+        </select>
+      </div>
+    )}
+
+              <textarea name="content" required rows={5} placeholder={isTechnical ? "Describe el fallo técnico aquí..." : "Describe los hechos..."} className="w-full bg-black border-2 border-slate-800 p-4 rounded-2xl text-sm outline-none focus:border-emerald-500 resize-none"></textarea>
+            
+            {/* ÁREA DE EVIDENCIAS */}
+    <div className="bg-amber-50/10 p-4 rounded-2xl border border-amber-500/30">
+      <p className="text-[11px] text-amber-500 font-bold uppercase tracking-widest">💡 Evidencias</p>
+      <p className="text-[10px] text-slate-300 mt-1">Adjunta fotos o capturas (puedes seleccionar varias).</p>
+      <input 
+        name="evidence" 
+        type="file" 
+        multiple 
+        className="mt-3 w-full text-xs text-slate-400 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-[10px] file:font-black file:bg-emerald-500 file:text-black hover:file:bg-white transition-all cursor-pointer" 
+      />
+    </div>
+  </div>
+  
+  <button type="submit" disabled={status === "SENDING"} className="w-full bg-emerald-500 text-black font-black py-5 rounded-[2rem] uppercase hover:bg-white transition-all shadow-lg disabled:opacity-50">
+    {status === "SENDING" ? "Enviando..." : "Enviar Reporte"}
+  </button>
+</form>
 
 export default function BuzonClient({ reglamento }: { reglamento: string }) {
   return (

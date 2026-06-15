@@ -93,7 +93,8 @@ model Ticket {
   content           String       @db.Text
   studentName       String?
   studentEmail      String?
-  status            String       @default("PENDIENTE")
+   category    String? 
+status            String       @default("PENDIENTE")
   authorityResponse String?      @db.Text
   authorityEvidence String?      @db.Text
   studentResolved   Boolean      @default(false)

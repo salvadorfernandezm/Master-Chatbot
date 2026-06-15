@@ -19,6 +19,7 @@ const supabase = (supabaseUrl && supabaseKey) ? createClient(supabaseUrl, supaba
 
 export async function createTicket(formData: FormData): Promise<{ success: boolean; folio: string }> {
   const type = formData.get("type") as string;
+  const category = formData.get("category") as string; // <--- Nueva línea
   const content = formData.get("content") as string;
   const studentName = formData.get("studentName") as string;
   const studentEmail = formData.get("studentEmail") as string;
@@ -32,6 +33,7 @@ export async function createTicket(formData: FormData): Promise<{ success: boole
       data: {
         folio,
         type,
+        category, // <--- Guardamos la categoría (Académico, Logística, Grave)
         content,
         studentName: studentName || "Anónimo Protegido",
         studentEmail: studentEmail || null,
@@ -55,12 +57,16 @@ export async function createTicket(formData: FormData): Promise<{ success: boole
       }
     }
 
-    // --- SISTEMA NERVIOSO CENTRAL: ENVÍO DE CORREO ---
+    // --- LÓGICA DE CORREOS BASADA EN CATEGORÍA ---
     let emailDestino = process.env.EMAIL_INGENIERO;
-    if (type === "ACADEMICA") emailDestino = process.env.EMAIL_SECRETARIA_ACADEMICA;
-    else if (type === "LOGISTICA") emailDestino = process.env.EMAIL_SECRETARIA_ADMINISTRATIVA;
-    else if (type === "GRAVE") emailDestino = process.env.EMAIL_DIRECCION;
-    else if (type === "SOPORTE_TECNICO") emailDestino = process.env.EMAIL_INGENIERO;
+    
+    // Si es soporte técnico va al ingeniero, si no, depende de la categoría elegida
+    const criterio = type === "SOPORTE_TECNICO" ? "SOPORTE_TECNICO" : category;
+
+    if (criterio === "ACADEMICO") emailDestino = process.env.EMAIL_SECRETARIA_ACADEMICA;
+    else if (criterio === "LOGISTICA") emailDestino = process.env.EMAIL_SECRETARIA_ADMINISTRATIVA;
+    else if (criterio === "GRAVE") emailDestino = process.env.EMAIL_DIRECCION;
+    else if (criterio === "SOPORTE_TECNICO") emailDestino = process.env.EMAIL_INGENIERO;
 
     const linkDeRespuesta = `https://master-chatbot-rho.vercel.app/admin/responder?folio=${folio}`;
 
@@ -68,12 +74,12 @@ export async function createTicket(formData: FormData): Promise<{ success: boole
       await resend.emails.send({
         from: 'Buzon Etico <onboarding@resend.dev>',
         to: [emailDestino as string],
-        subject: `Nuevo Reporte [${type}]: ${folio}`,
+        subject: `Nuevo Reporte [${criterio}]: ${folio}`,
         html: `
           <div style="font-family: sans-serif; padding: 20px; border: 1px solid #e2e8f0; border-radius: 20px;">
             <h2 style="color: #10b981;">Nuevo Reporte Recibido</h2>
             <p><strong>Folio:</strong> ${folio}</p>
-            <p><strong>Tipo:</strong> ${type}</p>
+            <p><strong>Categoría:</strong> ${criterio}</p>
             <p><strong>Mensaje:</strong> ${content}</p>
             <br/>
             <a href="${linkDeRespuesta}" style="background: #0f172a; color: white; padding: 12px 25px; text-decoration: none; border-radius: 10px; font-weight: bold; display: inline-block;">
