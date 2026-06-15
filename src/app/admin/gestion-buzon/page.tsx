@@ -45,8 +45,8 @@ export default function AdminBuzonPage() {
                 <div className="flex flex-col md:flex-row justify-between gap-6 mb-6">
                   <div className="flex-1 space-y-4">
                     <div className="flex items-center gap-3">
-                      <span className="px-4 py-1.5 rounded-full text-[10px] font-black uppercase bg-blue-100 text-blue-800">
-                         {ticket.type}
+                      <span className={`px-4 py-1.5 rounded-full text-[10px] font-black uppercase ${ticket.type === 'SOPORTE_TECNICO' ? 'bg-red-100 text-red-800' : 'bg-blue-100 text-blue-800'}`}>
+                         {ticket.type} {ticket.category ? `| ${ticket.category}` : ''}
                       </span>
                       <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">
                          Folio: {ticket.folio}
@@ -55,34 +55,37 @@ export default function AdminBuzonPage() {
                     <h3 className="text-xl font-black text-slate-800">
                       De: <span className="text-purple-600 font-medium">{ticket.studentName || "Anónimo"}</span>
                     </h3>
-                   <div className="bg-slate-50 p-6 rounded-2xl border italic text-slate-600">
-  <p>{ticket.content}</p>
-</div>
+                    
+                    <div className="bg-slate-50 p-6 rounded-2xl border italic text-slate-600">
+                      <p>{ticket.content}</p>
+                    </div>
 
-{/* PUNTO B: VISUALIZACIÓN DE EVIDENCIAS */}
-{ticket.attachments && ticket.attachments.length > 0 && (
-  <div className="mt-6">
-    <p className="text-[10px] font-black uppercase text-slate-400 mb-3 tracking-widest">Evidencias adjuntas:</p>
-    <div className="flex flex-wrap gap-4">
-      {ticket.attachments.map((att: any) => (
-        <a 
-          key={att.id} 
-          href={att.url} 
-          target="_blank" 
-          rel="noopener noreferrer"
-          className="group relative h-24 w-24 rounded-xl overflow-hidden border-2 border-slate-100 hover:border-emerald-500 transition-all"
-        >
-          <img 
-            src={att.url} 
-            alt={att.name} 
-            className="h-full w-full object-cover group-hover:scale-110 transition-transform" 
-          />
-          <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-            <span className="text-[10px] text-white font-bold">VER</span>
-          </div>
-        </a>
-      ))}
+                    {/* PUNTO B: VISUALIZACIÓN DE EVIDENCIAS */}
+                    {ticket.attachments && ticket.attachments.length > 0 && (
+                      <div className="mt-4">
+                        <p className="text-[10px] font-black uppercase text-slate-400 mb-2 tracking-widest">Evidencias:</p>
+                        <div className="flex flex-wrap gap-2">
+                          {ticket.attachments.map((att: any) => (
+                            <a key={att.id} href={att.url} target="_blank" rel="noopener noreferrer" className="h-20 w-20 rounded-lg overflow-hidden border border-slate-200 hover:border-emerald-500 transition-all">
+                              <img src={att.url} alt="evidencia" className="h-full w-full object-cover" />
+                            </a>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="w-full md:w-48 text-right self-start">
+                    <div className={`text-sm font-black p-3 rounded-2xl text-center uppercase ${ticket.status === 'PENDIENTE' ? 'bg-amber-500 text-white' : 'bg-emerald-600 text-white'}`}>
+                      {ticket.status}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          ))
+        )}
+      </div>
     </div>
-  </div>
-)}
-
+  );
+}
