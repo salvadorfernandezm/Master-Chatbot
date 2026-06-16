@@ -1,4 +1,5 @@
 "use server";
+// ACTUALIZACIÓN FORZADA - 14 JUNIO 2026 - v2
 
 import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
@@ -7,18 +8,12 @@ import { randomBytes } from "crypto";
 import { createClient } from '@supabase/supabase-js';
 import { Resend } from 'resend';
 
-// CONFIGURACIÓN DE VERCEL PARA PROCESOS LARGOS (60 segundos)
 export const maxDuration = 60; 
 
-// 1. INICIALIZACIÓN DE CLIENTES
 const resend = new Resend(process.env.RESEND_API_KEY);
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "";
 const supabase = (supabaseUrl && supabaseKey) ? createClient(supabaseUrl, supabaseKey) : null;
-
-// ==========================================
-// 1. GESTIÓN DEL BUZÓN (Tickets y Evidencias)
-// ==========================================
 
 export async function createTicket(formData: FormData): Promise<{ success: boolean; folio: string }> {
   const type = formData.get("type") as string;
@@ -68,7 +63,6 @@ export async function createTicket(formData: FormData): Promise<{ success: boole
       }
     }
 
-    // ENVÍO DE CORREO CON LINKS
     let emailDestino = process.env.EMAIL_INGENIERO;
     const criterio = type === "SOPORTE_TECNICO" ? "SOPORTE_TECNICO" : category;
     if (criterio === "ACADEMICO") emailDestino = process.env.EMAIL_SECRETARIA_ACADEMICA;
@@ -85,25 +79,14 @@ export async function createTicket(formData: FormData): Promise<{ success: boole
             from: 'Buzon Etico <onboarding@resend.dev>',
             to: [emailDestino as string],
             subject: `Nuevo Reporte [${criterio}]: ${folio}`,
-            html: `
-              <div style="font-family: sans-serif; border: 1px solid #eee; padding: 20px; border-radius: 15px;">
-                <h2 style="color: #10b981;">Nuevo Reporte Recibido</h2>
-                <p><strong>Folio:</strong> ${folio}</p>
-                <p><strong>De:</strong> ${studentName || "Anónimo"}</p>
-                <p><strong>Mensaje:</strong> ${content}</p>
-                <hr/>
-                ${evidenciasHtml}
-                <br/>
-                <a href="${linkDeRespuesta}" style="background: #000; color: #fff; padding: 12px 25px; text-decoration: none; border-radius: 10px; font-weight: bold; display: inline-block;">Responder y Resolver</a>
-              </div>
-            `
+            html: `<div style="font-family: sans-serif; padding: 20px;"><h2>Reporte Recibido</h2><p>Folio: ${folio}</p><p>Mensaje: ${content}</p><hr/>${evidenciasHtml}<br/><a href="${linkDeRespuesta}">Responder</a></div>`
         }).catch(e => console.error("Error mail:", e));
     }
 
     revalidatePath("/admin/buzon");
     return { success: true, folio: ticket.folio };
   } catch (error) {
-    console.error("Error createTicket:", error);
+    console.error("Error:", error);
     return { success: false, folio: "" };
   }
 }
@@ -112,31 +95,25 @@ export async function submitAuthorityResponse(formData: FormData) {
   const id = formData.get("id") as string;
   const responseText = formData.get("responseText") as string;
   const files = formData.getAll("evidence") as File[];
-
   try {
     await prisma.ticket.update({
       where: { id },
       data: { authorityResponse: responseText, status: "RESUELTO", updatedAt: new Date() },
     });
-
     if (supabase) {
       for (const file of files) {
         const f = file as File;
         if (f.size > 0) {
-          const fileExt = f.name.split('.').pop();
-          const fileName = `authority/${id}-${Date.now()}.${fileExt}`;
+          const fileName = `authority/${id}-${Date.now()}-${f.name}`;
           const arrayBuffer = await f.arrayBuffer();
-          const { error: uploadError } = await supabase.storage.from('evidencias').upload(fileName, Buffer.from(arrayBuffer));
-          if (!uploadError) {
+          const { error } = await supabase.storage.from('evidencias').upload(fileName, Buffer.from(arrayBuffer));
+          if (!error) {
             const { data: { publicUrl } } = supabase.storage.from('evidencias').getPublicUrl(fileName);
-            await prisma.attachment.create({
-              data: { url: publicUrl, name: f.name, type: "AUTHORITY", ticketId: id }
-            });
+            await prisma.attachment.create({ data: { url: publicUrl, name: f.name, type: "AUTHORITY", ticketId: id } });
           }
         }
       }
     }
-
     revalidatePath("/admin/buzon");
     revalidatePath("/seguimiento");
     return { success: true };
@@ -155,10 +132,6 @@ export async function updateTicketStatus(id: string, newStatus: string) {
   await prisma.ticket.update({ where: { id }, data: { status: newStatus } });
   revalidatePath("/admin/buzon");
 }
-
-// ==========================================
-// 2. GESTIÓN DE CHATBOTS Y GRUPOS
-// ==========================================
 
 export async function createGroup(formData: FormData) {
   const name = formData.get("name") as string;
@@ -253,10 +226,6 @@ export async function addUrlDocument(formData: FormData) {
   await processUrl(url, knowledgeBaseId, doc.id);
   revalidatePath(`/admin/knowledge/${knowledgeBaseId}`);
 }
-
-// ==========================================
-// 3. SEGURIDAD Y AJUSTES
-// ==========================================
 
 export async function verifyDirectorPin(pin: string) {
   return pin === process.env.DIRECTOR_PIN;
