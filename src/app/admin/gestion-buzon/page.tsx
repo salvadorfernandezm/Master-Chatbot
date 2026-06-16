@@ -13,12 +13,14 @@ export default function AdminBuzonPage() {
       .catch(err => { console.error(err); setLoading(false); });
   }, []);
 
-  const getFileIcon = (url: string) => {
+ const getFileIcon = (url: string) => {
     const ext = url.split('.').pop()?.toLowerCase();
-    if (['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(ext || '')) return null; // Es imagen
+    if (['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(ext || '')) return null;
     if (['mp4', 'mov', 'webm'].includes(ext || '')) return "🎥 Video";
     if (['mp3', 'wav', 'ogg', 'm4a'].includes(ext || '')) return "🎵 Audio";
     if (['pdf'].includes(ext || '')) return "📄 PDF";
+    if (['doc', 'docx'].includes(ext || '')) return "📝 Word"; // <--- Añadido Word
+    if (['xls', 'xlsx'].includes(ext || '')) return "📊 Excel"; // <--- Añadido Excel
     return "📁 Archivo";
   };
 
