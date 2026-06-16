@@ -1,4 +1,5 @@
 "use server";
+
 import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
 import { processFile, processUrl } from "@/lib/documentProcessor";
@@ -13,6 +14,7 @@ const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "";
 const supabase = (supabaseUrl && supabaseKey) ? createClient(supabaseUrl, supabaseKey) : null;
 
+// FUNCIONES EXPORTADAS
 export async function verifyDirectorPin(pin: string) {
   return pin === process.env.DIRECTOR_PIN;
 }

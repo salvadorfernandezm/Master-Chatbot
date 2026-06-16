@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { createGroup, deleteGroup, updateGroup } from "@/app/actions/serverActions";
+import { createGroup, deleteGroup, updateGroup } from "@/app/actions/buzonActions";
 
 interface Group {
   id: string;

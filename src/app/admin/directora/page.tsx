@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { verifyDirectorPin } from "@/app/actions/serverActions";
+import { verifyDirectorPin } from "@/app/actions/buzonActions";
 import Link from "next/link";
 
 export default function DirectoraPage() {
