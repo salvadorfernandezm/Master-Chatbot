@@ -7,7 +7,7 @@ import { randomBytes } from "crypto";
 import { createClient } from '@supabase/supabase-js';
 import { Resend } from 'resend';
 
-// CONFIGURACIÓN DE VERCEL PARA PROCESOS LARGOS
+// CONFIGURACIÓN DE VERCEL PARA PROCESOS LARGOS (60 segundos)
 export const maxDuration = 60; 
 
 // 1. INICIALIZACIÓN DE CLIENTES
@@ -121,15 +121,16 @@ export async function submitAuthorityResponse(formData: FormData) {
 
     if (supabase) {
       for (const file of files) {
-        if (file.size > 0) {
-          const fileExt = file.name.split('.').pop();
+        const f = file as File;
+        if (f.size > 0) {
+          const fileExt = f.name.split('.').pop();
           const fileName = `authority/${id}-${Date.now()}.${fileExt}`;
-          const arrayBuffer = await file.arrayBuffer();
+          const arrayBuffer = await f.arrayBuffer();
           const { error: uploadError } = await supabase.storage.from('evidencias').upload(fileName, Buffer.from(arrayBuffer));
           if (!uploadError) {
             const { data: { publicUrl } } = supabase.storage.from('evidencias').getPublicUrl(fileName);
             await prisma.attachment.create({
-              data: { url: publicUrl, name: file.name, type: "AUTHORITY", ticketId: id }
+              data: { url: publicUrl, name: f.name, type: "AUTHORITY", ticketId: id }
             });
           }
         }

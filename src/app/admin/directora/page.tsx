@@ -30,8 +30,8 @@ export default function DirectoraPage() {
     if (['mp4', 'mov', 'webm'].includes(ext || '')) return "🎥 Video";
     if (['mp3', 'wav', 'ogg', 'm4a'].includes(ext || '')) return "🎵 Audio";
     if (['pdf'].includes(ext || '')) return "📄 PDF";
-    if (['doc', 'docx'].includes(ext || '')) return "📝 Word"; // <--- Añadido Word
-    if (['xls', 'xlsx'].includes(ext || '')) return "📊 Excel"; // <--- Añadido Excel
+    if (['doc', 'docx'].includes(ext || '')) return "📝 Word"; // <--- Soporte para Word
+    if (['xls', 'xlsx'].includes(ext || '')) return "📊 Excel"; // <--- Soporte para Excel
     return "📁 Archivo";
   };
 
