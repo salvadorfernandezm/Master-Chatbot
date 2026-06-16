@@ -1,86 +1,103 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { verifyDirectorPin } from "@/app/actions/admin";
+import Link from "next/link";
 
-export default function DirectorPanelPage() {
-  const [pin, setPin] = useState("");
-  const [isAuthorized, setIsAuthorized] = useState(false);
+export default function DirectoraPage() {
   const [tickets, setTickets] = useState<any[]>([]);
-  const [loading, setLoading] = useState(false);
+  const [pin, setPin] = useState("");
+  const [authorized, setAuthorized] = useState(false);
+  const [loading, setLoading] = useState(true);
 
-  const checkPin = async () => {
-    if (pin === "2101") { // Tu PIN de seguridad
-      setIsAuthorized(true);
-      setLoading(true);
-      try {
-        const res = await fetch('/api/buzon/directora');
-        const data = await res.json();
-        setTickets(data);
-      } catch (e) {
-        console.error("Error al cargar datos:", e);
-      }
-      setLoading(false);
-    } else {
-      alert("PIN de acceso incorrecto.");
-      setPin("");
-    }
+  const handleVerify = async () => {
+    const ok = await verifyDirectorPin(pin);
+    if (ok) setAuthorized(true);
+    else alert("PIN Incorrecto");
   };
 
-  if (!isAuthorized) {
+  useEffect(() => {
+    if (authorized) {
+      fetch('/api/buzon/directora')
+        .then(res => res.json())
+        .then(data => { setTickets(data); setLoading(false); });
+    }
+  }, [authorized]);
+
+  const getFileIcon = (url: string) => {
+    const ext = url.split('.').pop()?.toLowerCase();
+    if (['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(ext || '')) return null;
+    if (['mp4', 'mov', 'webm'].includes(ext || '')) return "🎥 Video";
+    if (['mp3', 'wav', 'ogg', 'm4a'].includes(ext || '')) return "🎵 Audio";
+    if (['pdf'].includes(ext || '')) return "📄 PDF";
+    return "📁 Archivo";
+  };
+
+  if (!authorized) {
     return (
-      <div className="min-h-screen bg-slate-950 flex items-center justify-center p-6 text-center font-sans">
-        <div className="max-w-sm w-full bg-slate-900 p-10 rounded-[3rem] border border-white/10 shadow-2xl">
-          <div className="text-5xl mb-6">🏛️</div>
-          <h2 className="text-xl font-black text-emerald-400 uppercase tracking-widest mb-2">Alta Gestión</h2>
-          <p className="text-slate-500 text-xs mb-8 uppercase tracking-widest">Introduce el PIN de Acceso</p>
-          <input 
-            type="password" 
-            maxLength={4} 
-            value={pin} 
-            onChange={(e) => setPin(e.target.value)} 
-            className="w-full bg-black border-2 border-slate-800 p-4 rounded-2xl text-center text-3xl font-black text-white outline-none mb-6" 
-          />
-          <button onClick={checkPin} className="w-full bg-emerald-600 text-white py-4 rounded-2xl font-bold uppercase text-xs">Desbloquear</button>
+      <div className="min-h-screen bg-slate-950 flex items-center justify-center p-6 text-white font-sans">
+        <div className="max-w-md w-full bg-slate-900 p-10 rounded-[3rem] border-b-8 border-purple-500 shadow-2xl text-center">
+          <h1 className="text-2xl font-black uppercase mb-6 tracking-widest">Acceso Directora</h1>
+          <input type="password" value={pin} onChange={(e) => setPin(e.target.value)} placeholder="Introduce el PIN" className="w-full bg-black border-2 border-slate-800 p-4 rounded-2xl mb-4 text-center text-xl outline-none focus:border-purple-500" />
+          <button onClick={handleVerify} className="w-full bg-purple-600 p-4 rounded-2xl font-black uppercase hover:bg-purple-500 transition-all">Entrar al Panel</button>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 font-sans pb-20 text-slate-900">
-      <header className="bg-slate-900 text-white p-8 shadow-2xl flex justify-between items-center">
-        <h1 className="text-2xl font-black uppercase text-emerald-400">Panel de Dirección</h1>
-        <button onClick={() => window.location.reload()} className="text-xs bg-white/10 px-4 py-2 rounded-lg font-bold">SALIR</button>
-      </header>
+    <div className="min-h-screen bg-slate-50 p-6 md:p-12 font-sans text-left">
+      <div className="max-w-5xl mx-auto">
+        <header className="flex justify-between items-center mb-10 bg-slate-900 p-8 rounded-[2.5rem] text-white shadow-xl">
+          <div>
+            <h1 className="text-2xl font-black uppercase tracking-tighter text-purple-400">Panel de Dirección</h1>
+            <p className="text-xs text-slate-400 uppercase font-bold tracking-widest">Casos de Ética y Academia</p>
+          </div>
+          <div className="text-3xl font-black bg-white/10 w-16 h-16 rounded-full flex items-center justify-center border border-white/10">{tickets.length}</div>
+        </header>
 
-      <div className="max-w-6xl mx-auto p-8 space-y-6">
-        {loading ? <p className="text-center italic animate-pulse text-slate-500">Cargando...</p> : 
-          tickets.map((ticket: any) => (
-            <div key={ticket.id} className="bg-white rounded-[3rem] p-8 border border-slate-100 shadow-xl relative overflow-hidden transition-all hover:shadow-2xl">
-              <div className={`absolute top-0 left-0 w-2 h-full ${ticket.type === 'GRAVE' ? 'bg-red-500' : 'bg-blue-500'}`}></div>
-              <div className="flex justify-between items-start text-left">
-                <div className="flex-1">
-                  <div className="flex items-center gap-3 mb-4">
-                    <span className="bg-slate-100 text-slate-600 px-3 py-1 rounded-full text-[10px] font-black uppercase mr-2">{ticket.type}</span>
-                    <span className="text-[10px] text-slate-400 font-bold uppercase">FOLIO: {ticket.folio}</span>
-                  </div>
-                  
-                  {/* Aquí estaba el error - ticket.content ahora sí está definido */}
-                  <p className="text-slate-700 italic font-serif text-lg mt-4">"{ticket.content}"</p>
-                  
-                  {ticket.authorityResponse && (
-                    <div className="mt-6 p-6 bg-slate-50 rounded-[2rem] border border-slate-200">
-                      <p className="text-[10px] font-black text-slate-400 uppercase">Respuesta del Funcionario:</p>
-                      <p className="text-sm text-slate-600 italic">"{ticket.authorityResponse}"</p>
+        <div className="space-y-8">
+          {loading ? <p className="text-center py-20 animate-pulse font-black text-slate-300 uppercase tracking-widest">Cargando...</p> : 
+            tickets.map((t) => (
+              <div key={t.id} className="bg-white p-10 rounded-[3rem] shadow-xl border border-slate-100 relative overflow-hidden">
+                <div className="flex flex-col md:flex-row justify-between gap-6">
+                  <div className="flex-1 space-y-4">
+                    <div className="flex items-center gap-3 text-[10px] font-black uppercase tracking-widest">
+                      <span className="bg-purple-100 text-purple-700 px-3 py-1 rounded-full">{t.category || 'SIN CATEGORÍA'}</span>
+                      <span className="text-slate-300 font-bold">Folio: {t.folio}</span>
                     </div>
-                  )}
+                    <h2 className="text-xl font-black text-slate-800 underline decoration-purple-200 underline-offset-4">Reportante: {t.studentName || "Anónimo"}</h2>
+                    <div className="bg-slate-50 p-6 rounded-2xl border border-slate-100 italic text-slate-600 text-sm">"{t.content}"</div>
+                    
+                    {/* VISUALIZACIÓN DE EVIDENCIAS PARA LA DIRECTORA */}
+                    {t.attachments && t.attachments.length > 0 && (
+                      <div className="pt-4">
+                        <p className="text-[10px] font-black uppercase text-purple-600 mb-3 tracking-widest">Evidencias Adjuntas:</p>
+                        <div className="flex flex-wrap gap-3">
+                          {t.attachments.map((att: any) => {
+                            const icon = getFileIcon(att.url);
+                            return (
+                              <a key={att.id} href={att.url} target="_blank" rel="noopener noreferrer" className="group relative h-24 w-24 rounded-2xl overflow-hidden border-2 border-slate-100 hover:border-purple-500 transition-all bg-slate-50 flex items-center justify-center">
+                                {icon ? <span className="text-[10px] font-black text-slate-400 text-center p-2 uppercase leading-none">{icon}</span> : 
+                                  <img src={att.url} className="h-full w-full object-cover" alt="evidencia" />}
+                                <div className="absolute inset-0 bg-purple-600/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                                  <span className="text-[9px] text-white font-black bg-purple-600 px-2 py-1 rounded-md">VER</span>
+                                </div>
+                              </a>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                  <div className="md:w-40 text-right">
+                     <span className={`text-[10px] font-black px-4 py-2 rounded-xl uppercase tracking-widest ${t.status === 'PENDIENTE' ? 'bg-amber-500 text-white animate-pulse' : 'bg-emerald-600 text-white'}`}>{t.status}</span>
+                  </div>
                 </div>
-                <div className={`px-4 py-1.5 rounded-full text-[10px] font-black uppercase ${ticket.status === 'RESUELTO' ? 'bg-emerald-500 text-white' : 'bg-amber-500 text-white'}`}>{ticket.status}</div>
               </div>
-            </div>
-          ))
-        }
-        {tickets.length === 0 && !loading && <p className="text-center text-slate-400 italic">No hay reportes en este momento.</p>}
+            ))
+          }
+        </div>
       </div>
     </div>
   );
