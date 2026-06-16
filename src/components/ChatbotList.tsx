@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { updateChatbot, deleteChatbot } from "@/app/actions/admin";
+import { updateChatbot, deleteChatbot } from "@/app/actions/serverActions";
 
 interface Chatbot {
   id: string;
