@@ -1,5 +1,3 @@
-export const maxDuration = 60; // <--- Añade esto al inicio del archivo
-
 "use server";
 
 import { prisma } from "@/lib/prisma";
@@ -9,10 +7,12 @@ import { randomBytes } from "crypto";
 import { createClient } from '@supabase/supabase-js';
 import { Resend } from 'resend';
 
+// CONFIGURACIÓN DE VERCEL PARA PROCESOS LARGOS
+export const maxDuration = 60; 
+
 // 1. INICIALIZACIÓN DE CLIENTES
 const resend = new Resend(process.env.RESEND_API_KEY);
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
-// USAMOS LA LLAVE MAESTRA (SERVICE ROLE) PARA EVITAR PROBLEMAS DE PERMISOS
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "";
 const supabase = (supabaseUrl && supabaseKey) ? createClient(supabaseUrl, supabaseKey) : null;
 
@@ -30,7 +30,7 @@ export async function createTicket(formData: FormData): Promise<{ success: boole
 
   if (!content || !type) return { success: false, folio: "" };
   const folio = `ETH-${Math.random().toString(36).substring(2, 7).toUpperCase()}`;
-  const attachmentLinks: string[] = []; // Para el correo
+  const attachmentLinks: string[] = [];
 
   try {
     const ticket = await prisma.ticket.create({
@@ -59,7 +59,7 @@ export async function createTicket(formData: FormData): Promise<{ success: boole
 
           if (!uploadError) {
             const { data: { publicUrl } } = supabase.storage.from('evidencias').getPublicUrl(fileName);
-            attachmentLinks.push(publicUrl); // Guardamos para el mail
+            attachmentLinks.push(publicUrl);
             await prisma.attachment.create({
               data: { url: publicUrl, name: f.name, type: "STUDENT", ticketId: ticket.id }
             });
@@ -68,7 +68,7 @@ export async function createTicket(formData: FormData): Promise<{ success: boole
       }
     }
 
-    // ENVÍO DE CORREO CON LINKS DE EVIDENCIAS
+    // ENVÍO DE CORREO CON LINKS
     let emailDestino = process.env.EMAIL_INGENIERO;
     const criterio = type === "SOPORTE_TECNICO" ? "SOPORTE_TECNICO" : category;
     if (criterio === "ACADEMICO") emailDestino = process.env.EMAIL_SECRETARIA_ACADEMICA;
@@ -87,25 +87,54 @@ export async function createTicket(formData: FormData): Promise<{ success: boole
             subject: `Nuevo Reporte [${criterio}]: ${folio}`,
             html: `
               <div style="font-family: sans-serif; border: 1px solid #eee; padding: 20px; border-radius: 15px;">
-                <h2 style="color: #10b981;">Nuevo Reporte</h2>
+                <h2 style="color: #10b981;">Nuevo Reporte Recibido</h2>
                 <p><strong>Folio:</strong> ${folio}</p>
                 <p><strong>De:</strong> ${studentName || "Anónimo"}</p>
                 <p><strong>Mensaje:</strong> ${content}</p>
                 <hr/>
                 ${evidenciasHtml}
                 <br/>
-                <a href="${linkDeRespuesta}" style="background: #000; color: #fff; padding: 10px 20px; text-decoration: none; border-radius: 10px;">Responder Caso</a>
+                <a href="${linkDeRespuesta}" style="background: #000; color: #fff; padding: 12px 25px; text-decoration: none; border-radius: 10px; font-weight: bold; display: inline-block;">Responder y Resolver</a>
               </div>
             `
-        });
+        }).catch(e => console.error("Error mail:", e));
     }
 
     revalidatePath("/admin/buzon");
     return { success: true, folio: ticket.folio };
   } catch (error) {
+    console.error("Error createTicket:", error);
     return { success: false, folio: "" };
   }
 }
+
+export async function submitAuthorityResponse(formData: FormData) {
+  const id = formData.get("id") as string;
+  const responseText = formData.get("responseText") as string;
+  const files = formData.getAll("evidence") as File[];
+
+  try {
+    await prisma.ticket.update({
+      where: { id },
+      data: { authorityResponse: responseText, status: "RESUELTO", updatedAt: new Date() },
+    });
+
+    if (supabase) {
+      for (const file of files) {
+        if (file.size > 0) {
+          const fileExt = file.name.split('.').pop();
+          const fileName = `authority/${id}-${Date.now()}.${fileExt}`;
+          const arrayBuffer = await file.arrayBuffer();
+          const { error: uploadError } = await supabase.storage.from('evidencias').upload(fileName, Buffer.from(arrayBuffer));
+          if (!uploadError) {
+            const { data: { publicUrl } } = supabase.storage.from('evidencias').getPublicUrl(fileName);
+            await prisma.attachment.create({
+              data: { url: publicUrl, name: file.name, type: "AUTHORITY", ticketId: id }
+            });
+          }
+        }
+      }
+    }
 
     revalidatePath("/admin/buzon");
     revalidatePath("/seguimiento");
