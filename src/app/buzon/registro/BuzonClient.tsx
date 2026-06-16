@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, Suspense } from "react";
-import { createTicket } from "@/app/actions/admin";
+import { createTicket } from "@/app/actions/serverActions";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { useSearchParams } from "next/navigation";

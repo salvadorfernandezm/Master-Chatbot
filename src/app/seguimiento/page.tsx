@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { setStudentSatisfaction } from "@/app/actions/admin";
+import { setStudentSatisfaction } from "@/app/actions/serverActions";
 
 export default function SeguimientoPage() {
   const [folio, setFolio] = useState("");

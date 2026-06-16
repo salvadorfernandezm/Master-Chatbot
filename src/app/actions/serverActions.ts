@@ -1,5 +1,4 @@
 "use server";
-
 import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
 import { processFile, processUrl } from "@/lib/documentProcessor";
@@ -14,12 +13,10 @@ const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "";
 const supabase = (supabaseUrl && supabaseKey) ? createClient(supabaseUrl, supabaseKey) : null;
 
-// --- SEGURIDAD ---
 export async function verifyDirectorPin(pin: string) {
   return pin === process.env.DIRECTOR_PIN;
 }
 
-// --- BUZÓN ---
 export async function createTicket(formData: FormData): Promise<{ success: boolean; folio: string }> {
   const type = formData.get("type") as string;
   const category = formData.get("category") as string;
@@ -27,21 +24,13 @@ export async function createTicket(formData: FormData): Promise<{ success: boole
   const studentName = formData.get("studentName") as string;
   const studentEmail = formData.get("studentEmail") as string;
   const files = formData.getAll("evidence"); 
-
   if (!content || !type) return { success: false, folio: "" };
   const folio = `ETH-${Math.random().toString(36).substring(2, 7).toUpperCase()}`;
   const attachmentLinks: string[] = [];
-
   try {
     const ticket = await prisma.ticket.create({
-      data: {
-        folio, type, category, content,
-        studentName: studentName || "Anónimo Protegido",
-        studentEmail: studentEmail || null,
-        status: "PENDIENTE",
-      },
+      data: { folio, type, category, content, studentName: studentName || "Anónimo Protegido", studentEmail: studentEmail || null, status: "PENDIENTE" },
     });
-
     if (supabase && files.length > 0) {
       for (const file of files) {
         const f = file as File;
@@ -57,23 +46,6 @@ export async function createTicket(formData: FormData): Promise<{ success: boole
           }
         }
       }
-    }
-
-    let emailDestino = process.env.EMAIL_INGENIERO;
-    const criterio = type === "SOPORTE_TECNICO" ? "SOPORTE_TECNICO" : category;
-    if (criterio === "ACADEMICO") emailDestino = process.env.EMAIL_SECRETARIA_ACADEMICA;
-    else if (criterio === "LOGISTICA") emailDestino = process.env.EMAIL_SECRETARIA_ADMINISTRATIVA;
-    else if (criterio === "GRAVE") emailDestino = process.env.EMAIL_DIRECCION;
-
-    if (process.env.RESEND_API_KEY && emailDestino) {
-        const linkDeRespuesta = `https://master-chatbot-rho.vercel.app/admin/responder?folio=${folio}`;
-        const evidenciasHtml = attachmentLinks.length > 0 ? `<p>Evidencias: ${attachmentLinks.join(', ')}</p>` : '';
-        await resend.emails.send({
-            from: 'Buzon Etico <onboarding@resend.dev>',
-            to: [emailDestino as string],
-            subject: `Nuevo Reporte [${criterio}]: ${folio}`,
-            html: `<p>Folio: ${folio}</p><p>Mensaje: ${content}</p>${evidenciasHtml}<br/><a href="${linkDeRespuesta}">Responder</a>`
-        }).catch(e => console.error(e));
     }
     revalidatePath("/admin/buzon");
     return { success: true, folio: ticket.folio };
@@ -117,7 +89,6 @@ export async function updateTicketStatus(id: string, newStatus: string) {
   revalidatePath("/admin/buzon");
 }
 
-// --- CHATBOTS Y GRUPOS ---
 export async function createGroup(formData: FormData) {
   const name = formData.get("name") as string;
   const description = formData.get("description") as string;
@@ -190,7 +161,7 @@ export async function uploadFileDocument(formData: FormData) {
   const kbId = formData.get("knowledgeBaseId") as string;
   if (!file || !kbId) return;
   const buffer = Buffer.from(await file.arrayBuffer());
-  const type = file.name.endsWith('.pdf') ? 'PDF' : (file.name.endsWith('.xlsx') ? 'EXCEL' : 'WORD');
+  const type = file.name.endsWith('.pdf') ? 'PDF' : 'WORD';
   const doc = await prisma.document.create({ data: { filename: file.name, type, knowledgeBaseId: kbId } });
   await processFile(buffer, file.name, type, kbId, doc.id);
   revalidatePath(`/admin/knowledge/${kbId}`);
@@ -225,7 +196,7 @@ export async function exportFullBackup() {
 
 export async function importFullBackup(data: any) {
   try {
-    const { groups, kbs, chatbots } = data;
+    const { groups } = data;
     if (groups) await prisma.group.createMany({ data: groups, skipDuplicates: true });
     revalidatePath("/admin");
     return { success: true };
