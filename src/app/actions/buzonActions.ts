@@ -14,10 +14,16 @@ const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "";
 const supabase = (supabaseUrl && supabaseKey) ? createClient(supabaseUrl, supabaseKey) : null;
 
-// FUNCIONES EXPORTADAS
+// ==========================================
+// 1. SEGURIDAD Y ACCESO (Directora)
+// ==========================================
 export async function verifyDirectorPin(pin: string) {
   return pin === process.env.DIRECTOR_PIN;
 }
+
+// ==========================================
+// 2. GESTIÓN DEL BUZÓN (Tickets, Apelaciones y Evidencias)
+// ==========================================
 
 export async function createTicket(formData: FormData): Promise<{ success: boolean; folio: string }> {
   const type = formData.get("type") as string;
@@ -26,13 +32,21 @@ export async function createTicket(formData: FormData): Promise<{ success: boole
   const studentName = formData.get("studentName") as string;
   const studentEmail = formData.get("studentEmail") as string;
   const files = formData.getAll("evidence"); 
+
   if (!content || !type) return { success: false, folio: "" };
   const folio = `ETH-${Math.random().toString(36).substring(2, 7).toUpperCase()}`;
   const attachmentLinks: string[] = [];
+
   try {
     const ticket = await prisma.ticket.create({
-      data: { folio, type, category, content, studentName: studentName || "Anónimo Protegido", studentEmail: studentEmail || null, status: "PENDIENTE" },
+      data: {
+        folio, type, category, content,
+        studentName: studentName || "Anónimo Protegido",
+        studentEmail: studentEmail || null,
+        status: "PENDIENTE",
+      },
     });
+
     if (supabase && files.length > 0) {
       for (const file of files) {
         const f = file as File;
@@ -49,9 +63,31 @@ export async function createTicket(formData: FormData): Promise<{ success: boole
         }
       }
     }
+
     revalidatePath("/admin/buzon");
     return { success: true, folio: ticket.folio };
-  } catch (error) { return { success: false, folio: "" }; }
+  } catch (error) {
+    console.error(error);
+    return { success: false, folio: "" };
+  }
+}
+
+export async function submitAppeal(id: string, reason: string) {
+  try {
+    await prisma.ticket.update({
+      where: { id },
+      data: { 
+        status: "APELADO",
+        authorityResponse: `⚠️ APELACIÓN DEL ALUMNO: ${reason}` 
+      },
+    });
+    revalidatePath("/seguimiento");
+    revalidatePath("/admin/buzon");
+    revalidatePath("/admin/directora");
+    return { success: true };
+  } catch (error) {
+    return { success: false };
+  }
 }
 
 export async function submitAuthorityResponse(formData: FormData) {
@@ -59,7 +95,10 @@ export async function submitAuthorityResponse(formData: FormData) {
   const responseText = formData.get("responseText") as string;
   const files = formData.getAll("evidence");
   try {
-    await prisma.ticket.update({ where: { id }, data: { authorityResponse: responseText, status: "RESUELTO", updatedAt: new Date() } });
+    await prisma.ticket.update({
+      where: { id },
+      data: { authorityResponse: responseText, status: "RESUELTO", updatedAt: new Date() },
+    });
     if (supabase) {
       for (const file of files) {
         const f = file as File;
@@ -90,6 +129,10 @@ export async function updateTicketStatus(id: string, newStatus: string) {
   await prisma.ticket.update({ where: { id }, data: { status: newStatus } });
   revalidatePath("/admin/buzon");
 }
+
+// ==========================================
+// 3. GESTIÓN DE CHATBOTS Y GRUPOS
+// ==========================================
 
 export async function createGroup(formData: FormData) {
   const name = formData.get("name") as string;
@@ -203,24 +246,4 @@ export async function importFullBackup(data: any) {
     revalidatePath("/admin");
     return { success: true };
   } catch (error) { return { success: false }; }
-}
-
-export async function submitAppeal(id: string, reason: string) {
-  try {
-    await prisma.ticket.update({
-      where: { id },
-      data: { 
-        status: "APELADO",
-        // Guardamos el mensaje del alumno concatenado o en un campo nuevo si lo tienes
-        // Por ahora lo pondremos en una nota interna o similar
-        authorityResponse: `⚠️ APELACIÓN DEL ALUMNO: ${reason}` 
-      },
-    });
-    revalidatePath("/seguimiento");
-    revalidatePath("/admin/buzon");
-    revalidatePath("/admin/directora");
-    return { success: true };
-  } catch (error) {
-    return { success: false };
-  }
 }
