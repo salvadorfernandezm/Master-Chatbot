@@ -204,3 +204,23 @@ export async function importFullBackup(data: any) {
     return { success: true };
   } catch (error) { return { success: false }; }
 }
+
+export async function submitAppeal(id: string, reason: string) {
+  try {
+    await prisma.ticket.update({
+      where: { id },
+      data: { 
+        status: "APELADO",
+        // Guardamos el mensaje del alumno concatenado o en un campo nuevo si lo tienes
+        // Por ahora lo pondremos en una nota interna o similar
+        authorityResponse: `⚠️ APELACIÓN DEL ALUMNO: ${reason}` 
+      },
+    });
+    revalidatePath("/seguimiento");
+    revalidatePath("/admin/buzon");
+    revalidatePath("/admin/directora");
+    return { success: true };
+  } catch (error) {
+    return { success: false };
+  }
+}

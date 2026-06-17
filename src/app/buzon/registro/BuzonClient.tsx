@@ -125,31 +125,38 @@ function BuzonFormContent({ reglamento }: { reglamento: string }) {
 
             <textarea name="content" required rows={6} placeholder="Describe los hechos con detalle..." className="w-full bg-black border-2 border-slate-800 p-5 rounded-[1.5rem] text-sm outline-none focus:border-emerald-500 resize-none"></textarea>
             
-            {/* PUNTO 3: UX DE EVIDENCIAS MEJORADA */}
-            <div className="bg-amber-500/10 border-2 border-amber-500/20 p-6 rounded-[2rem] space-y-4">
-              <p className="text-[11px] text-amber-500 font-black uppercase tracking-widest flex items-center gap-2">
-                <span>📎</span> Instrucciones de Evidencias (Fotos, Videos, Audios, Docs)
-              </p>
-              
-              <div className="relative group">
-                <input name="evidence" type="file" multiple onChange={handleFileChange} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" />
-                <div className="bg-slate-800 border-2 border-dashed border-slate-600 p-6 rounded-2xl text-center group-hover:border-emerald-500 transition-all">
-                  <p className="text-xs font-bold text-slate-400">Clic para seleccionar archivos juntos</p>
-                </div>
-              </div>
+            {/* INSTRUCCIONES DE EVIDENCIAS MEJORADAS */}
+<div className="bg-amber-500/10 border-2 border-amber-500/20 p-6 rounded-[2rem] space-y-4">
+  <div className="flex items-start gap-4">
+    <span className="text-2xl">⚠️</span>
+    <div>
+      <p className="text-xs font-black text-amber-500 uppercase tracking-widest text-left">Avisos Importantes</p>
+      <ul className="text-[10px] text-slate-300 mt-2 space-y-1 list-disc ml-4 text-left">
+        <li><strong>Límite de tamaño:</strong> El total de archivos no debe superar los <strong>4MB</strong>.</li>
+        <li><strong>Multiformato:</strong> Aceptamos fotos, audios, videos cortos y PDFs.</li>
+        <li><strong>Plazo de validación:</strong> Una vez resuelto, tendrás <strong>72 horas</strong> para confirmar si estás satisfecho.</li>
+      </ul>
+    </div>
+  </div>
+  
+  <div className="relative group">
+    <input name="evidence" type="file" multiple onChange={handleFileChange} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" />
+    <div className="bg-slate-800 border-2 border-dashed border-slate-600 p-6 rounded-2xl text-center group-hover:border-emerald-500 transition-all">
+      <p className="text-xs font-bold text-slate-400 group-hover:text-emerald-400">📎 Seleccionar evidencias (Máx. 4MB total)</p>
+    </div>
+  </div>
 
-              {selectedFiles.length > 0 && (
-                <div className="bg-black/30 p-4 rounded-xl space-y-2">
-                  <p className="text-[10px] font-bold text-emerald-500 uppercase italic">
-                    {selectedFiles.length} archivo(s) seleccionado(s):
-                  </p>
-                  <ul className="text-[10px] text-slate-400 list-disc ml-4">
-                    {selectedFiles.map((name, i) => <li key={i}>{name}</li>)}
-                  </ul>
-                </div>
-              )}
-            </div>
-          </div>
+  {selectedFiles.length > 0 && (
+    <div className="bg-black/30 p-4 rounded-xl space-y-2">
+      <p className="text-[10px] font-bold text-emerald-500 uppercase italic text-left">
+        {selectedFiles.length} archivo(s) listo(s):
+      </p>
+      <ul className="text-[10px] text-slate-400 list-disc ml-4 text-left">
+        {selectedFiles.map((name, i) => <li key={i}>{name}</li>)}
+      </ul>
+    </div>
+  )}
+</div>
           
           <button type="submit" disabled={status === "SENDING"} className="w-full bg-emerald-500 text-black font-black py-6 rounded-[2.5rem] uppercase hover:bg-white transition-all disabled:opacity-50">
             {status === "SENDING" ? "Procesando..." : "Enviar Reporte"}

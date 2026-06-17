@@ -3,16 +3,28 @@ import { NextResponse } from "next/server";
 
 export async function GET() {
   try {
-    const tickets = await prisma.ticket.findMany({
-      // Filtramos para que ella no vea fallos técnicos, solo denuncias
-      where: { NOT: { type: 'SOPORTE_TECNICO' } },
-      include: {
-        attachments: true // <--- ESTO ES LO QUE "LIBERA" LAS FOTOS PARA SU PANEL
-      },
-      orderBy: { createdAt: 'desc' }
-    });
+    const hace15Dias = new Date();
+hace15Dias.setDate(hace15Dias.getDate() - 15);
+
+const tickets = await prisma.ticket.findMany({
+  where: {
+ AND: [
+          { NOT: { type: 'SOPORTE_TECNICO' } }, // No ve fallos técnicos
+          {
+    OR: [
+      { status: "PENDIENTE" },
+      { status: "APELADO" }, // Los apelados siempre visibles
+      { 
+        status: "RESUELTO", 
+        updatedAt: { gte: hace15Dias } 
+      }
+    ]
+  },
+  include: { attachments: true },
+  orderBy: { updatedAt: 'desc' } // Ordenar por lo más reciente que se movió
+});
     return NextResponse.json(tickets);
   } catch (error) {
-    return NextResponse.json({ error: "Error al obtener datos" }, { status: 500 });
+    return NextResponse.json({ error: "Fallo" }, { status: 500 });
   }
 }

@@ -82,7 +82,15 @@ export default function AdminBuzonPage() {
                     )}
                   </div>
                   <div className="w-full lg:w-56 space-y-4">
-                    <div className={`text-xs font-black p-4 rounded-2xl text-center uppercase tracking-widest shadow-lg ${ticket.status === 'PENDIENTE' ? 'bg-amber-500 text-white animate-pulse' : 'bg-emerald-600 text-white'}`}>{ticket.status}</div>
+  <div className={`text-xs font-black p-4 rounded-2xl text-center uppercase tracking-widest shadow-lg ${
+    ticket.status === 'PENDIENTE' ? 'bg-amber-500 text-white animate-pulse' : 
+    ticket.status === 'APELADO' ? 'bg-red-600 text-white animate-bounce' : 
+    'bg-emerald-600 text-white'
+  }`}>
+    {ticket.status}
+  </div>
+  {/* ...resto de la fecha... */}
+</div>
                     <div className="text-[9px] text-slate-400 uppercase font-bold text-center">Recibido: {new Date(ticket.createdAt).toLocaleDateString()}</div>
                   </div>
                 </div>
