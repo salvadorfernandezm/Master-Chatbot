@@ -1,6 +1,6 @@
 "use client";
 import { useState } from "react";
-import { createKnowledgeBase } from "@/app/actions";
+import { createKnowledgeBase } from "@/actions/buzon";
 
 export default function KnowledgeBaseFormWrapper() {
   const [isOpen, setIsOpen] = useState(false);

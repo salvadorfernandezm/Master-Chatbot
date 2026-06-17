@@ -3,7 +3,7 @@ export const revalidate = 0;
 
 import { prisma } from "@/lib/prisma";
 import { notFound } from "next/navigation";
-import { uploadFileDocument, addUrlDocument, deleteDocument } from "@/app/actions";
+import { uploadFileDocument, addUrlDocument, deleteDocument } from "@/actions/buzon";
 import Link from "next/link";
 import { UploadDocumentForm, AddUrlForm } from "@/components/KnowledgeForms";
 
