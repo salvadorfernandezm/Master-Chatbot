@@ -1,6 +1,6 @@
 "use client";
 import { useState } from "react";
-import { createGroup } from "@/actions/buzon";
+import { createGroup } from "@/actions/operaciones";
 
 export default function GroupFormWrapper() {
   const [isOpen, setIsOpen] = useState(false);

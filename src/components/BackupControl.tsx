@@ -1,6 +1,6 @@
 "use client";
 import { useState, useRef } from "react";
-import { exportFullBackup, importFullBackup } from "@/actions/buzon";
+import { exportFullBackup, importFullBackup } from "@/actions/operaciones";
 
 export default function BackupControl() {
   const [loading, setLoading] = useState(false);
