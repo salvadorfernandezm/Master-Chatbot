@@ -205,3 +205,5 @@ export async function importFullBackup(data: any) {
     return { success: true };
   } catch (error) { return { success: false }; }
 }
+// ID ÚNICO DE CAMBIO: 001
+export const forceChange = "true";
