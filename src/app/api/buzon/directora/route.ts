@@ -9,7 +9,7 @@ export async function GET() {
     const tickets = await prisma.ticket.findMany({
       where: {
         AND: [
-          { NOT: { type: 'SOPORTE_TECNICO' } },
+          { NOT: { type: 'SOPORTE_TECNICO' } }, // SOLO EN DIRECTORA. En Admin quita esta línea.
           {
             OR: [
               { status: "PENDIENTE" },
@@ -24,7 +24,7 @@ export async function GET() {
           }
         ]
       },
-      include: { attachments: true },
+      include: { attachments: true }, // FUERA DEL WHERE
       orderBy: { updatedAt: 'desc' }
     });
     return NextResponse.json(tickets);

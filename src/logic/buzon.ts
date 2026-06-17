@@ -14,12 +14,10 @@ const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "";
 const supabase = (supabaseUrl && supabaseKey) ? createClient(supabaseUrl, supabaseKey) : null;
 
-// --- SEGURIDAD ---
 export async function verifyDirectorPin(pin: string) {
   return pin === process.env.DIRECTOR_PIN;
 }
 
-// --- BUZÓN Y APELACIONES ---
 export async function createTicket(formData: FormData) {
   const type = formData.get("type") as string;
   const category = formData.get("category") as string;
@@ -99,7 +97,6 @@ export async function updateTicketStatus(id: string, newStatus: string) {
   revalidatePath("/admin/buzon");
 }
 
-// --- CHATBOTS Y GRUPOS ---
 export async function createGroup(formData: FormData) {
   const name = formData.get("name") as string;
   const description = formData.get("description") as string;

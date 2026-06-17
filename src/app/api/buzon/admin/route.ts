@@ -8,18 +8,22 @@ export async function GET() {
 
     const tickets = await prisma.ticket.findMany({
       where: {
-        OR: [
-          { status: "PENDIENTE" },
-          { status: "APELADO" },
-          {
-            AND: [
-              { status: "RESUELTO" },
-              { updatedAt: { gte: hace15Dias } }
+        AND: [
+                   {
+            OR: [
+              { status: "PENDIENTE" },
+              { status: "APELADO" },
+              {
+                AND: [
+                  { status: "RESUELTO" },
+                  { updatedAt: { gte: hace15Dias } }
+                ]
+              }
             ]
           }
         ]
       },
-      include: { attachments: true },
+      include: { attachments: true }, // FUERA DEL WHERE
       orderBy: { updatedAt: 'desc' }
     });
     return NextResponse.json(tickets);

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { deleteKnowledgeBase, updateKnowledgeBase } from "@/actions/operaciones";
+import { deleteKnowledgeBase, updateKnowledgeBase } from "@/logic/buzon";
 import Link from "next/link";
 
 interface KnowledgeBase {
