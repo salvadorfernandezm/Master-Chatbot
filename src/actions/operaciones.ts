@@ -1,6 +1,5 @@
-// FIX SYNTAX VERSION 2.0 - 14 JUNIO
 "use server";
-// LLAVE MAESTRA - VERSION 777 - OBLIGAR RELECTURA
+
 import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
 import { processFile, processUrl } from "@/lib/documentProcessor";
@@ -15,8 +14,12 @@ const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "";
 const supabase = (supabaseUrl && supabaseKey) ? createClient(supabaseUrl, supabaseKey) : null;
 
-export async function verifyDirectorPin(pin: string) { return pin === process.env.DIRECTOR_PIN; }
+// --- SEGURIDAD ---
+export async function verifyDirectorPin(pin: string) {
+  return pin === process.env.DIRECTOR_PIN;
+}
 
+// --- BUZÓN Y APELACIONES ---
 export async function createTicket(formData: FormData) {
   const type = formData.get("type") as string;
   const category = formData.get("category") as string;
@@ -49,9 +52,20 @@ export async function createTicket(formData: FormData) {
 
 export async function submitAppeal(id: string, reason: string) {
   try {
-    await prisma.ticket.update({ where: { id }, data: { status: "APELADO", authorityResponse: `⚠️ APELACIÓN: ${reason}` } });
+    await prisma.ticket.update({
+      where: { id },
+      data: { status: "APELADO", authorityResponse: `⚠️ APELACIÓN: ${reason}` },
+    });
     revalidatePath("/seguimiento");
     revalidatePath("/admin/buzon");
+    return { success: true };
+  } catch (error) { return { success: false }; }
+}
+
+export async function setStudentSatisfaction(id: string, satisfied: boolean) {
+  try {
+    await prisma.ticket.update({ where: { id }, data: { studentResolved: satisfied } });
+    revalidatePath("/seguimiento");
     return { success: true };
   } catch (error) { return { success: false }; }
 }
@@ -80,19 +94,12 @@ export async function submitAuthorityResponse(formData: FormData) {
   } catch (error) { return { success: false }; }
 }
 
-export async function setStudentSatisfaction(id: string, satisfied: boolean) {
-  try {
-    await prisma.ticket.update({ where: { id }, data: { studentResolved: satisfied } });
-    revalidatePath("/seguimiento");
-    return { success: true };
-  } catch (error) { return { success: false }; }
-}
-
 export async function updateTicketStatus(id: string, newStatus: string) {
   await prisma.ticket.update({ where: { id }, data: { status: newStatus } });
   revalidatePath("/admin/buzon");
 }
 
+// --- CHATBOTS Y GRUPOS ---
 export async function createGroup(formData: FormData) {
   const name = formData.get("name") as string;
   const description = formData.get("description") as string;
@@ -195,7 +202,13 @@ export async function updateSettings(formData: FormData) {
 }
 
 export async function exportFullBackup() {
-  return await Promise.all([prisma.group.findMany(), prisma.chatbot.findMany(), prisma.knowledgeBase.findMany()]);
+  const [groups, chatbots, kbs, docs] = await Promise.all([
+    prisma.group.findMany(),
+    prisma.chatbot.findMany(),
+    prisma.knowledgeBase.findMany(),
+    prisma.document.findMany(),
+  ]);
+  return { groups, chatbots, kbs, docs };
 }
 
 export async function importFullBackup(data: any) {
@@ -206,5 +219,3 @@ export async function importFullBackup(data: any) {
     return { success: true };
   } catch (error) { return { success: false }; }
 }
-// ID ÚNICO DE CAMBIO: 001
-export const forceChange = "true";
