@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, Suspense } from "react";
-import { ... } from "@/lib/actions";
+import { ... } from "@/lib/buzon-server";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { useSearchParams } from "next/navigation";
