@@ -1,5 +1,5 @@
 "use server";
-
+// VERSION ULTRA-ESTABLE 1000
 import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
 import { processFile, processUrl } from "@/lib/documentProcessor";
@@ -7,16 +7,14 @@ import { randomBytes } from "crypto";
 import { createClient } from '@supabase/supabase-js';
 import { Resend } from 'resend';
 
-export const maxDuration = 60;
+export const maxDuration = 60; 
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "";
 const supabase = (supabaseUrl && supabaseKey) ? createClient(supabaseUrl, supabaseKey) : null;
 
-export async function verifyDirectorPin(pin: string) {
-  return pin === process.env.DIRECTOR_PIN;
-}
+export async function verifyDirectorPin(pin: string) { return pin === process.env.DIRECTOR_PIN; }
 
 export async function createTicket(formData: FormData) {
   const type = formData.get("type") as string;
@@ -24,7 +22,7 @@ export async function createTicket(formData: FormData) {
   const content = formData.get("content") as string;
   const studentName = formData.get("studentName") as string;
   const studentEmail = formData.get("studentEmail") as string;
-  const files = formData.getAll("evidence");
+  const files = formData.getAll("evidence"); 
   if (!content || !type) return { success: false, folio: "" };
   const folio = `ETH-${Math.random().toString(36).substring(2, 7).toUpperCase()}`;
   try {
@@ -35,8 +33,7 @@ export async function createTicket(formData: FormData) {
       for (const file of files) {
         const f = file as File;
         if (f.size > 0) {
-          const cleanName = f.name.replace(/[^a-zA-Z0-9.]/g, "_");
-          const fileName = `student/${ticket.id}-${Date.now()}-${cleanName}`;
+          const fileName = `student/${ticket.id}-${Date.now()}-${f.name.replace(/[^a-zA-Z0-9.]/g, "_")}`;
           const arrayBuffer = await f.arrayBuffer();
           await supabase.storage.from('evidencias').upload(fileName, Buffer.from(arrayBuffer), { contentType: f.type, upsert: true });
           const { data: { publicUrl } } = supabase.storage.from('evidencias').getPublicUrl(fileName);
