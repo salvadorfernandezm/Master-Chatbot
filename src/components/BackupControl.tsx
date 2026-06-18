@@ -1,6 +1,6 @@
 "use client";
 import { useState, useRef } from "react";
-import { exportFullBackup, importFullBackup } from "@/logic/buzon";
+import { exportFullBackup, importFullBackup } from "@/app/api/actions/engine";
 
 export default function BackupControl() {
   const [loading, setLoading] = useState(false);

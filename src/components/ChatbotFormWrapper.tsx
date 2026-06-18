@@ -1,6 +1,6 @@
 "use client";
 import { useState } from "react";
-import { createChatbot } from "@/logic/buzon"; // Importación correcta
+import { createChatbot } from "@/app/api/actions/engine"; // Importación correcta
 
 interface ChatbotFormWrapperProps {
   groups: { id: string; name: string }[];

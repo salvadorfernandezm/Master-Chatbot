@@ -1,6 +1,6 @@
 export const dynamic = 'force-dynamic';
 import { prisma } from "@/lib/prisma";
-import { updateSettings } from "@/logic/buzon";
+import { updateSettings } from "@/app/api/actions/engine";
 
 export default async function SettingsPage() {
   const settings = await prisma.settings.findFirst() || {
