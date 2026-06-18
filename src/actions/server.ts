@@ -7,26 +7,24 @@ import { randomBytes } from "crypto";
 import { createClient } from '@supabase/supabase-js';
 import { Resend } from 'resend';
 
-export const maxDuration = 60; 
+export const maxDuration = 60;
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "";
 const supabase = (supabaseUrl && supabaseKey) ? createClient(supabaseUrl, supabaseKey) : null;
 
-// --- SEGURIDAD ---
 export async function verifyDirectorPin(pin: string) {
   return pin === process.env.DIRECTOR_PIN;
 }
 
-// --- BUZÓN ---
 export async function createTicket(formData: FormData) {
   const type = formData.get("type") as string;
   const category = formData.get("category") as string;
   const content = formData.get("content") as string;
   const studentName = formData.get("studentName") as string;
   const studentEmail = formData.get("studentEmail") as string;
-  const files = formData.getAll("evidence"); 
+  const files = formData.getAll("evidence");
   if (!content || !type) return { success: false, folio: "" };
   const folio = `ETH-${Math.random().toString(36).substring(2, 7).toUpperCase()}`;
   try {
@@ -37,7 +35,8 @@ export async function createTicket(formData: FormData) {
       for (const file of files) {
         const f = file as File;
         if (f.size > 0) {
-          const fileName = `student/${ticket.id}-${Date.now()}-${f.name.replace(/[^a-zA-Z0-9.]/g, "_")}`;
+          const cleanName = f.name.replace(/[^a-zA-Z0-9.]/g, "_");
+          const fileName = `student/${ticket.id}-${Date.now()}-${cleanName}`;
           const arrayBuffer = await f.arrayBuffer();
           await supabase.storage.from('evidencias').upload(fileName, Buffer.from(arrayBuffer), { contentType: f.type, upsert: true });
           const { data: { publicUrl } } = supabase.storage.from('evidencias').getPublicUrl(fileName);
@@ -52,10 +51,7 @@ export async function createTicket(formData: FormData) {
 
 export async function submitAppeal(id: string, reason: string) {
   try {
-    await prisma.ticket.update({
-      where: { id },
-      data: { status: "APELADO", authorityResponse: `⚠️ APELACIÓN: ${reason}` },
-    });
+    await prisma.ticket.update({ where: { id }, data: { status: "APELADO", authorityResponse: `⚠️ APELACIÓN: ${reason}` } });
     revalidatePath("/seguimiento");
     revalidatePath("/admin/buzon");
     return { success: true };
@@ -99,13 +95,13 @@ export async function updateTicketStatus(id: string, newStatus: string) {
   revalidatePath("/admin/buzon");
 }
 
-// --- OTROS ---
 export async function createGroup(formData: FormData) {
   const name = formData.get("name") as string;
   const description = formData.get("description") as string;
   await prisma.group.create({ data: { name, description } });
   revalidatePath("/admin/groups");
 }
+
 export async function updateGroup(formData: FormData) {
   const id = formData.get("id") as string;
   const name = formData.get("name") as string;
@@ -113,10 +109,12 @@ export async function updateGroup(formData: FormData) {
   await prisma.group.update({ where: { id }, data: { name, description } });
   revalidatePath("/admin/groups");
 }
+
 export async function deleteGroup(id: string) {
   await prisma.group.delete({ where: { id } });
   revalidatePath("/admin/groups");
 }
+
 export async function createChatbot(formData: FormData) {
   const name = formData.get("name") as string;
   const groupId = formData.get("groupId") as string;
@@ -125,6 +123,7 @@ export async function createChatbot(formData: FormData) {
   await prisma.chatbot.create({ data: { name, token, groupId, knowledgeBaseId } });
   revalidatePath("/admin/chatbots");
 }
+
 export async function updateChatbot(formData: FormData) {
   const id = formData.get("id") as string;
   const updateData: any = {};
@@ -137,16 +136,19 @@ export async function updateChatbot(formData: FormData) {
   await prisma.chatbot.update({ where: { id }, data: updateData });
   revalidatePath("/admin/chatbots");
 }
+
 export async function deleteChatbot(id: string) {
   await prisma.chatbot.delete({ where: { id } });
   revalidatePath("/admin/chatbots");
 }
+
 export async function createKnowledgeBase(formData: FormData) {
   const name = formData.get("name") as string;
   const description = formData.get("description") as string;
   await prisma.knowledgeBase.create({ data: { name, description } });
   revalidatePath("/admin/knowledge");
 }
+
 export async function updateKnowledgeBase(formData: FormData) {
   const id = formData.get("id") as string;
   const name = formData.get("name") as string;
@@ -154,10 +156,12 @@ export async function updateKnowledgeBase(formData: FormData) {
   await prisma.knowledgeBase.update({ where: { id }, data: { name, description } });
   revalidatePath("/admin/knowledge");
 }
+
 export async function deleteKnowledgeBase(id: string) {
   await prisma.knowledgeBase.delete({ where: { id } });
   revalidatePath("/admin/knowledge");
 }
+
 export async function uploadFileDocument(formData: FormData) {
   const file = formData.get("file") as File;
   const kbId = formData.get("knowledgeBaseId") as string;
@@ -168,11 +172,13 @@ export async function uploadFileDocument(formData: FormData) {
   await processFile(buffer, file.name, type, kbId, doc.id);
   revalidatePath(`/admin/knowledge/${kbId}`);
 }
+
 export async function deleteDocument(id: string, kbId: string) {
   await prisma.documentChunk.deleteMany({ where: { documentId: id } });
   await prisma.document.delete({ where: { id } });
   revalidatePath(`/admin/knowledge/${kbId}`);
 }
+
 export async function addUrlDocument(formData: FormData) {
   const url = formData.get("url") as string;
   const kbId = formData.get("knowledgeBaseId") as string;
@@ -180,6 +186,7 @@ export async function addUrlDocument(formData: FormData) {
   await processUrl(url, kbId, doc.id);
   revalidatePath(`/admin/knowledge/${kbId}`);
 }
+
 export async function updateSettings(formData: FormData) {
   const organizationName = formData.get("organizationName") as string;
   const organizationBuzonInfo = formData.get("organizationBuzonInfo") as string;
@@ -188,9 +195,17 @@ export async function updateSettings(formData: FormData) {
   else await prisma.settings.create({ data: { organizationName, organizationBuzonInfo } });
   revalidatePath("/admin/settings");
 }
+
 export async function exportFullBackup() {
-  return await Promise.all([prisma.group.findMany(), prisma.chatbot.findMany(), prisma.knowledgeBase.findMany()]);
+  const [groups, chatbots, kbs, docs] = await Promise.all([
+    prisma.group.findMany(),
+    prisma.chatbot.findMany(),
+    prisma.knowledgeBase.findMany(),
+    prisma.document.findMany(),
+  ]);
+  return { groups, chatbots, kbs, docs };
 }
+
 export async function importFullBackup(data: any) {
   try {
     const { groups } = data;
