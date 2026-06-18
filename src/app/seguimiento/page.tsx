@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { ... } from "@/lib/buzon-server";
+import { ... } from "@/lib/vault";
 
 export default function SeguimientoPage() {
   const [folio, setFolio] = useState("");
