@@ -14,12 +14,9 @@ const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "";
 const supabase = (supabaseUrl && supabaseKey) ? createClient(supabaseUrl, supabaseKey) : null;
 
-// 1. SEGURIDAD
-export async function verifyDirectorPin(pin: string) {
-  return pin === process.env.DIRECTOR_PIN;
-}
+// --- TODAS LAS FUNCIONES ---
+export async function verifyDirectorPin(pin: string) { return pin === process.env.DIRECTOR_PIN; }
 
-// 2. TICKETS Y APELACIONES
 export async function createTicket(formData: FormData) {
   const type = formData.get("type") as string;
   const category = formData.get("category") as string;
@@ -52,10 +49,7 @@ export async function createTicket(formData: FormData) {
 
 export async function submitAppeal(id: string, reason: string) {
   try {
-    await prisma.ticket.update({
-      where: { id },
-      data: { status: "APELADO", authorityResponse: `⚠️ APELACIÓN: ${reason}` },
-    });
+    await prisma.ticket.update({ where: { id }, data: { status: "APELADO", authorityResponse: `⚠️ APELACIÓN: ${reason}` } });
     revalidatePath("/seguimiento");
     revalidatePath("/admin/buzon");
     return { success: true };
@@ -99,7 +93,6 @@ export async function updateTicketStatus(id: string, newStatus: string) {
   revalidatePath("/admin/buzon");
 }
 
-// 3. CHATBOTS, GRUPOS Y CONFIGURACIÓN
 export async function createGroup(formData: FormData) {
   const name = formData.get("name") as string;
   const description = formData.get("description") as string;
@@ -203,10 +196,7 @@ export async function updateSettings(formData: FormData) {
 
 export async function exportFullBackup() {
   const [groups, chatbots, kbs, docs] = await Promise.all([
-    prisma.group.findMany(),
-    prisma.chatbot.findMany(),
-    prisma.knowledgeBase.findMany(),
-    prisma.document.findMany(),
+    prisma.group.findMany(), prisma.chatbot.findMany(), prisma.knowledgeBase.findMany(), prisma.document.findMany(),
   ]);
   return { groups, chatbots, kbs, docs };
 }
