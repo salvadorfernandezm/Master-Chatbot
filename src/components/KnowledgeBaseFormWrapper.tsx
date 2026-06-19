@@ -1,6 +1,6 @@
 "use client";
 import { useState } from "react";
-import { createKnowledgeBase } from "@/app/api/actions/engine";
+import { createKnowledgeBase } from "@/lib/actions";
 
 export default function KnowledgeBaseFormWrapper() {
   const [isOpen, setIsOpen] = useState(false);

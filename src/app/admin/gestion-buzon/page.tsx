@@ -13,14 +13,14 @@ export default function AdminBuzonPage() {
       .catch(err => { console.error(err); setLoading(false); });
   }, []);
 
- const getFileIcon = (url: string) => {
+  const getFileIcon = (url: string) => {
     const ext = url.split('.').pop()?.toLowerCase();
     if (['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(ext || '')) return null;
     if (['mp4', 'mov', 'webm'].includes(ext || '')) return "🎥 Video";
     if (['mp3', 'wav', 'ogg', 'm4a'].includes(ext || '')) return "🎵 Audio";
     if (['pdf'].includes(ext || '')) return "📄 PDF";
-    if (['doc', 'docx'].includes(ext || '')) return "📝 Word"; // <--- Soporte para Word
-    if (['xls', 'xlsx'].includes(ext || '')) return "📊 Excel"; // <--- Soporte para Excel
+    if (['doc', 'docx'].includes(ext || '')) return "📝 Word";
+    if (['xls', 'xlsx'].includes(ext || '')) return "📊 Excel";
     return "📁 Archivo";
   };
 
@@ -51,12 +51,10 @@ export default function AdminBuzonPage() {
 
                     <h3 className="text-2xl font-black">
                       Reportante: <span className="text-emerald-600 underline decoration-slate-200 underline-offset-8">{ticket.studentName || "Anónimo"}</span>
-                      {ticket.studentEmail && <span className="block text-xs font-bold text-slate-400 mt-1">{ticket.studentEmail}</span>}
                     </h3>
 
                     <div className="bg-slate-50 p-8 rounded-[2.5rem] border border-slate-100 italic text-slate-700 shadow-inner">"{ticket.content}"</div>
 
-                    {/* EVIDENCIAS MULTIFORMATO */}
                     {ticket.attachments && ticket.attachments.length > 0 && (
                       <div className="pt-6">
                         <p className="text-[10px] font-black uppercase text-emerald-600 mb-4 tracking-[0.3em]">📸 Evidencias Digitales</p>
@@ -81,16 +79,15 @@ export default function AdminBuzonPage() {
                       </div>
                     )}
                   </div>
+
                   <div className="w-full lg:w-56 space-y-4">
-  <div className={`text-xs font-black p-4 rounded-2xl text-center uppercase tracking-widest shadow-lg ${
-    ticket.status === 'PENDIENTE' ? 'bg-amber-500 text-white animate-pulse' : 
-    ticket.status === 'APELADO' ? 'bg-red-600 text-white animate-bounce' : 
-    'bg-emerald-600 text-white'
-  }`}>
-    {ticket.status}
-  </div>
-  {/* ...resto de la fecha... */}
-</div>
+                    <div className={`text-xs font-black p-4 rounded-2xl text-center uppercase tracking-widest shadow-lg ${
+                      ticket.status === 'PENDIENTE' ? 'bg-amber-500 text-white animate-pulse' : 
+                      ticket.status === 'APELADO' ? 'bg-red-600 text-white animate-bounce' : 
+                      'bg-emerald-600 text-white'
+                    }`}>
+                      {ticket.status}
+                    </div>
                     <div className="text-[9px] text-slate-400 uppercase font-bold text-center">Recibido: {new Date(ticket.createdAt).toLocaleDateString()}</div>
                   </div>
                 </div>
