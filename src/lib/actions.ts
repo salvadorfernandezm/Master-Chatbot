@@ -78,5 +78,5 @@ export async function exportFullBackup() {
   return { groups: [], chatbots: [], kbs: [], docs: [] }; 
 }
 export async function importFullBackup(data: any) { 
-  return { success: true }; 
+  return { success: true, error: "" }; // <--- Agregamos 'error' para que TypeScript sea feliz
 }
