@@ -2,7 +2,7 @@
 
 import { useState, useEffect, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
-import { submitAuthorityResponse } from "@/lib/vault";
+import { submitAuthorityResponse } from "@/lib/actions";
 
 function ResponderForm() {
   const searchParams = useSearchParams();

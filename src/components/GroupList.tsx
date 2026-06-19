@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { createGroup, deleteGroup, updateGroup } from "@/lib/vault";
+import { createGroup, deleteGroup, updateGroup } from "@/lib/actions";
 
 interface Group {
   id: string;
