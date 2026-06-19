@@ -3,8 +3,6 @@
 import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
 
-export const maxDuration = 60;
-
 // 1. SEGURIDAD
 export async function verifyDirectorPin(pin: string) {
   return pin === process.env.DIRECTOR_PIN;
