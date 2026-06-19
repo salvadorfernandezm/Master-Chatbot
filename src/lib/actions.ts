@@ -8,7 +8,7 @@ export async function verifyDirectorPin(pin: string) {
   return pin === process.env.DIRECTOR_PIN;
 }
 
-// 2. BUZÓN
+// 2. BUZÓN (Estas sí pueden devolver objetos porque las manejamos con lógica propia)
 export async function createTicket(formData: FormData) {
   return { success: true, folio: "TEST-123" };
 }
@@ -26,27 +26,57 @@ export async function submitAuthorityResponse(formData: FormData) {
 }
 
 export async function updateTicketStatus(id: string, newStatus: string) {
-  return { success: true };
+  // No devuelve nada
 }
 
-// 3. CHATBOTS Y GRUPOS
-export async function createGroup(formData: FormData) { return { success: true }; }
-export async function updateGroup(formData: FormData) { return { success: true }; }
-export async function deleteGroup(id: string) { return { success: true }; }
+// 3. CHATBOTS Y GRUPOS (Cambiadas a 'void' para que TypeScript no se queje)
+export async function createGroup(formData: FormData) { 
+  // No devuelve nada
+}
+export async function updateGroup(formData: FormData) { 
+  // No devuelve nada
+}
+export async function deleteGroup(id: string) { 
+  // No devuelve nada
+}
 
-export async function createChatbot(formData: FormData) { return { success: true }; }
-export async function updateChatbot(formData: FormData) { return { success: true }; }
-export async function deleteChatbot(id: string) { return { success: true }; }
+export async function createChatbot(formData: FormData) { 
+  // No devuelve nada
+}
+export async function updateChatbot(formData: FormData) { 
+  // No devuelve nada
+}
+export async function deleteChatbot(id: string) { 
+  // No devuelve nada
+}
 
-export async function createKnowledgeBase(formData: FormData) { return { success: true }; }
-export async function updateKnowledgeBase(formData: FormData) { return { success: true }; }
-export async function deleteKnowledgeBase(id: string) { return { success: true }; }
+export async function createKnowledgeBase(formData: FormData) { 
+  // No devuelve nada
+}
+export async function updateKnowledgeBase(formData: FormData) { 
+  // No devuelve nada
+}
+export async function deleteKnowledgeBase(id: string) { 
+  // No devuelve nada
+}
 
-export async function uploadFileDocument(formData: FormData) { return { success: true }; }
-export async function deleteDocument(id: string, kbId: string) { return { success: true }; }
-export async function addUrlDocument(formData: FormData) { return { success: true }; }
+export async function uploadFileDocument(formData: FormData) { 
+  // No devuelve nada (Esto arregla el error de la línea 49)
+}
+export async function deleteDocument(id: string, kbId: string) { 
+  // No devuelve nada
+}
+export async function addUrlDocument(formData: FormData) { 
+  // No devuelve nada
+}
 
 // 4. CONFIGURACIÓN
-export async function updateSettings(formData: FormData) { return { success: true }; }
-export async function exportFullBackup() { return {}; }
-export async function importFullBackup(data: any) { return { success: true }; }
+export async function updateSettings(formData: FormData) { 
+  // No devuelve nada
+}
+export async function exportFullBackup() { 
+  return { groups: [], chatbots: [], kbs: [], docs: [] }; 
+}
+export async function importFullBackup(data: any) { 
+  return { success: true }; 
+}
