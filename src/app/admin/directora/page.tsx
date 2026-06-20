@@ -30,8 +30,8 @@ export default function DirectoraPage() {
     if (['mp4', 'mov', 'webm'].includes(ext || '')) return "🎥 Video";
     if (['mp3', 'wav', 'ogg', 'm4a'].includes(ext || '')) return "🎵 Audio";
     if (['pdf'].includes(ext || '')) return "📄 PDF";
-    if (['doc', 'docx'].includes(ext || '')) return "📝 Word"; // <--- Soporte para Word
-    if (['xls', 'xlsx'].includes(ext || '')) return "📊 Excel"; // <--- Soporte para Excel
+    if (['doc', 'docx'].includes(ext || '')) return "📝 Word";
+    if (['xls', 'xlsx'].includes(ext || '')) return "📊 Excel";
     return "📁 Archivo";
   };
 
@@ -69,9 +69,21 @@ export default function DirectoraPage() {
                       <span className="text-slate-300 font-bold">Folio: {t.folio}</span>
                     </div>
                     <h2 className="text-xl font-black text-slate-800 underline decoration-purple-200 underline-offset-4">Reportante: {t.studentName || "Anónimo"}</h2>
-                    <div className="bg-slate-50 p-6 rounded-2xl border border-slate-100 italic text-slate-600 text-sm">"{t.content}"</div>
                     
-                    {/* VISUALIZACIÓN DE EVIDENCIAS PARA LA DIRECTORA */}
+                    <div className="bg-slate-50 p-6 rounded-2xl border border-slate-100 italic text-slate-600 text-sm">"{t.content}"</div>
+
+                    {/* BLOQUE DE RESPUESTA / APELACIÓN PARA DIRECTORA (Usando 't') */}
+                    {t.authorityResponse && (
+                      <div className={`mt-6 p-8 rounded-[2.5rem] border-2 ${t.status === 'APELADO' ? 'bg-red-50 border-red-200' : 'bg-emerald-50 border-emerald-100'}`}>
+                        <p className={`text-[10px] font-black uppercase mb-3 ${t.status === 'APELADO' ? 'text-red-600' : 'text-emerald-600'}`}>
+                          {t.status === 'APELADO' ? '🚨 Registro de Apelación y Respuesta:' : '✅ Resolución Oficial:'}
+                        </p>
+                        <p className="text-sm text-slate-800 whitespace-pre-wrap leading-relaxed font-sans">
+                          {t.authorityResponse}
+                        </p>
+                      </div>
+                    )}
+                    
                     {t.attachments && t.attachments.length > 0 && (
                       <div className="pt-4">
                         <p className="text-[10px] font-black uppercase text-purple-600 mb-3 tracking-widest">Evidencias Adjuntas:</p>
@@ -93,14 +105,14 @@ export default function DirectoraPage() {
                     )}
                   </div>
                   <div className="md:w-40 text-right">
-  <span className={`text-[10px] font-black px-4 py-2 rounded-xl uppercase tracking-widest shadow-xl inline-block ${
-    t.status === 'PENDIENTE' ? 'bg-amber-500 text-white animate-pulse' : 
-    t.status === 'APELADO' ? 'bg-red-600 text-white animate-bounce' : 
-    'bg-emerald-600 text-white'
-  }`}>
-    {t.status}
-  </span>
-</div>
+                    <span className={`text-[10px] font-black px-4 py-2 rounded-xl uppercase tracking-widest shadow-xl inline-block ${
+                      t.status === 'PENDIENTE' ? 'bg-amber-500 text-white animate-pulse' : 
+                      t.status === 'APELADO' ? 'bg-red-600 text-white animate-bounce' : 
+                      'bg-emerald-600 text-white'
+                    }`}>
+                      {t.status}
+                    </span>
+                  </div>
                 </div>
               </div>
             ))

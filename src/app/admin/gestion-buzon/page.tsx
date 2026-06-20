@@ -53,7 +53,21 @@ export default function AdminBuzonPage() {
                       Reportante: <span className="text-emerald-600 underline decoration-slate-200 underline-offset-8">{ticket.studentName || "Anónimo"}</span>
                     </h3>
 
-                    <div className="bg-slate-50 p-8 rounded-[2.5rem] border border-slate-100 italic text-slate-700 shadow-inner">"{ticket.content}"</div>
+                    <div className="bg-slate-50 p-8 rounded-[2.5rem] border border-slate-100 italic text-slate-700 shadow-inner">
+  "{ticket.content}"
+</div>
+
+{/* BLOQUE DE RESPUESTA / APELACIÓN */}
+{ticket.authorityResponse && (
+  <div className={`mt-6 p-8 rounded-[2.5rem] border-2 ${ticket.status === 'APELADO' ? 'bg-red-50 border-red-200' : 'bg-emerald-50 border-emerald-100'}`}>
+    <p className={`text-[10px] font-black uppercase mb-3 ${ticket.status === 'APELADO' ? 'text-red-600' : 'text-emerald-600'}`}>
+      {ticket.status === 'APELADO' ? '🚨 Registro de Apelación y Respuesta:' : '✅ Resolución Oficial:'}
+    </p>
+    <p className="text-sm text-slate-800 whitespace-pre-wrap leading-relaxed">
+      {ticket.authorityResponse}
+    </p>
+  </div>
+)}
 
                     {ticket.attachments && ticket.attachments.length > 0 && (
                       <div className="pt-6">
