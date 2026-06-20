@@ -34,6 +34,7 @@ export async function createTicket(formData: FormData): Promise<{ success: boole
 
   if (!content || !type) return { success: false, folio: "" };
   const folio = `ETH-${Math.random().toString(36).substring(2, 7).toUpperCase()}`;
+  const attachmentLinks: string[] = [];
 
   try {
     const ticket = await prisma.ticket.create({
@@ -45,6 +46,7 @@ export async function createTicket(formData: FormData): Promise<{ success: boole
       },
     });
 
+    // --- SUBIDA DE EVIDENCIAS ---
     if (supabase && files.length > 0) {
       for (const file of files) {
         const f = file as any;
@@ -52,93 +54,61 @@ export async function createTicket(formData: FormData): Promise<{ success: boole
           const cleanName = f.name.replace(/[^a-zA-Z0-9.]/g, "_");
           const fileName = `student/${ticket.id}-${Date.now()}-${cleanName}`;
           const arrayBuffer = await f.arrayBuffer();
-
           const { error: uploadError } = await supabase.storage.from('evidencias').upload(fileName, Buffer.from(arrayBuffer), { contentType: f.type, upsert: true });
+          
           if (!uploadError) {
             const { data: { publicUrl } } = supabase.storage.from('evidencias').getPublicUrl(fileName);
+            attachmentLinks.push(publicUrl); // Guardamos el link para el correo
             await prisma.attachment.create({ data: { url: publicUrl, name: f.name, type: "STUDENT", ticketId: ticket.id } });
           }
         }
       }
     }
 
-    let emailDestino = process.env.EMAIL_INGENIERO;
+    // --- LÓGICA DE DESTINATARIOS ---
+    let emailDestino = process.env.EMAIL_INGENIERO; // Por defecto a ti
     const criterio = type === "SOPORTE_TECNICO" ? "SOPORTE_TECNICO" : category;
+
     if (criterio === "ACADEMICO") emailDestino = process.env.EMAIL_SECRETARIA_ACADEMICA;
     else if (criterio === "LOGISTICA") emailDestino = process.env.EMAIL_SECRETARIA_ADMINISTRATIVA;
     else if (criterio === "GRAVE") emailDestino = process.env.EMAIL_DIRECCION;
+    else if (criterio === "SOPORTE_TECNICO") emailDestino = process.env.EMAIL_INGENIERO;
 
+    // --- CONSTRUCCIÓN DEL CORREO ---
     if (process.env.RESEND_API_KEY && emailDestino) {
+      const responderUrl = `https://master-chatbot-rho.vercel.app/admin/responder?folio=${folio}`;
+      const listaEvidencias = attachmentLinks.length > 0 
+        ? `<p><strong>Evidencias adjuntas:</strong></p><ul>${attachmentLinks.map(l => `<li><a href="${l}">Ver archivo</a></li>`).join('')}</ul>`
+        : '<p><em>Sin evidencias adjuntas.</em></p>';
+
       await resend.emails.send({
         from: 'Buzon Etico <onboarding@resend.dev>',
         to: [emailDestino as string],
         subject: `Nuevo Reporte [${criterio}]: ${folio}`,
-        html: `<p><strong>Folio:</strong> ${folio}</p><p><strong>Mensaje:</strong> ${content}</p><br/><a href="https://master-chatbot-rho.vercel.app/admin/responder?folio=${folio}">Responder aquí</a>`
-      }).catch(e => console.error(e));
+        html: `
+          <div style="font-family: sans-serif; padding: 20px; border: 1px solid #eee; border-radius: 15px;">
+            <h2 style="color: #10b981;">Nuevo Reporte Recibido</h2>
+            <p><strong>Folio:</strong> ${folio}</p>
+            <p><strong>De:</strong> ${studentName || "Anónimo"}</p>
+            <p><strong>Categoría:</strong> ${criterio}</p>
+            <p><strong>Mensaje:</strong></p>
+            <blockquote style="background: #f9f9f9; padding: 15px; border-left: 5px solid #10b981;">${content}</blockquote>
+            ${listaEvidencias}
+            <br/>
+            <a href="${responderUrl}" style="background: #000; color: #fff; padding: 12px 25px; text-decoration: none; border-radius: 10px; font-weight: bold; display: inline-block;">
+              Atender y Responder Caso
+            </a>
+          </div>
+        `
+      }).catch(e => console.error("Error envío mail:", e));
     }
 
     revalidatePath("/admin/buzon");
     return { success: true, folio: ticket.folio };
-  } catch (error) { return { success: false, folio: "" }; }
-}
-
-export async function submitAppeal(id: string, reason: string) {
-  try {
-    await prisma.ticket.update({
-      where: { id },
-      data: { status: "APELADO", authorityResponse: `⚠️ APELACIÓN: ${reason}` },
-    });
-    revalidatePath("/seguimiento");
-    revalidatePath("/admin/buzon");
-    return { success: true };
-  } catch (error) { return { success: false }; }
-}
-
-export async function setStudentSatisfaction(id: string, satisfied: boolean) {
-  try {
-    await prisma.ticket.update({ where: { id }, data: { studentResolved: satisfied } });
-    revalidatePath("/seguimiento");
-    return { success: true };
-  } catch (error) { return { success: false }; }
-}
-
-export async function submitAuthorityResponse(formData: FormData) {
-  const id = formData.get("id") as string;
-  const responseText = formData.get("responseText") as string;
-  const files = formData.getAll("evidence");
-
-  try {
-    const updatedTicket = await prisma.ticket.update({
-      where: { id },
-      data: { authorityResponse: responseText, status: "RESUELTO", updatedAt: new Date() },
-    });
-
-    if (supabase && files.length > 0) {
-      for (const file of files) {
-        const f = file as any;
-        if (f.size > 0) {
-          const fileName = `authority/${id}-${Date.now()}-${f.name.replace(/[^a-zA-Z0-9.]/g, "_")}`;
-          const arrayBuffer = await f.arrayBuffer();
-          await supabase.storage.from('evidencias').upload(fileName, Buffer.from(arrayBuffer));
-          const { data: { publicUrl } } = supabase.storage.from('evidencias').getPublicUrl(fileName);
-          await prisma.attachment.create({ data: { url: publicUrl, name: f.name, type: "AUTHORITY", ticketId: id } });
-        }
-      }
-    }
-
-    if (updatedTicket.studentEmail && process.env.RESEND_API_KEY) {
-      await resend.emails.send({
-        from: 'Buzon Etico <onboarding@resend.dev>',
-        to: [updatedTicket.studentEmail],
-        subject: `Respuesta a tu reporte: ${updatedTicket.folio}`,
-        html: `<p>La autoridad ha respondido a tu reporte <strong>${updatedTicket.folio}</strong>. Puedes ver la resolución aquí: <a href="https://master-chatbot-rho.vercel.app/seguimiento">Ver seguimiento</a></p>`
-      }).catch(e => console.error(e));
-    }
-
-    revalidatePath("/admin/buzon");
-    revalidatePath("/seguimiento");
-    return { success: true };
-  } catch (error) { return { success: false }; }
+  } catch (error) { 
+    console.error(error);
+    return { success: false, folio: "" }; 
+  }
 }
 
 export async function updateTicketStatus(id: string, newStatus: string) {
