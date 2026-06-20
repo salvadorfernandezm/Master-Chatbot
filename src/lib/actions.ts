@@ -23,13 +23,21 @@ export async function createTicket(formData: FormData): Promise<{ success: boole
   const studentName = formData.get("studentName") as string;
   const studentEmail = formData.get("studentEmail") as string;
   const files = formData.getAll("evidence"); 
+
   if (!content || !type) return { success: false, folio: "" };
   const folio = `ETH-${Math.random().toString(36).substring(2, 7).toUpperCase()}`;
-  const attachmentLinks: string[] = [];
+  const attachmentLinks: string[] = []; // Array para capturar las ligas
+
   try {
     const ticket = await prisma.ticket.create({
-      data: { folio, type, category, content, studentName: studentName || "Anónimo Protegido", studentEmail: studentEmail || null, status: "PENDIENTE" },
+      data: {
+        folio, type, category, content,
+        studentName: studentName || "Anónimo Protegido",
+        studentEmail: studentEmail || null,
+        status: "PENDIENTE",
+      },
     });
+
     if (supabase && files.length > 0) {
       for (const file of files) {
         const f = file as any;
@@ -38,28 +46,52 @@ export async function createTicket(formData: FormData): Promise<{ success: boole
           const fileName = `student/${ticket.id}-${Date.now()}-${cleanName}`;
           const arrayBuffer = await f.arrayBuffer();
           const { error: uploadError } = await supabase.storage.from('evidencias').upload(fileName, Buffer.from(arrayBuffer), { contentType: f.type, upsert: true });
+          
           if (!uploadError) {
             const { data: { publicUrl } } = supabase.storage.from('evidencias').getPublicUrl(fileName);
-            attachmentLinks.push(publicUrl);
+            attachmentLinks.push(publicUrl); // Guardamos la liga para el correo
             await prisma.attachment.create({ data: { url: publicUrl, name: f.name, type: "STUDENT", ticketId: ticket.id } });
           }
         }
       }
     }
+
+    // LÓGICA DE DESTINATARIOS
     let emailDestino = process.env.EMAIL_INGENIERO;
     const criterio = type === "SOPORTE_TECNICO" ? "SOPORTE_TECNICO" : category;
     if (criterio === "ACADEMICO") emailDestino = process.env.EMAIL_SECRETARIA_ACADEMICA;
     else if (criterio === "LOGISTICA") emailDestino = process.env.EMAIL_SECRETARIA_ADMINISTRATIVA;
     else if (criterio === "GRAVE") emailDestino = process.env.EMAIL_DIRECCION;
+
+    // ENVÍO DE CORREO CON LIGAS RESTAURADAS
     if (process.env.RESEND_API_KEY && emailDestino) {
       const responderUrl = `https://master-chatbot-rho.vercel.app/admin/responder?folio=${folio}`;
+      const listaEvidencias = attachmentLinks.length > 0 
+        ? `<p><strong>Evidencias adjuntas:</strong></p><ul>${attachmentLinks.map(l => `<li><a href="${l}">Ver archivo</a></li>`).join('')}</ul>`
+        : '<p><em>Sin evidencias adjuntas.</em></p>';
+
       await resend.emails.send({
         from: 'Buzon Etico <onboarding@resend.dev>',
         to: [emailDestino as string],
         subject: `Nuevo Reporte [${criterio}]: ${folio}`,
-        html: `<p><strong>Folio:</strong> ${folio}</p><p><strong>Mensaje:</strong> ${content}</p><br/><a href="${responderUrl}">Responder aquí</a>`
+        html: `
+          <div style="font-family: sans-serif; padding: 20px; border: 1px solid #eee; border-radius: 15px;">
+            <h2 style="color: #10b981;">Nuevo Reporte Recibido</h2>
+            <p><strong>Folio:</strong> ${folio}</p>
+            <p><strong>De:</strong> ${studentName || "Anónimo"}</p>
+            <p><strong>Categoría:</strong> ${criterio}</p>
+            <p><strong>Mensaje:</strong></p>
+            <blockquote style="background: #f9f9f9; padding: 15px; border-left: 5px solid #10b981;">${content}</blockquote>
+            ${listaEvidencias}
+            <br/>
+            <a href="${responderUrl}" style="background: #000; color: #fff; padding: 12px 25px; text-decoration: none; border-radius: 10px; font-weight: bold; display: inline-block;">
+              Atender y Responder Caso
+            </a>
+          </div>
+        `
       }).catch(e => console.error(e));
     }
+
     revalidatePath("/admin/buzon");
     return { success: true, folio: ticket.folio };
   } catch (error) { return { success: false, folio: "" }; }
