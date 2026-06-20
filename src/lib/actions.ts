@@ -2,7 +2,6 @@
 
 import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
-import { processFile, processUrl } from "@/lib/documentProcessor";
 import { randomBytes } from "crypto";
 import { createClient } from '@supabase/supabase-js';
 import { Resend } from 'resend';
@@ -21,7 +20,7 @@ export async function verifyDirectorPin(pin: string) {
 }
 
 // ==========================================
-// 2. MOTOR DEL BUZÓN (CON CORREO ELECTRÓNICO)
+// 2. MOTOR DEL BUZÓN (TICKETS Y APELACIONES)
 // ==========================================
 
 export async function createTicket(formData: FormData): Promise<{ success: boolean; folio: string }> {
@@ -61,7 +60,7 @@ export async function createTicket(formData: FormData): Promise<{ success: boole
       }
     }
 
-    // --- ENVÍO DE AVISO POR CORREO ---
+    // AVISO A AUTORIDAD
     let emailDestino = process.env.EMAIL_INGENIERO;
     const criterio = type === "SOPORTE_TECNICO" ? "SOPORTE_TECNICO" : category;
     if (criterio === "ACADEMICO") emailDestino = process.env.EMAIL_SECRETARIA_ACADEMICA;
@@ -73,14 +72,8 @@ export async function createTicket(formData: FormData): Promise<{ success: boole
         from: 'Buzon Etico <onboarding@resend.dev>',
         to: [emailDestino as string],
         subject: `Nuevo Reporte [${criterio}]: ${folio}`,
-        html: `<div style="font-family:sans-serif;padding:20px;border:1px solid #eee;border-radius:10px;">
-                <h2 style="color:#10b981;">Nuevo Reporte Recibido</h2>
-                <p><strong>Folio:</strong> ${folio}</p>
-                <p><strong>Categoría:</strong> ${criterio}</p>
-                <p><strong>Mensaje:</strong> ${content}</p>
-                <br/><a href="https://master-chatbot-rho.vercel.app/admin/responder?folio=${folio}" style="background:#000;color:#fff;padding:10px 20px;text-decoration:none;border-radius:5px;">Responder Caso</a>
-               </div>`
-      }).catch(e => console.error("Error envío mail:", e));
+        html: `<p><strong>Folio:</strong> ${folio}</p><p><strong>Mensaje:</strong> ${content}</p><br/><a href="https://master-chatbot-rho.vercel.app/admin/responder?folio=${folio}">Responder aquí</a>`
+      }).catch(e => console.error(e));
     }
 
     revalidatePath("/admin/buzon");
@@ -90,7 +83,10 @@ export async function createTicket(formData: FormData): Promise<{ success: boole
 
 export async function submitAppeal(id: string, reason: string) {
   try {
-    await prisma.ticket.update({ where: { id }, data: { status: "APELADO", authorityResponse: `⚠️ APELACIÓN: ${reason}` } });
+    await prisma.ticket.update({
+      where: { id },
+      data: { status: "APELADO", authorityResponse: `⚠️ APELACIÓN: ${reason}` },
+    });
     revalidatePath("/seguimiento");
     revalidatePath("/admin/buzon");
     return { success: true };
@@ -105,24 +101,47 @@ export async function setStudentSatisfaction(id: string, satisfied: boolean) {
   } catch (error) { return { success: false }; }
 }
 
+// --- FUNCIÓN DE RESPUESTA COMPLETADA ---
 export async function submitAuthorityResponse(formData: FormData) {
   const id = formData.get("id") as string;
   const responseText = formData.get("responseText") as string;
   const files = formData.getAll("evidence");
+
   try {
-    await prisma.ticket.update({ where: { id }, data: { authorityResponse: responseText, status: "RESUELTO", updatedAt: new Date() } });
-    if (supabase) {
+    const updatedTicket = await prisma.ticket.update({
+      where: { id },
+      data: { authorityResponse: responseText, status: "RESUELTO", updatedAt: new Date() },
+    });
+
+    // SUBIR EVIDENCIAS DE LA AUTORIDAD
+    if (supabase && files.length > 0) {
       for (const file of files) {
         const f = file as any;
         if (f.size > 0) {
-          const fileName = `authority/${id}-${Date.now()}-${f.name}`;
+          const fileName = `authority/${id}-${Date.now()}-${f.name.replace(/[^a-zA-Z0-9.]/g, "_")}`;
           const arrayBuffer = await f.arrayBuffer();
-          await supabase.storage.from('evidencias').upload(fileName, Buffer.from(arrayBuffer));
-          const { data: { publicUrl } } = supabase.storage.from('evidencias').getPublicUrl(fileName);
-          await prisma.attachment.create({ data: { url: publicUrl, name: f.name, type: "AUTHORITY", ticketId: id } });
+          const { error } = await supabase.storage.from('evidencias').upload(fileName, Buffer.from(arrayBuffer), { contentType: f.type, upsert: true });
+          if (!error) {
+            const { data: { publicUrl } } = supabase.storage.from('evidencias').getPublicUrl(fileName);
+            await prisma.attachment.create({
+              data: { url: publicUrl, name: f.name, type: "AUTHORITY", ticketId: id }
+            });
+          }
         }
       }
     }
+
+    // NOTIFICAR AL ALUMNO SI DEJÓ EMAIL
+    if (updatedTicket.studentEmail && process.env.RESEND_API_KEY) {
+      await resend.emails.send({
+        from: 'Buzon Etico <onboarding@resend.dev>',
+        to: [updatedTicket.studentEmail],
+        subject: `Respuesta a tu reporte: ${updatedTicket.folio}`,
+        html: `<p>La autoridad ha respondido a tu reporte <strong>${updatedTicket.folio}</strong>.</p>
+               <p>Puedes ver la resolución completa aquí: <a href="https://master-chatbot-rho.vercel.app/seguimiento">Ver seguimiento</a></p>`
+      }).catch(e => console.error(e));
+    }
+
     revalidatePath("/admin/buzon");
     revalidatePath("/seguimiento");
     return { success: true };
@@ -135,7 +154,7 @@ export async function updateTicketStatus(id: string, newStatus: string) {
 }
 
 // ==========================================
-// 3. GESTIÓN DE CHATBOTS Y GRUPOS (MOTOR REAL)
+// 3. GESTIÓN DE CHATBOTS Y GRUPOS
 // ==========================================
 
 export async function createGroup(formData: FormData) {
@@ -210,9 +229,8 @@ export async function uploadFileDocument(formData: FormData) {
   const kbId = formData.get("knowledgeBaseId") as string;
   if (!file || !kbId) return;
   const buffer = Buffer.from(await file.arrayBuffer());
-  const type = file.name.endsWith('.pdf') ? 'PDF' : (file.name.endsWith('.xlsx') ? 'EXCEL' : 'WORD');
-  const doc = await prisma.document.create({ data: { filename: file.name, type, knowledgeBaseId: kbId } });
-  await processFile(buffer, file.name, type, kbId, doc.id);
+  const doc = await prisma.document.create({ data: { filename: file.name, type: "PDF", knowledgeBaseId: kbId } });
+  await processFile(buffer, file.name, "PDF", kbId, doc.id);
   revalidatePath(`/admin/knowledge/${kbId}`);
 }
 
@@ -231,7 +249,7 @@ export async function addUrlDocument(formData: FormData) {
 }
 
 // ==========================================
-// 4. CONFIGURACIÓN Y BACKUP (MOTOR REAL)
+// 4. CONFIGURACIÓN Y BACKUP
 // ==========================================
 
 export async function updateSettings(formData: FormData) {
@@ -254,8 +272,6 @@ export async function importFullBackup(data: any) {
   try {
     const { groups, kbs, chatbots } = data;
     if (groups) await prisma.group.createMany({ data: groups, skipDuplicates: true });
-    if (kbs) await prisma.knowledgeBase.createMany({ data: kbs, skipDuplicates: true });
-    if (chatbots) await prisma.chatbot.createMany({ data: chatbots, skipDuplicates: true });
     revalidatePath("/admin");
     return { success: true, error: "" };
   } catch (error: any) { return { success: false, error: error.message }; }
