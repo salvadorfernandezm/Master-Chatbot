@@ -2,7 +2,7 @@
 
 import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
-import { processFile, processUrl } from "@/lib/documentProcessor"; // <-- ESTA ES LA LÍNEA QUE FALTABA
+import { processFile, processUrl } from "@/lib/documentProcessor";
 import { randomBytes } from "crypto";
 import { createClient } from '@supabase/supabase-js';
 import { Resend } from 'resend';
@@ -52,6 +52,7 @@ export async function createTicket(formData: FormData): Promise<{ success: boole
           const cleanName = f.name.replace(/[^a-zA-Z0-9.]/g, "_");
           const fileName = `student/${ticket.id}-${Date.now()}-${cleanName}`;
           const arrayBuffer = await f.arrayBuffer();
+
           const { error: uploadError } = await supabase.storage.from('evidencias').upload(fileName, Buffer.from(arrayBuffer), { contentType: f.type, upsert: true });
           if (!uploadError) {
             const { data: { publicUrl } } = supabase.storage.from('evidencias').getPublicUrl(fileName);
@@ -61,7 +62,6 @@ export async function createTicket(formData: FormData): Promise<{ success: boole
       }
     }
 
-    // AVISO A AUTORIDAD
     let emailDestino = process.env.EMAIL_INGENIERO;
     const criterio = type === "SOPORTE_TECNICO" ? "SOPORTE_TECNICO" : category;
     if (criterio === "ACADEMICO") emailDestino = process.env.EMAIL_SECRETARIA_ACADEMICA;
@@ -119,13 +119,9 @@ export async function submitAuthorityResponse(formData: FormData) {
         if (f.size > 0) {
           const fileName = `authority/${id}-${Date.now()}-${f.name.replace(/[^a-zA-Z0-9.]/g, "_")}`;
           const arrayBuffer = await f.arrayBuffer();
-          const { error: uploadError } = await supabase.storage.from('evidencias').upload(fileName, Buffer.from(arrayBuffer), { contentType: f.type, upsert: true });
-          if (!uploadError) {
-            const { data: { publicUrl } } = supabase.storage.from('evidencias').getPublicUrl(fileName);
-            await prisma.attachment.create({
-              data: { url: publicUrl, name: f.name, type: "AUTHORITY", ticketId: id }
-            });
-          }
+          await supabase.storage.from('evidencias').upload(fileName, Buffer.from(arrayBuffer));
+          const { data: { publicUrl } } = supabase.storage.from('evidencias').getPublicUrl(fileName);
+          await prisma.attachment.create({ data: { url: publicUrl, name: f.name, type: "AUTHORITY", ticketId: id } });
         }
       }
     }
@@ -135,8 +131,7 @@ export async function submitAuthorityResponse(formData: FormData) {
         from: 'Buzon Etico <onboarding@resend.dev>',
         to: [updatedTicket.studentEmail],
         subject: `Respuesta a tu reporte: ${updatedTicket.folio}`,
-        html: `<p>La autoridad ha respondido a tu reporte <strong>${updatedTicket.folio}</strong>.</p>
-               <p>Puedes ver la resolución aquí: <a href="https://master-chatbot-rho.vercel.app/seguimiento">Ver seguimiento</a></p>`
+        html: `<p>La autoridad ha respondido a tu reporte <strong>${updatedTicket.folio}</strong>. Puedes ver la resolución aquí: <a href="https://master-chatbot-rho.vercel.app/seguimiento">Ver seguimiento</a></p>`
       }).catch(e => console.error(e));
     }
 
@@ -240,4 +235,45 @@ export async function deleteDocument(id: string, kbId: string) {
 
 export async function addUrlDocument(formData: FormData) {
   const url = formData.get("url") as string;
-  const kbId = formData.get("knowledgeB
+  const kbId = formData.get("knowledgeBaseId") as string;
+  const doc = await prisma.document.create({ data: { filename: url, type: "URL", knowledgeBaseId: kbId } });
+  await processUrl(url, kbId, doc.id);
+  revalidatePath(`/admin/knowledge/${kbId}`);
+}
+
+// ==========================================
+// 4. CONFIGURACIÓN Y BACKUP
+// ==========================================
+
+export async function updateSettings(formData: FormData) {
+  const organizationName = formData.get("organizationName") as string;
+  const organizationBuzonInfo = formData.get("organizationBuzonInfo") as string;
+  const settings = await prisma.settings.findFirst();
+  if (settings) {
+    await prisma.settings.update({ where: { id: settings.id }, data: { organizationName, organizationBuzonInfo } });
+  } else {
+    await prisma.settings.create({ data: { organizationName, organizationBuzonInfo } });
+  }
+  revalidatePath("/admin/settings");
+}
+
+export async function exportFullBackup() {
+  const [groups, chatbots, kbs, docs] = await Promise.all([
+    prisma.group.findMany(),
+    prisma.chatbot.findMany(),
+    prisma.knowledgeBase.findMany(),
+    prisma.document.findMany()
+  ]);
+  return { groups, chatbots, kbs, docs };
+}
+
+export async function importFullBackup(data: any) {
+  try {
+    const { groups, kbs, chatbots } = data;
+    if (groups) await prisma.group.createMany({ data: groups, skipDuplicates: true });
+    revalidatePath("/admin");
+    return { success: true, error: "" };
+  } catch (error: any) { 
+    return { success: false, error: error.message || "Error desconocido" }; 
+  }
+}
