@@ -23,13 +23,16 @@ export async function createTicket(formData: FormData): Promise<{ success: boole
   const studentName = formData.get("studentName") as string;
   const studentEmail = formData.get("studentEmail") as string;
   const files = formData.getAll("evidence"); 
+
   if (!content || !type) return { success: false, folio: "" };
   const folio = `ETH-${Math.random().toString(36).substring(2, 7).toUpperCase()}`;
-  const attachmentLinks: string[] = [];
+  const attachmentLinks: string[] = []; // Restauramos el recolector de ligas
+
   try {
     const ticket = await prisma.ticket.create({
       data: { folio, type, category, content, studentName: studentName || "Anónimo Protegido", studentEmail: studentEmail || null, status: "PENDIENTE" },
     });
+
     if (supabase && files.length > 0) {
       for (const file of files) {
         const f = file as any;
@@ -40,43 +43,55 @@ export async function createTicket(formData: FormData): Promise<{ success: boole
           const { error } = await supabase.storage.from('evidencias').upload(fileName, Buffer.from(arrayBuffer), { contentType: f.type, upsert: true });
           if (!error) {
             const { data: { publicUrl } } = supabase.storage.from('evidencias').getPublicUrl(fileName);
-            attachmentLinks.push(publicUrl);
+            attachmentLinks.push(publicUrl); // Guardamos la liga
             await prisma.attachment.create({ data: { url: publicUrl, name: f.name, type: "STUDENT", ticketId: ticket.id } });
           }
         }
       }
     }
+
     let emailDestino = process.env.EMAIL_INGENIERO;
     const criterio = type === "SOPORTE_TECNICO" ? "SOPORTE_TECNICO" : category;
     if (criterio === "ACADEMICO") emailDestino = process.env.EMAIL_SECRETARIA_ACADEMICA;
     else if (criterio === "LOGISTICA") emailDestino = process.env.EMAIL_SECRETARIA_ADMINISTRATIVA;
     else if (criterio === "GRAVE") emailDestino = process.env.EMAIL_DIRECCION;
+
     if (process.env.RESEND_API_KEY && emailDestino) {
       const responderUrl = `https://master-chatbot-rho.vercel.app/admin/responder?folio=${folio}`;
+      
+      // RECONSTRUCCIÓN DE LA LISTA DE EVIDENCIAS PARA EL MAIL
+      const listaEvidencias = attachmentLinks.length > 0 
+        ? `<p><strong>Evidencias adjuntas:</strong></p><ul>${attachmentLinks.map(l => `<li><a href="${l}">Ver archivo</a></li>`).join('')}</ul>`
+        : '<p><em>Sin evidencias adjuntas.</em></p>';
+
       await resend.emails.send({
         from: 'Buzon Etico <onboarding@resend.dev>',
         to: [emailDestino as string],
         subject: `Nuevo Reporte [${criterio}]: ${folio}`,
-        html: `<p>Folio: ${folio}</p><p>Mensaje: ${content}</p><br/><a href="${responderUrl}">Atender Caso</a>`
+        html: `<div style="font-family: sans-serif; padding: 20px; border: 1px solid #eee; border-radius: 15px;">
+                <h2 style="color: #10b981;">Nuevo Reporte Recibido</h2>
+                <p><strong>Folio:</strong> ${folio}</p>
+                <p><strong>Categoría:</strong> ${criterio}</p>
+                <p><strong>Mensaje:</strong></p>
+                <blockquote style="background: #f9f9f9; padding: 15px; border-left: 5px solid #10b981;">${content}</blockquote>
+                ${listaEvidencias}
+                <br/>
+                <a href="${responderUrl}" style="background: #000; color: #fff; padding: 12px 25px; text-decoration: none; border-radius: 10px; font-weight: bold; display: inline-block;">Atender Caso</a>
+               </div>`
       }).catch(e => console.error(e));
     }
+
     revalidatePath("/admin/buzon");
     return { success: true, folio: ticket.folio };
   } catch (error) { return { success: false, folio: "" }; }
 }
 
-// PUNTO 3: APELACIÓN CON ENVÍO DE CORREO A LA AUTORIDAD
 export async function submitAppeal(id: string, reason: string) {
   try {
     const currentTicket = await prisma.ticket.findUnique({ where: { id } });
     const newHistory = `[RESPUESTA DE AUTORIDAD]: ${currentTicket?.authorityResponse || 'Sin respuesta'}\n\n[RAZÓN DE APELACIÓN]: ${reason}`;
-    
-    const updated = await prisma.ticket.update({ 
-      where: { id }, 
-      data: { status: "APELADO", authorityResponse: newHistory } 
-    });
+    const updated = await prisma.ticket.update({ where: { id }, data: { status: "APELADO", authorityResponse: newHistory } });
 
-    // Avisar por correo que hay una apelación
     let emailDestino = process.env.EMAIL_INGENIERO;
     if (updated.category === "ACADEMICO") emailDestino = process.env.EMAIL_SECRETARIA_ACADEMICA;
     else if (updated.category === "LOGISTICA") emailDestino = process.env.EMAIL_SECRETARIA_ADMINISTRATIVA;
@@ -89,14 +104,12 @@ export async function submitAppeal(id: string, reason: string) {
         subject: `🚨 APELACIÓN RECIBIDA: ${updated.folio}`,
         html: `<h2 style="color:red;">El alumno no está conforme</h2>
                <p><strong>Folio:</strong> ${updated.folio}</p>
-               <p><strong>Motivo de inconformidad:</strong> ${reason}</p>
-               <br/><a href="https://master-chatbot-rho.vercel.app/admin/responder?folio=${updated.folio}">Revisar y Corregir aquí</a>`
+               <p><strong>Motivo:</strong> ${reason}</p>
+               <br/><a href="https://master-chatbot-rho.vercel.app/admin/responder?folio=${updated.folio}">Revisar y Corregir</a>`
       }).catch(e => console.error(e));
     }
-
     revalidatePath("/seguimiento");
     revalidatePath("/admin/buzon");
-    revalidatePath("/admin/directora");
     return { success: true };
   } catch (error) { return { success: false }; }
 }
@@ -139,10 +152,6 @@ export async function updateTicketStatus(id: string, newStatus: string) {
   revalidatePath("/admin/directora");
 }
 
-// ==========================================
-// 3. GESTIÓN DE CHATBOTS Y GRUPOS (PUNTO 2: FIX TOGGLES)
-// ==========================================
-
 export async function createGroup(formData: FormData) {
   const name = formData.get("name") as string;
   const description = formData.get("description") as string;
@@ -170,21 +179,15 @@ export async function createChatbot(formData: FormData) {
   revalidatePath("/admin/chatbots");
 }
 
-// CORREGIDO: Ahora sí toma el valor de isActive correctamente
 export async function updateChatbot(formData: FormData) {
   const id = formData.get("id") as string;
   const updateData: any = {};
-  const fields = ["name", "welcomeMessage", "systemInstructions", "inputPlaceholder", "fallbackMessage", "infoMessage", "logoUrl"];
-  fields.forEach(field => {
-    const value = formData.get(field);
-    if (value !== null) updateData[field] = value as string;
+  ["name", "welcomeMessage", "systemInstructions", "inputPlaceholder", "fallbackMessage", "infoMessage", "logoUrl"].forEach(f => {
+    const v = formData.get(f);
+    if (v !== null) updateData[f] = v as string;
   });
-  
   const isActive = formData.get("isActive");
-  if (isActive !== null) {
-    updateData.isActive = isActive === "true";
-  }
-  
+  if (isActive !== null) updateData.isActive = isActive === "true";
   await prisma.chatbot.update({ where: { id }, data: updateData });
   revalidatePath("/admin/chatbots");
 }
@@ -211,6 +214,7 @@ export async function deleteKnowledgeBase(id: string) {
   await prisma.knowledgeBase.delete({ where: { id } });
   revalidatePath("/admin/knowledge");
 }
+
 export async function uploadFileDocument(formData: FormData) {
   const file = formData.get("file") as File;
   const kbId = formData.get("knowledgeBaseId") as string;
@@ -233,25 +237,16 @@ export async function addUrlDocument(formData: FormData) {
   revalidatePath(`/admin/knowledge/${kbId}`);
 }
 
-// ==========================================
-// 4. CONFIGURACIÓN (PUNTO 2: FIX BUZÓN ON/OFF)
-// ==========================================
-
 export async function updateSettings(formData: FormData) {
   const orgName = formData.get("organizationName") as string;
   const orgInfo = formData.get("organizationBuzonInfo") as string;
-  const isBuzonActive = formData.get("isBuzonActive") === "true"; // Capturamos el estado del interruptor
-
+  const isBuzonActive = formData.get("isBuzonActive") === "true";
   const settings = await prisma.settings.findFirst();
   const data = { organizationName: orgName, organizationBuzonInfo: orgInfo, isBuzonActive };
-
-  if (settings) {
-    await prisma.settings.update({ where: { id: settings.id }, data });
-  } else {
-    await prisma.settings.create({ data });
-  }
+  if (settings) await prisma.settings.update({ where: { id: settings.id }, data });
+  else await prisma.settings.create({ data });
   revalidatePath("/admin/settings");
-  revalidatePath("/buzon"); // Actualizamos la vista del alumno
+  revalidatePath("/buzon");
 }
 
 export async function exportFullBackup() {
