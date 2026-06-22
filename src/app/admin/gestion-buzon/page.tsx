@@ -113,14 +113,14 @@ export default function AdminBuzonPage() {
                   </div>
 
                   {/* COLUMNA DE ESTADO Y ACCIONES */}
-                  <div className="w-full lg:w-56 space-y-4">
-                    <div className={`text-xs font-black p-4 rounded-2xl text-center uppercase tracking-widest shadow-lg ${
-                      ticket.status === 'PENDIENTE' ? 'bg-amber-500 text-white animate-pulse' : 
-                      ticket.status === 'APELADO' ? 'bg-red-600 text-white animate-bounce' : 
-                      'bg-emerald-600 text-white'
-                    }`}>
-                      {ticket.status}
-                    </div>
+                  <span className={`text-[10px] font-black px-4 py-2 rounded-xl uppercase tracking-widest shadow-xl inline-block ${
+  ticket.status === 'PENDIENTE' ? 'bg-amber-500 text-white animate-pulse' : 
+  ticket.status === 'APELADO' ? 'bg-red-600 text-white animate-bounce' : 
+  ticket.status === 'NO ATENDIDO EN TIEMPO' ? 'bg-black text-red-500 border-2 border-red-500 animate-pulse' : // <-- ESTILO PUNTO 5
+  'bg-emerald-600 text-white'
+}`}>
+  {ticket.status}
+</span>
 
                     {/* PUNTO 1: BOTÓN DE ARCHIVO MANUAL */}
                     <button 

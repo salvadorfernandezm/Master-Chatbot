@@ -106,12 +106,13 @@ export default function DirectoraPage() {
                   </div>
                   <div className="md:w-40 text-right">
                     <span className={`text-[10px] font-black px-4 py-2 rounded-xl uppercase tracking-widest shadow-xl inline-block ${
-                      t.status === 'PENDIENTE' ? 'bg-amber-500 text-white animate-pulse' : 
-                      t.status === 'APELADO' ? 'bg-red-600 text-white animate-bounce' : 
-                      'bg-emerald-600 text-white'
-                    }`}>
-                      {t.status}
-                    </span>
+  t.status === 'PENDIENTE' ? 'bg-amber-500 text-white animate-pulse' : 
+  t.status === 'APELADO' ? 'bg-red-600 text-white animate-bounce' : 
+  t.status === 'NO ATENDIDO EN TIEMPO' ? 'bg-black text-red-500 border-2 border-red-500 animate-pulse' : // <-- ESTILO PUNTO 5
+  'bg-emerald-600 text-white'
+}`}>
+  {t.status}
+</span>
                   </div>
                 </div>
               </div>

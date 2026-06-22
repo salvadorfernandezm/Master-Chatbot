@@ -12,6 +12,29 @@ const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "";
 const supabase = (supabaseUrl && supabaseKey) ? createClient(supabaseUrl, supabaseKey) : null;
 
+// PUNTO 5: FUNCIÓN DE ESCALAMIENTO AUTOMÁTICO
+export async function runEscalationLogic() {
+  const limiteHoras = 72;
+  const fechaLimite = new Date();
+  fechaLimite.setHours(fechaLimite.getHours() - limiteHoras);
+
+  // Buscamos tickets PENDIENTES que tengan más de 72 horas y no sean SOPORTE_TECNICO
+  const expirados = await prisma.ticket.findMany({
+    where: {
+      status: "PENDIENTE",
+      createdAt: { lt: fechaLimite },
+      NOT: { type: "SOPORTE_TECNICO" }
+    }
+  });
+
+  for (const ticket of expirados) {
+    await prisma.ticket.update({
+      where: { id: ticket.id },
+      data: { status: "NO ATENDIDO EN TIEMPO" }
+    });
+  }
+}
+
 export async function verifyDirectorPin(pin: string) {
   return pin === process.env.DIRECTOR_PIN;
 }
@@ -26,7 +49,7 @@ export async function createTicket(formData: FormData): Promise<{ success: boole
 
   if (!content || !type) return { success: false, folio: "" };
   const folio = `ETH-${Math.random().toString(36).substring(2, 7).toUpperCase()}`;
-  const attachmentLinks: string[] = []; // Restauramos el recolector de ligas
+  const attachmentLinks: string[] = [];
 
   try {
     const ticket = await prisma.ticket.create({
@@ -43,7 +66,7 @@ export async function createTicket(formData: FormData): Promise<{ success: boole
           const { error } = await supabase.storage.from('evidencias').upload(fileName, Buffer.from(arrayBuffer), { contentType: f.type, upsert: true });
           if (!error) {
             const { data: { publicUrl } } = supabase.storage.from('evidencias').getPublicUrl(fileName);
-            attachmentLinks.push(publicUrl); // Guardamos la liga
+            attachmentLinks.push(publicUrl);
             await prisma.attachment.create({ data: { url: publicUrl, name: f.name, type: "STUDENT", ticketId: ticket.id } });
           }
         }
@@ -58,25 +81,25 @@ export async function createTicket(formData: FormData): Promise<{ success: boole
 
     if (process.env.RESEND_API_KEY && emailDestino) {
       const responderUrl = `https://master-chatbot-rho.vercel.app/admin/responder?folio=${folio}`;
-      
-      // RECONSTRUCCIÓN DE LA LISTA DE EVIDENCIAS PARA EL MAIL
       const listaEvidencias = attachmentLinks.length > 0 
         ? `<p><strong>Evidencias adjuntas:</strong></p><ul>${attachmentLinks.map(l => `<li><a href="${l}">Ver archivo</a></li>`).join('')}</ul>`
         : '<p><em>Sin evidencias adjuntas.</em></p>';
 
+      // PUNTO 4: CORREO CON ADVERTENCIA DE TIEMPO
       await resend.emails.send({
         from: 'Buzon Etico <onboarding@resend.dev>',
         to: [emailDestino as string],
-        subject: `Nuevo Reporte [${criterio}]: ${folio}`,
+        subject: `[72h LÍMITE] Nuevo Reporte: ${folio}`,
         html: `<div style="font-family: sans-serif; padding: 20px; border: 1px solid #eee; border-radius: 15px;">
                 <h2 style="color: #10b981;">Nuevo Reporte Recibido</h2>
+                <div style="background: #fff8e1; padding: 15px; border-radius: 10px; border: 1px solid #ffe082; color: #795548; margin-bottom: 20px;">
+                  <strong>⚠️ Aviso de Plazo:</strong> Según el reglamento, cuenta con <strong>72 horas hábiles</strong> para dar respuesta a esta solicitud. De lo contrario, el sistema escalará automáticamente el reporte a la Dirección con la etiqueta de "No Atendido".
+                </div>
                 <p><strong>Folio:</strong> ${folio}</p>
-                <p><strong>Categoría:</strong> ${criterio}</p>
                 <p><strong>Mensaje:</strong></p>
                 <blockquote style="background: #f9f9f9; padding: 15px; border-left: 5px solid #10b981;">${content}</blockquote>
                 ${listaEvidencias}
-                <br/>
-                <a href="${responderUrl}" style="background: #000; color: #fff; padding: 12px 25px; text-decoration: none; border-radius: 10px; font-weight: bold; display: inline-block;">Atender Caso</a>
+                <br/><a href="${responderUrl}" style="background:#000;color:#fff;padding:12px 25px;text-decoration:none;border-radius:10px;font-weight:bold;display:inline-block;">Atender y Responder Ahora</a>
                </div>`
       }).catch(e => console.error(e));
     }
@@ -110,6 +133,7 @@ export async function submitAppeal(id: string, reason: string) {
     }
     revalidatePath("/seguimiento");
     revalidatePath("/admin/buzon");
+    revalidatePath("/admin/directora");
     return { success: true };
   } catch (error) { return { success: false }; }
 }
@@ -142,6 +166,7 @@ export async function submitAuthorityResponse(formData: FormData) {
     }
     revalidatePath("/admin/buzon");
     revalidatePath("/seguimiento");
+    revalidatePath("/admin/directora");
     return { success: true };
   } catch (error) { return { success: false }; }
 }
@@ -169,7 +194,6 @@ export async function deleteGroup(id: string) {
   await prisma.group.delete({ where: { id } });
   revalidatePath("/admin/groups");
 }
-
 export async function createChatbot(formData: FormData) {
   const name = formData.get("name") as string;
   const groupId = formData.get("groupId") as string;
@@ -178,7 +202,6 @@ export async function createChatbot(formData: FormData) {
   await prisma.chatbot.create({ data: { name, token, groupId, knowledgeBaseId: kbId, isActive: true } });
   revalidatePath("/admin/chatbots");
 }
-
 export async function updateChatbot(formData: FormData) {
   const id = formData.get("id") as string;
   const updateData: any = {};
@@ -191,12 +214,10 @@ export async function updateChatbot(formData: FormData) {
   await prisma.chatbot.update({ where: { id }, data: updateData });
   revalidatePath("/admin/chatbots");
 }
-
 export async function deleteChatbot(id: string) {
   await prisma.chatbot.delete({ where: { id } });
   revalidatePath("/admin/chatbots");
 }
-
 export async function createKnowledgeBase(formData: FormData) {
   const name = formData.get("name") as string;
   const description = formData.get("description") as string;
@@ -214,7 +235,6 @@ export async function deleteKnowledgeBase(id: string) {
   await prisma.knowledgeBase.delete({ where: { id } });
   revalidatePath("/admin/knowledge");
 }
-
 export async function uploadFileDocument(formData: FormData) {
   const file = formData.get("file") as File;
   const kbId = formData.get("knowledgeBaseId") as string;
@@ -236,7 +256,6 @@ export async function addUrlDocument(formData: FormData) {
   await processUrl(url, kbId, doc.id);
   revalidatePath(`/admin/knowledge/${kbId}`);
 }
-
 export async function updateSettings(formData: FormData) {
   const orgName = formData.get("organizationName") as string;
   const orgInfo = formData.get("organizationBuzonInfo") as string;
@@ -248,7 +267,6 @@ export async function updateSettings(formData: FormData) {
   revalidatePath("/admin/settings");
   revalidatePath("/buzon");
 }
-
 export async function exportFullBackup() {
   const [groups, chatbots, kbs, docs] = await Promise.all([
     prisma.group.findMany(), prisma.chatbot.findMany(), prisma.knowledgeBase.findMany(), prisma.document.findMany()

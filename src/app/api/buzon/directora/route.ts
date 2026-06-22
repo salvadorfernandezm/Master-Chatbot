@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
+import { runEscalationLogic } from "@/lib/actions"; // <-- Importamos la función
 
 export async function GET() {
   try {
@@ -14,6 +15,7 @@ export async function GET() {
             OR: [
               { status: "PENDIENTE" },
               { status: "APELADO" },
+{ status: "NO ATENDIDO EN TIEMPO" }, // <-- Incluimos este nuevo estado
               {
                 AND: [
                   { status: "RESUELTO" },
