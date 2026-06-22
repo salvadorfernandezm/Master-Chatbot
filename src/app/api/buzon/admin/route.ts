@@ -1,11 +1,10 @@
 import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
-import { runEscalationLogic } from "@/lib/actions"; // <-- Importamos la función
+import { runEscalationLogic } from "@/lib/actions";
 
 export async function GET() {
   try {
-    await runEscalationLogic(); // <--- DISPARAMOS EL RELOJ AQUÍ
-    
+    await runEscalationLogic();
     const hace15Dias = new Date();
     hace15Dias.setDate(hace15Dias.getDate() - 15);
 
@@ -17,7 +16,7 @@ export async function GET() {
             OR: [
               { status: "PENDIENTE" },
               { status: "APELADO" },
-              { status: "NO ATENDIDO EN TIEMPO" }, // <-- Incluimos este nuevo estado
+              { status: "NO ATENDIDO EN TIEMPO" },
               {
                 AND: [
                   { status: "RESUELTO" },

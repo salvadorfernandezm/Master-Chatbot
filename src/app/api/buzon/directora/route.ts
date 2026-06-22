@@ -1,21 +1,23 @@
 import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
-import { runEscalationLogic } from "@/lib/actions"; // <-- Importamos la función
+import { runEscalationLogic } from "@/lib/actions";
 
 export async function GET() {
   try {
+    await runEscalationLogic();
     const hace15Dias = new Date();
     hace15Dias.setDate(hace15Dias.getDate() - 15);
 
     const tickets = await prisma.ticket.findMany({
       where: {
         AND: [
-          { NOT: { type: 'SOPORTE_TECNICO' } }, // SOLO EN DIRECTORA. En Admin quita esta línea.
+          { NOT: { type: 'SOPORTE_TECNICO' } },
+          { NOT: { status: "ARCHIVADO" } },
           {
             OR: [
               { status: "PENDIENTE" },
               { status: "APELADO" },
-{ status: "NO ATENDIDO EN TIEMPO" }, // <-- Incluimos este nuevo estado
+              { status: "NO ATENDIDO EN TIEMPO" },
               {
                 AND: [
                   { status: "RESUELTO" },
@@ -27,7 +29,7 @@ export async function GET() {
         ]
       },
       include: { attachments: true },
-orderBy: { createdAt: 'desc' } // Aseguramos el orden aquí también
+      orderBy: { createdAt: 'desc' }
     });
     return NextResponse.json(tickets);
   } catch (error) {
