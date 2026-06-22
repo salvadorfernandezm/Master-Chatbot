@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { updateTicketStatus } from "@/lib/actions";
 
 export default function AdminBuzonPage() {
   const [tickets, setTickets] = useState<any[]>([]);
@@ -24,50 +25,72 @@ export default function AdminBuzonPage() {
     return "📁 Archivo";
   };
 
+  const handleArchive = async (id: string) => {
+    if (confirm("¿Archivar este reporte? Ya no será visible en los paneles principales.")) {
+      await updateTicketStatus(id, "ARCHIVADO");
+      setTickets(tickets.filter(t => t.id !== id));
+    }
+  };
+
   return (
     <div className="space-y-8 max-w-6xl mx-auto pb-20 font-sans text-left">
       <header className="bg-slate-950 p-10 rounded-[3.5rem] text-white shadow-2xl flex justify-between items-center border-b-8 border-emerald-500">
         <div>
           <h1 className="text-3xl font-black uppercase tracking-widest text-emerald-50">Panel General</h1>
-          <p className="text-slate-400 text-xs italic mt-2 uppercase">Gestión de evidencias multiformato</p>
+          <p className="text-slate-400 text-xs italic mt-2 uppercase">Gestión de evidencias y control de archivos</p>
         </div>
-        <div className="bg-emerald-500 text-black h-14 w-14 rounded-full flex items-center justify-center text-2xl font-black">{tickets.length}</div>
+        <div className="bg-emerald-500 text-black h-14 w-14 rounded-full flex items-center justify-center text-2xl font-black shadow-lg">
+          {tickets.length}
+        </div>
       </header>
 
       <div className="grid grid-cols-1 gap-10">
         {loading ? (
-          <p className="text-center italic text-slate-500 py-20 animate-pulse text-lg tracking-widest uppercase">Cargando...</p>
+          <p className="text-center italic text-slate-500 py-20 animate-pulse text-lg tracking-widest uppercase">Cargando reportes...</p>
+        ) : tickets.length === 0 ? (
+          <div className="bg-white p-20 rounded-[4rem] border-4 border-dashed border-slate-100 text-center">
+             <p className="text-slate-300 text-xl italic font-serif tracking-widest">Sin reportes activos o pendientes.</p>
+          </div>
         ) : (
           tickets.map((ticket: any) => (
-            <div key={ticket.id} className="bg-white rounded-[3.5rem] shadow-2xl border border-slate-100 overflow-hidden">
+            <div key={ticket.id} className="bg-white rounded-[3.5rem] shadow-2xl border border-slate-100 overflow-hidden hover:-translate-y-1 transition-all duration-300">
               <div className="p-12">
-                <div className="flex flex-col lg:flex-row justify-between gap-10 text-slate-800">
+                <div className="flex flex-col lg:flex-row justify-between gap-10">
+                  
                   <div className="flex-1 space-y-6">
                     <div className="flex items-center gap-4">
-                      <span className={`px-4 py-1.5 rounded-full text-[10px] font-black uppercase ${ticket.type === 'SOPORTE_TECNICO' ? 'bg-red-500 text-white' : 'bg-blue-600 text-white'}`}>{ticket.type}</span>
-                      {ticket.category && <span className="px-4 py-1.5 rounded-full text-[10px] font-black uppercase bg-purple-100 text-purple-700">{ticket.category}</span>}
-                      <span className="text-[10px] font-bold text-slate-300 uppercase">Folio: {ticket.folio}</span>
+                      <span className={`px-4 py-1.5 rounded-full text-[10px] font-black uppercase ${ticket.type === 'SOPORTE_TECNICO' ? 'bg-red-500 text-white' : 'bg-blue-600 text-white'}`}>
+                         {ticket.type}
+                      </span>
+                      {ticket.category && (
+                        <span className="px-4 py-1.5 rounded-full text-[10px] font-black uppercase bg-purple-100 text-purple-700 border border-purple-200">
+                          {ticket.category}
+                        </span>
+                      )}
+                      <span className="text-[10px] font-bold text-slate-300 uppercase tracking-[0.2em]">Folio: {ticket.folio}</span>
                     </div>
 
-                    <h3 className="text-2xl font-black">
+                    <h3 className="text-2xl font-black text-slate-800">
                       Reportante: <span className="text-emerald-600 underline decoration-slate-200 underline-offset-8">{ticket.studentName || "Anónimo"}</span>
                     </h3>
 
-                    <div className="bg-slate-50 p-8 rounded-[2.5rem] border border-slate-100 italic text-slate-700 shadow-inner">
-  "{ticket.content}"
-</div>
+                    <div className="bg-slate-50 p-8 rounded-[2.5rem] border border-slate-100 italic text-slate-700 leading-relaxed shadow-inner">
+                      "{ticket.content}"
+                    </div>
 
-{/* BLOQUE DE RESPUESTA / APELACIÓN - Leyenda simplificada */}
-{ticket.authorityResponse && (
-  <div className={`mt-6 p-8 rounded-[2.5rem] border-2 ${ticket.status === 'APELADO' ? 'bg-red-50 border-red-200' : 'bg-emerald-50 border-emerald-100'}`}>
-    <p className={`text-[10px] font-black uppercase mb-3 ${ticket.status === 'APELADO' ? 'text-red-600' : 'text-emerald-600'}`}>
-      {ticket.status === 'APELADO' ? '🚨 Registro de Apelación:' : '✅ Resolución Oficial:'}
-    </p>
-    <p className="text-sm text-slate-800 whitespace-pre-wrap leading-relaxed">
-      {ticket.authorityResponse}
-    </p>
-  </div>
-)}
+                    {/* PUNTO 7: LEYENDA SIMPLIFICADA DE APELACIÓN */}
+                    {ticket.authorityResponse && (
+                      <div className={`p-8 rounded-[2.5rem] border-2 ${ticket.status === 'APELADO' ? 'bg-red-50 border-red-200' : 'bg-emerald-50 border-emerald-100'}`}>
+                        <p className={`text-[10px] font-black uppercase mb-3 ${ticket.status === 'APELADO' ? 'text-red-600' : 'text-emerald-600'}`}>
+                          {ticket.status === 'APELADO' ? '🚨 Registro de Apelación:' : '✅ Resolución Oficial:'}
+                        </p>
+                        <p className="text-sm text-slate-800 whitespace-pre-wrap leading-relaxed">
+                          {ticket.authorityResponse}
+                        </p>
+                      </div>
+                    )}
+
+                    {/* EVIDENCIAS */}
                     {ticket.attachments && ticket.attachments.length > 0 && (
                       <div className="pt-6">
                         <p className="text-[10px] font-black uppercase text-emerald-600 mb-4 tracking-[0.3em]">📸 Evidencias Digitales</p>
@@ -75,14 +98,10 @@ export default function AdminBuzonPage() {
                           {ticket.attachments.map((att: any) => {
                             const icon = getFileIcon(att.url);
                             return (
-                              <a key={att.id} href={att.url} target="_blank" rel="noopener noreferrer" 
-                                 className="group relative h-32 w-32 rounded-3xl overflow-hidden border-4 border-slate-50 hover:border-emerald-500 transition-all shadow-md bg-slate-100 flex flex-col items-center justify-center text-center p-2">
-                                {icon ? (
-                                  <span className="text-xs font-black text-slate-500 uppercase tracking-tighter">{icon}</span>
-                                ) : (
-                                  <img src={att.url} alt="Evidencia" className="h-full w-full object-cover group-hover:scale-110 transition-transform" />
-                                )}
-                                <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                              <a key={att.id} href={att.url} target="_blank" rel="noopener noreferrer" className="group relative h-28 w-28 rounded-3xl overflow-hidden border-4 border-slate-50 hover:border-emerald-500 transition-all bg-slate-50 flex items-center justify-center">
+                                {icon ? <span className="text-[10px] font-black text-slate-400 text-center p-2 uppercase">{icon}</span> : 
+                                  <img src={att.url} className="h-full w-full object-cover group-hover:scale-110 transition-transform" alt="evidencia" />}
+                                <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
                                   <span className="text-[10px] text-white font-black">VER</span>
                                 </div>
                               </a>
@@ -93,30 +112,35 @@ export default function AdminBuzonPage() {
                     )}
                   </div>
 
+                  {/* COLUMNA DE ESTADO Y ACCIONES */}
                   <div className="w-full lg:w-56 space-y-4">
-  <div className={`text-xs font-black p-4 rounded-2xl text-center uppercase tracking-widest shadow-lg ${
-    ticket.status === 'PENDIENTE' ? 'bg-amber-500 text-white animate-pulse' : 
-    ticket.status === 'APELADO' ? 'bg-red-600 text-white animate-bounce' : 
-    'bg-emerald-600 text-white'
-  }`}>
-    {ticket.status}
-  </div>
-  
-  {/* Botón de Archivo Manual (Exclusivo Admin) */}
-  <button 
-    onClick={async () => {
-      if(confirm("¿Archivar este reporte? Ya no será visible en los paneles.")) {
-        const { updateTicketStatus } = await import("@/lib/actions");
-        await updateTicketStatus(ticket.id, "ARCHIVADO");
-        window.location.reload();
-      }
-    }}
-    className="w-full text-[10px] font-black py-2 rounded-xl border-2 border-slate-200 text-slate-400 hover:bg-slate-100 transition-all uppercase"
-  >
-    📁 Archivar Caso
-  </button>
+                    <div className={`text-xs font-black p-4 rounded-2xl text-center uppercase tracking-widest shadow-lg ${
+                      ticket.status === 'PENDIENTE' ? 'bg-amber-500 text-white animate-pulse' : 
+                      ticket.status === 'APELADO' ? 'bg-red-600 text-white animate-bounce' : 
+                      'bg-emerald-600 text-white'
+                    }`}>
+                      {ticket.status}
+                    </div>
 
-  <div className="text-[9px] text-slate-400 uppercase font-bold text-center">
-    Recibido: {new Date(ticket.createdAt).toLocaleDateString()}
-  </div>
-</div>
+                    {/* PUNTO 1: BOTÓN DE ARCHIVO MANUAL */}
+                    <button 
+                      onClick={() => handleArchive(ticket.id)}
+                      className="w-full text-[10px] font-black py-3 rounded-2xl border-2 border-slate-100 text-slate-400 hover:bg-slate-50 hover:text-slate-600 hover:border-slate-200 transition-all uppercase tracking-tighter"
+                    >
+                      📁 Archivar Caso
+                    </button>
+
+                    <div className="text-[9px] text-slate-400 uppercase font-bold text-center">
+                      Recibido: {new Date(ticket.createdAt).toLocaleDateString()}
+                    </div>
+                  </div>
+
+                </div>
+              </div>
+            </div>
+          ))
+        )}
+      </div>
+    </div>
+  );
+}
