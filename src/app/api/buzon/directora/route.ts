@@ -24,8 +24,8 @@ export async function GET() {
           }
         ]
       },
-      include: { attachments: true }, // FUERA DEL WHERE
-      orderBy: { updatedAt: 'desc' }
+      include: { attachments: true },
+orderBy: { createdAt: 'desc' } // Aseguramos el orden aquí también
     });
     return NextResponse.json(tickets);
   } catch (error) {

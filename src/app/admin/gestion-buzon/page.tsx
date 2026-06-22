@@ -57,18 +57,17 @@ export default function AdminBuzonPage() {
   "{ticket.content}"
 </div>
 
-{/* BLOQUE DE RESPUESTA / APELACIÓN */}
+{/* BLOQUE DE RESPUESTA / APELACIÓN - Leyenda simplificada */}
 {ticket.authorityResponse && (
   <div className={`mt-6 p-8 rounded-[2.5rem] border-2 ${ticket.status === 'APELADO' ? 'bg-red-50 border-red-200' : 'bg-emerald-50 border-emerald-100'}`}>
     <p className={`text-[10px] font-black uppercase mb-3 ${ticket.status === 'APELADO' ? 'text-red-600' : 'text-emerald-600'}`}>
-      {ticket.status === 'APELADO' ? '🚨 Registro de Apelación y Respuesta:' : '✅ Resolución Oficial:'}
+      {ticket.status === 'APELADO' ? '🚨 Registro de Apelación:' : '✅ Resolución Oficial:'}
     </p>
     <p className="text-sm text-slate-800 whitespace-pre-wrap leading-relaxed">
       {ticket.authorityResponse}
     </p>
   </div>
 )}
-
                     {ticket.attachments && ticket.attachments.length > 0 && (
                       <div className="pt-6">
                         <p className="text-[10px] font-black uppercase text-emerald-600 mb-4 tracking-[0.3em]">📸 Evidencias Digitales</p>
@@ -95,21 +94,29 @@ export default function AdminBuzonPage() {
                   </div>
 
                   <div className="w-full lg:w-56 space-y-4">
-                    <div className={`text-xs font-black p-4 rounded-2xl text-center uppercase tracking-widest shadow-lg ${
-                      ticket.status === 'PENDIENTE' ? 'bg-amber-500 text-white animate-pulse' : 
-                      ticket.status === 'APELADO' ? 'bg-red-600 text-white animate-bounce' : 
-                      'bg-emerald-600 text-white'
-                    }`}>
-                      {ticket.status}
-                    </div>
-                    <div className="text-[9px] text-slate-400 uppercase font-bold text-center">Recibido: {new Date(ticket.createdAt).toLocaleDateString()}</div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          ))
-        )}
-      </div>
-    </div>
-  );
-}
+  <div className={`text-xs font-black p-4 rounded-2xl text-center uppercase tracking-widest shadow-lg ${
+    ticket.status === 'PENDIENTE' ? 'bg-amber-500 text-white animate-pulse' : 
+    ticket.status === 'APELADO' ? 'bg-red-600 text-white animate-bounce' : 
+    'bg-emerald-600 text-white'
+  }`}>
+    {ticket.status}
+  </div>
+  
+  {/* Botón de Archivo Manual (Exclusivo Admin) */}
+  <button 
+    onClick={async () => {
+      if(confirm("¿Archivar este reporte? Ya no será visible en los paneles.")) {
+        const { updateTicketStatus } = await import("@/lib/actions");
+        await updateTicketStatus(ticket.id, "ARCHIVADO");
+        window.location.reload();
+      }
+    }}
+    className="w-full text-[10px] font-black py-2 rounded-xl border-2 border-slate-200 text-slate-400 hover:bg-slate-100 transition-all uppercase"
+  >
+    📁 Archivar Caso
+  </button>
+
+  <div className="text-[9px] text-slate-400 uppercase font-bold text-center">
+    Recibido: {new Date(ticket.createdAt).toLocaleDateString()}
+  </div>
+</div>

@@ -76,7 +76,7 @@ export default function DirectoraPage() {
                     {t.authorityResponse && (
                       <div className={`mt-6 p-8 rounded-[2.5rem] border-2 ${t.status === 'APELADO' ? 'bg-red-50 border-red-200' : 'bg-emerald-50 border-emerald-100'}`}>
                         <p className={`text-[10px] font-black uppercase mb-3 ${t.status === 'APELADO' ? 'text-red-600' : 'text-emerald-600'}`}>
-                          {t.status === 'APELADO' ? '🚨 Registro de Apelación y Respuesta:' : '✅ Resolución Oficial:'}
+                          {t.status === 'APELADO' ? '🚨 Registro de Apelación:' : '✅ Resolución Oficial:'}
                         </p>
                         <p className="text-sm text-slate-800 whitespace-pre-wrap leading-relaxed font-sans">
                           {t.authorityResponse}

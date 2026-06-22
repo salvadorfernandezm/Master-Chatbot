@@ -9,7 +9,8 @@ export async function GET() {
     const tickets = await prisma.ticket.findMany({
       where: {
         AND: [
-                   {
+          { NOT: { status: "ARCHIVADO" } }, // Filtro para ignorar los archivados manualmente
+          {
             OR: [
               { status: "PENDIENTE" },
               { status: "APELADO" },
@@ -23,8 +24,8 @@ export async function GET() {
           }
         ]
       },
-      include: { attachments: true }, // FUERA DEL WHERE
-      orderBy: { updatedAt: 'desc' }
+      include: { attachments: true },
+      orderBy: { createdAt: 'desc' } // <-- Orden correcto: Más reciente arriba
     });
     return NextResponse.json(tickets);
   } catch (error) {
