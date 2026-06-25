@@ -4,7 +4,9 @@ import { runEscalationLogic } from "@/lib/actions";
 
 export async function GET() {
   try {
+    // 1. Despertamos al "vigilante"
     await runEscalationLogic();
+
     const hace15Dias = new Date();
     hace15Dias.setDate(hace15Dias.getDate() - 15);
 

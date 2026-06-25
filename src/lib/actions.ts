@@ -14,23 +14,28 @@ const supabase = (supabaseUrl && supabaseKey) ? createClient(supabaseUrl, supaba
 
 // MOTOR DE ESCALAMIENTO
 export async function runEscalationLogic() {
-  const limiteHoras = 0.01; // <--- TRUCO: Si quieres probarlo ya, cambia este 72 por 0.01
-  const fechaLimite = new Date();
-  fechaLimite.setHours(fechaLimite.getHours() - limiteHoras);
+  // PRUEBA: 0.01 horas son 36 segundos. 
+  // Para estar seguros, usemos 1 minuto real (1/60 de hora)
+  const limiteHoras = 0.01; 
+  const ahora = new Date();
+  const fechaLimite = new Date(ahora.getTime() - (limiteHoras * 60 * 60 * 1000));
 
   const expirados = await prisma.ticket.findMany({
     where: {
       status: "PENDIENTE",
       createdAt: { lt: fechaLimite },
-      NOT: { type: "SOPORTE_TECNICO" }
+      // COMENTAMOS ESTA LÍNEA SOLO PARA LA PRUEBA:
+      // NOT: { type: "SOPORTE_TECNICO" } 
     }
   });
 
-  for (const ticket of expirados) {
-    await prisma.ticket.update({
-      where: { id: ticket.id },
-      data: { status: "NO ATENDIDO EN TIEMPO" }
-    });
+  if (expirados.length > 0) {
+    for (const ticket of expirados) {
+      await prisma.ticket.update({
+        where: { id: ticket.id },
+        data: { status: "NO ATENDIDO EN TIEMPO" }
+      });
+    }
   }
 }
 
