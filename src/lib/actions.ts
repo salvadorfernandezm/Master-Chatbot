@@ -12,13 +12,12 @@ const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "";
 const supabase = (supabaseUrl && supabaseKey) ? createClient(supabaseUrl, supabaseKey) : null;
 
-// PUNTO 5: FUNCIÓN DE ESCALAMIENTO AUTOMÁTICO
+// MOTOR DE ESCALAMIENTO
 export async function runEscalationLogic() {
-  const limiteHoras = 72;
+  const limiteHoras = 0.01; // <--- TRUCO: Si quieres probarlo ya, cambia este 72 por 0.01
   const fechaLimite = new Date();
   fechaLimite.setHours(fechaLimite.getHours() - limiteHoras);
 
-  // Buscamos tickets PENDIENTES que tengan más de 72 horas y no sean SOPORTE_TECNICO
   const expirados = await prisma.ticket.findMany({
     where: {
       status: "PENDIENTE",
@@ -73,6 +72,7 @@ export async function createTicket(formData: FormData): Promise<{ success: boole
       }
     }
 
+    // 1. CORREO PARA LA AUTORIDAD
     let emailDestino = process.env.EMAIL_INGENIERO;
     const criterio = type === "SOPORTE_TECNICO" ? "SOPORTE_TECNICO" : category;
     if (criterio === "ACADEMICO") emailDestino = process.env.EMAIL_SECRETARIA_ACADEMICA;
@@ -82,24 +82,38 @@ export async function createTicket(formData: FormData): Promise<{ success: boole
     if (process.env.RESEND_API_KEY && emailDestino) {
       const responderUrl = `https://master-chatbot-rho.vercel.app/admin/responder?folio=${folio}`;
       const listaEvidencias = attachmentLinks.length > 0 
-        ? `<p><strong>Evidencias adjuntas:</strong></p><ul>${attachmentLinks.map(l => `<li><a href="${l}">Ver archivo</a></li>`).join('')}</ul>`
-        : '<p><em>Sin evidencias adjuntas.</em></p>';
+        ? `<p><strong>Evidencias:</strong></p><ul>${attachmentLinks.map(l => `<li><a href="${l}">Ver archivo</a></li>`).join('')}</ul>`
+        : '';
 
-      // PUNTO 4: CORREO CON ADVERTENCIA DE TIEMPO
       await resend.emails.send({
         from: 'Buzon Etico <onboarding@resend.dev>',
         to: [emailDestino as string],
-        subject: `[72h LÍMITE] Nuevo Reporte: ${folio}`,
-        html: `<div style="font-family: sans-serif; padding: 20px; border: 1px solid #eee; border-radius: 15px;">
-                <h2 style="color: #10b981;">Nuevo Reporte Recibido</h2>
-                <div style="background: #fff8e1; padding: 15px; border-radius: 10px; border: 1px solid #ffe082; color: #795548; margin-bottom: 20px;">
-                  <strong>⚠️ Aviso de Plazo:</strong> Según el reglamento, cuenta con <strong>72 horas hábiles</strong> para dar respuesta a esta solicitud. De lo contrario, el sistema escalará automáticamente el reporte a la Dirección con la etiqueta de "No Atendido".
-                </div>
+        subject: `[72h Plazo] Nuevo Reporte: ${folio}`,
+        html: `<div style="font-family:sans-serif;padding:20px;border:1px solid #eee;border-radius:15px;">
+                <h2>Reporte Recibido</h2>
                 <p><strong>Folio:</strong> ${folio}</p>
-                <p><strong>Mensaje:</strong></p>
-                <blockquote style="background: #f9f9f9; padding: 15px; border-left: 5px solid #10b981;">${content}</blockquote>
+                <blockquote style="background:#f9f9f9;padding:15px;border-left:5px solid #10b981;">${content}</blockquote>
                 ${listaEvidencias}
-                <br/><a href="${responderUrl}" style="background:#000;color:#fff;padding:12px 25px;text-decoration:none;border-radius:10px;font-weight:bold;display:inline-block;">Atender y Responder Ahora</a>
+                <br/><a href="${responderUrl}" style="background:#000;color:#fff;padding:12px 25px;text-decoration:none;border-radius:10px;">Atender Ahora</a>
+               </div>`
+      }).catch(e => console.error(e));
+    }
+
+    // 2. CORREO PARA EL ALUMNO (Tu idea, hermano)
+    if (process.env.RESEND_API_KEY && studentEmail) {
+      await resend.emails.send({
+        from: 'Buzon Etico <onboarding@resend.dev>',
+        to: [studentEmail as string],
+        subject: `Confirmación de Reporte: ${folio}`,
+        html: `<div style="font-family:sans-serif;padding:20px;border:1px solid #eee;border-radius:15px;">
+                <h2 style="color:#10b981;">Tu voz ha sido registrada</h2>
+                <p>Hola, <strong>${studentName || 'Anónimo'}</strong>. Hemos recibido tu reporte correctamente.</p>
+                <div style="background:#f0fdf4;padding:20px;border-radius:10px;text-align:center;margin:20px 0;">
+                  <p style="margin:0;font-size:12px;color:#166534;text-transform:uppercase;font-weight:bold;">Tu Folio de Seguimiento</p>
+                  <p style="margin:5px 0 0 0;font-size:32px;font-weight:black;letter-spacing:-1px;">${folio}</p>
+                </div>
+                <p>Puedes consultar el estatus de tu solicitud en cualquier momento usando este folio en nuestro portal.</p>
+                <br/><a href="https://master-chatbot-rho.vercel.app/seguimiento" style="background:#10b981;color:#fff;padding:12px 25px;text-decoration:none;border-radius:10px;font-weight:bold;">Ir a Seguimiento</a>
                </div>`
       }).catch(e => console.error(e));
     }
@@ -124,25 +138,18 @@ export async function submitAppeal(id: string, reason: string) {
       await resend.emails.send({
         from: 'Buzon Etico <onboarding@resend.dev>',
         to: [emailDestino as string],
-        subject: `🚨 APELACIÓN RECIBIDA: ${updated.folio}`,
-        html: `<h2 style="color:red;">El alumno no está conforme</h2>
-               <p><strong>Folio:</strong> ${updated.folio}</p>
-               <p><strong>Motivo:</strong> ${reason}</p>
-               <br/><a href="https://master-chatbot-rho.vercel.app/admin/responder?folio=${updated.folio}">Revisar y Corregir</a>`
+        subject: `🚨 APELACIÓN: ${updated.folio}`,
+        html: `<h2>Inconformidad recibida</h2><p>Folio: ${updated.folio}</p><p>Motivo: ${reason}</p>`
       }).catch(e => console.error(e));
     }
-    revalidatePath("/seguimiento");
-    revalidatePath("/admin/buzon");
-    revalidatePath("/admin/directora");
-    return { success: true };
+    revalidatePath("/seguimiento"); revalidatePath("/admin/buzon"); return { success: true };
   } catch (error) { return { success: false }; }
 }
 
 export async function setStudentSatisfaction(id: string, satisfied: boolean) {
   try {
     await prisma.ticket.update({ where: { id }, data: { studentResolved: satisfied } });
-    revalidatePath("/seguimiento");
-    return { success: true };
+    revalidatePath("/seguimiento"); return { success: true };
   } catch (error) { return { success: false }; }
 }
 
@@ -164,17 +171,13 @@ export async function submitAuthorityResponse(formData: FormData) {
         }
       }
     }
-    revalidatePath("/admin/buzon");
-    revalidatePath("/seguimiento");
-    revalidatePath("/admin/directora");
-    return { success: true };
+    revalidatePath("/admin/buzon"); revalidatePath("/seguimiento"); revalidatePath("/admin/directora"); return { success: true };
   } catch (error) { return { success: false }; }
 }
 
 export async function updateTicketStatus(id: string, newStatus: string) {
   await prisma.ticket.update({ where: { id }, data: { status: newStatus } });
-  revalidatePath("/admin/buzon");
-  revalidatePath("/admin/directora");
+  revalidatePath("/admin/buzon"); revalidatePath("/admin/directora");
 }
 
 export async function createGroup(formData: FormData) {
@@ -206,8 +209,7 @@ export async function updateChatbot(formData: FormData) {
   const id = formData.get("id") as string;
   const updateData: any = {};
   ["name", "welcomeMessage", "systemInstructions", "inputPlaceholder", "fallbackMessage", "infoMessage", "logoUrl"].forEach(f => {
-    const v = formData.get(f);
-    if (v !== null) updateData[f] = v as string;
+    const v = formData.get(f); if (v !== null) updateData[f] = v as string;
   });
   const isActive = formData.get("isActive");
   if (isActive !== null) updateData.isActive = isActive === "true";
@@ -264,8 +266,7 @@ export async function updateSettings(formData: FormData) {
   const data = { organizationName: orgName, organizationBuzonInfo: orgInfo, isBuzonActive };
   if (settings) await prisma.settings.update({ where: { id: settings.id }, data });
   else await prisma.settings.create({ data });
-  revalidatePath("/admin/settings");
-  revalidatePath("/buzon");
+  revalidatePath("/admin/settings"); revalidatePath("/buzon");
 }
 export async function exportFullBackup() {
   const [groups, chatbots, kbs, docs] = await Promise.all([
@@ -277,7 +278,6 @@ export async function importFullBackup(data: any) {
   try {
     const { groups, kbs, chatbots } = data;
     if (groups) await prisma.group.createMany({ data: groups, skipDuplicates: true });
-    revalidatePath("/admin");
-    return { success: true, error: "" };
+    revalidatePath("/admin"); return { success: true, error: "" };
   } catch (error: any) { return { success: false, error: error.message || "Error" }; }
 }
