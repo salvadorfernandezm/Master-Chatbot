@@ -14,9 +14,7 @@ const supabase = (supabaseUrl && supabaseKey) ? createClient(supabaseUrl, supaba
 
 // MOTOR DE ESCALAMIENTO
 export async function runEscalationLogic() {
-  // PRUEBA: 0.01 horas son 36 segundos. 
-  // Para estar seguros, usemos 1 minuto real (1/60 de hora)
-  const limiteHoras = 0.01; 
+  const limiteHoras = 72; // <-- De vuelta a 72 horas
   const ahora = new Date();
   const fechaLimite = new Date(ahora.getTime() - (limiteHoras * 60 * 60 * 1000));
 
@@ -24,8 +22,7 @@ export async function runEscalationLogic() {
     where: {
       status: "PENDIENTE",
       createdAt: { lt: fechaLimite },
-      // COMENTAMOS ESTA LÍNEA SOLO PARA LA PRUEBA:
-      // NOT: { type: "SOPORTE_TECNICO" } 
+      NOT: { type: "SOPORTE_TECNICO" } // <-- Volvemos a proteger el Soporte Técnico
     }
   });
 
