@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { verifyDirectorPin } from "@/lib/actions";
+import Link from "next/link"; // <-- Agregado para que funcionen los botones
 
 export default function DirectoraPage() {
   const [tickets, setTickets] = useState<any[]>([]);
@@ -56,6 +57,24 @@ export default function DirectoraPage() {
           </div>
           <div className="text-3xl font-black bg-white/10 w-16 h-16 rounded-full flex items-center justify-center">{tickets.length}</div>
         </header>
+
+        {/* --- NUEVO BLOQUE DE ACCESO A IMPACTO PARA LA DIRECTORA --- */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-10">
+          <Link href="/admin/impacto" className="bg-emerald-600 text-white p-8 rounded-[2.5rem] flex items-center justify-between group hover:bg-emerald-500 transition-all shadow-xl">
+            <div className="text-left">
+              <p className="text-[10px] font-black uppercase opacity-60">Resumen Estratégico</p>
+              <h3 className="text-xl font-black uppercase">Ver Impacto Ético</h3>
+            </div>
+            <span className="text-4xl group-hover:scale-110 transition-transform">📊</span>
+          </Link>
+          <div className="bg-white border-2 border-slate-100 p-8 rounded-[2.5rem] flex items-center justify-between opacity-50">
+            <div className="text-left text-slate-400">
+              <p className="text-[10px] font-black uppercase opacity-60">Estás viendo el:</p>
+              <h3 className="text-xl font-black uppercase">Listado Detallado</h3>
+            </div>
+            <span className="text-4xl text-slate-300">📂</span>
+          </div>
+        </div>
 
         <div className="space-y-8">
           {loading ? <p className="text-center py-20 animate-pulse font-black text-slate-300 uppercase">Cargando...</p> : 
