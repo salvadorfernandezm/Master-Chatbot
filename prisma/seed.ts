@@ -1,35 +1,31 @@
 import { PrismaClient } from '@prisma/client'
-import * as bcrypt from 'bcryptjs'
-
 const prisma = new PrismaClient()
 
 async function main() {
-  const hashedPassword = await bcrypt.hash('Salvador123', 10)
-  
-  // Creamos los Ajustes iniciales (para que no de Error 500)
+  // Intentamos crear o actualizar los ajustes por defecto
   await prisma.settings.upsert({
     where: { id: 'default' },
     update: {},
     create: {
       id: 'default',
       organizationName: 'Ecosistema Salvador',
-      defaultWelcomeMessage: '¡Bienvenido al sistema!'
-    }
-  })
-
-  // Creamos el usuario Administrador
-  await prisma.user.upsert({
-    where: { email: 'admin@admin.com' },
-    update: {},
-    create: {
-      email: 'admin@admin.com',
-      name: 'Salvador',
-      password: hashedPassword,
+      defaultWelcomeMessage: '¡Bienvenido al sistema!',
+      organizationBuzonInfo: '# Reglamento\nBienvenido al buzón ético.', // <-- ESTO ES LO QUE FALTABA
+      isBuzonActive: true,
+      nameAcademica: 'Secretaría Académica',
+      nameAdministrativa: 'Secretaría Administrativa',
+      nameDireccion: 'Dirección General',
+      nameTecnico: 'Soporte Técnico'
     },
   })
-  console.log('✅ Base de datos preparada y usuario creado.')
+  console.log('✅ Base de datos inicializada con éxito')
 }
 
 main()
-  .catch((e) => console.error(e))
-  .finally(async () => { await prisma.$disconnect() })
+  .catch((e) => {
+    console.error(e)
+    process.exit(1)
+  })
+  .finally(async () => {
+    await prisma.$disconnect()
+  })
