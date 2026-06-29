@@ -261,14 +261,23 @@ export async function addUrlDocument(formData: FormData) {
   revalidatePath(`/admin/knowledge/${kbId}`);
 }
 export async function updateSettings(formData: FormData) {
-  const orgName = formData.get("organizationName") as string;
-  const orgInfo = formData.get("organizationBuzonInfo") as string;
-  const isBuzonActive = formData.get("isBuzonActive") === "true";
+  const data = {
+    organizationName: formData.get("organizationName") as string,
+    organizationBuzonInfo: formData.get("organizationBuzonInfo") as string,
+    isBuzonActive: formData.get("isBuzonActive") === "true",
+    nameAcademica: formData.get("nameAcademica") as string,
+    nameAdministrativa: formData.get("nameAdministrativa") as string,
+    nameDireccion: formData.get("nameDireccion") as string,
+    nameTecnico: formData.get("nameTecnico") as string,
+  };
+
   const settings = await prisma.settings.findFirst();
-  const data = { organizationName: orgName, organizationBuzonInfo: orgInfo, isBuzonActive };
   if (settings) await prisma.settings.update({ where: { id: settings.id }, data });
   else await prisma.settings.create({ data });
-  revalidatePath("/admin/settings"); revalidatePath("/buzon");
+
+  revalidatePath("/admin/settings");
+  revalidatePath("/admin/impacto");
+  revalidatePath("/buzon");
 }
 export async function exportFullBackup() {
   const [groups, chatbots, kbs, docs] = await Promise.all([

@@ -12,17 +12,18 @@ export default function DirectoraPage() {
 
   const handleVerify = async () => {
     const ok = await verifyDirectorPin(pin);
-    if (ok) setAuthorized(true);
-    else alert("PIN Incorrecto");
+    if (ok) {
+        setAuthorized(true);
+        localStorage.setItem("director_authenticated", "true"); // <-- LA RECUERDA
+    } else alert("PIN Incorrecto");
   };
 
   useEffect(() => {
-    if (authorized) {
-      fetch('/api/buzon/directora')
-        .then(res => res.json())
-        .then(data => { setTickets(data); setLoading(false); });
+    // Al cargar, ver si ya estaba autorizada
+    if (localStorage.getItem("director_authenticated") === "true") {
+        setAuthorized(true);
     }
-  }, [authorized]);
+  }, []);
 
   const getFileIcon = (url: string) => {
     const ext = url.split('.').pop()?.toLowerCase();

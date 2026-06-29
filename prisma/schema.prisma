@@ -114,13 +114,19 @@ model Attachment {
 }
 
 model Settings {
-  id                    String   @id @default(cuid())
-  organizationName      String
-  organizationLogo      String?
-  organizationBuzonInfo String?  @db.Text
-  isBuzonActive         Boolean  @default(true)
-  defaultWelcomeMessage String?
-  timezone              String   @default("UTC")
-  createdAt             DateTime @default(now())
-  updatedAt             DateTime @updatedAt
+  id                     String   @id @default(cuid())
+  organizationName       String
+  organizationLogo       String?  // Lo mantenemos
+  organizationBuzonInfo  String   @db.Text
+  isBuzonActive          Boolean  @default(true)
+  defaultWelcomeMessage  String?  // Lo mantenemos
+  timezone               String?  // Lo mantenemos
+  createdAt              DateTime @default(now())
+  updatedAt              DateTime @updatedAt
+  
+  // --- NUEVOS CAMPOS PARA LOS NOMBRES ---
+  nameAcademica          String?  @default("Secretaría Académica")
+  nameAdministrativa     String?  @default("Secretaría Administrativa")
+  nameDireccion          String?  @default("Dirección General")
+  nameTecnico            String?  @default("Soporte Técnico")
 }

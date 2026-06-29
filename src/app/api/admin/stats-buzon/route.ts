@@ -3,14 +3,15 @@ import { NextResponse } from "next/server";
 
 export async function GET() {
   try {
-    // 1. Conteos básicos
-    const total = await prisma.ticket.count();
-    const pendientes = await prisma.ticket.count({ where: { status: "PENDIENTE" } });
-    const resueltos = await prisma.ticket.count({ where: { status: "RESUELTO" } });
-    const apelados = await prisma.ticket.count({ where: { status: "APELADO" } });
-    const noAtendidos = await prisma.ticket.count({ where: { status: "NO ATENDIDO EN TIEMPO" } });
+    const [total, pendientes, resueltos, apelados, noAtendidos, settings] = await Promise.all([
+      prisma.ticket.count(),
+      prisma.ticket.count({ where: { status: "PENDIENTE" } }),
+      prisma.ticket.count({ where: { status: "RESUELTO" } }),
+      prisma.ticket.count({ where: { status: "APELADO" } }),
+      prisma.ticket.count({ where: { status: "NO ATENDIDO EN TIEMPO" } }),
+      prisma.settings.findFirst()
+    ]);
 
-    // 2. Rendimiento por Autoridad (Basado en categorías)
     const statsAutoridad = {
       academica: await prisma.ticket.count({ where: { category: "ACADEMICO", status: "RESUELTO" } }),
       logistica: await prisma.ticket.count({ where: { category: "LOGISTICA", status: "RESUELTO" } }),
@@ -20,9 +21,10 @@ export async function GET() {
 
     return NextResponse.json({
       resumen: { total, pendientes, resueltos, apelados, noAtendidos },
-      autoridades: statsAutoridad
+      autoridades: statsAutoridad,
+      settings: settings // <-- Esto es vital para que la página vea los nombres
     });
   } catch (error) {
-    return NextResponse.json({ error: "Error en stats" }, { status: 500 });
+    return NextResponse.json({ error: "Fallo" }, { status: 500 });
   }
 }
