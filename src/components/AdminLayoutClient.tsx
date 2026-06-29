@@ -18,8 +18,11 @@ export default function AdminLayoutClient({ children, orgName, orgLogo }: AdminL
   const pathname = usePathname();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
-  // SENSOR DE PANELES SIN BARRA LATERAL (Directora y Respuesta)
-  const isStandalonePanel = pathname === "/admin/directora" || pathname === "/admin/responder";
+  // SENSOR DE PANELES SIN BARRA LATERAL
+  const isStandalonePanel = 
+    pathname === "/admin/directora" || 
+    pathname === "/admin/responder" || 
+    pathname === "/admin/impacto"; // <-- AÑADIMOS ESTA RUTA
 
   useEffect(() => {
     if (status === "unauthenticated") {

@@ -18,28 +18,22 @@ export default function PublicImpactoPage() {
   return (
     <div className="min-h-screen bg-slate-50 p-6 md:p-12 font-sans text-slate-900 text-left">
       <div className="max-w-6xl mx-auto">
-        <header className="flex justify-between items-center mb-10 bg-slate-900 p-10 rounded-[3rem] text-white shadow-2xl">
-          <div>
+        <header className="mb-10 bg-slate-900 p-10 rounded-[3rem] text-white shadow-2xl border-b-8 border-emerald-500">
             <h1 className="text-3xl font-black uppercase tracking-tighter text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-teal-200">Impacto Institucional</h1>
             <p className="text-slate-400 text-xs font-bold uppercase mt-1">Portal de Transparencia Pública</p>
-          </div>
         </header>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-12">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mb-12">
           <div className="bg-blue-600 p-8 rounded-[2rem] text-white shadow-lg">
-            <p className="text-[10px] font-black uppercase opacity-60">Total Reportes</p>
+            <p className="text-[10px] font-black uppercase opacity-60 mb-1">Reportes Totales</p>
             <p className="text-5xl font-black">{resumen.total}</p>
           </div>
           <div className="bg-emerald-600 p-8 rounded-[2rem] text-white shadow-lg">
-            <p className="text-[10px] font-black uppercase opacity-60">Resueltos</p>
+            <p className="text-[10px] font-black uppercase opacity-60 mb-1">Casos Resueltos</p>
             <p className="text-5xl font-black">{resumen.resueltos}</p>
           </div>
-          <div className="bg-slate-300 p-8 rounded-[2rem] text-slate-700 shadow-lg">
-            <p className="text-[10px] font-black uppercase opacity-60">En Proceso</p>
-            <p className="text-5xl font-black">{resumen.pendientes + resumen.apelados}</p>
-          </div>
           <div className="bg-white border-2 border-slate-100 p-8 rounded-[2rem] text-slate-400 shadow-lg">
-            <p className="text-[10px] font-black uppercase">Eficiencia</p>
+            <p className="text-[10px] font-black uppercase mb-1">Eficiencia Global</p>
             <p className="text-5xl font-black text-slate-800">{resumen.total > 0 ? Math.round((resumen.resueltos/resumen.total)*100) : 0}%</p>
           </div>
         </div>
