@@ -10,10 +10,14 @@ export default function DirectoraPage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    // Si NO viene de una sesión válida, forzamos a que se detenga la carga automática
     const auth = localStorage.getItem("director_authenticated");
     if (auth === "true") {
       setAuthorized(true);
       fetchData();
+    } else {
+      setAuthorized(false);
+      setLoading(false);
     }
   }, []);
 

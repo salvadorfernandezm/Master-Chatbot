@@ -30,6 +30,15 @@ export default function SettingsPage() {
         <div className="bg-white p-8 rounded-[2.5rem] shadow-xl border border-slate-100 space-y-6">
           <h2 className="text-sm font-black uppercase text-emerald-600 tracking-widest border-b pb-4">1. Identidad de la Organización</h2>
           
+<div className="space-y-2">
+  <label className="text-xs font-bold text-slate-500 uppercase ml-2">URL del Logo de la Organización</label>
+  <input 
+    name="organizationLogo" 
+    defaultValue={settings?.organizationLogo} 
+    placeholder="https://ejemplo.com/logo.png"
+    className="w-full bg-slate-50 border-2 border-slate-100 p-4 rounded-2xl outline-none focus:border-emerald-500 transition-all text-sm"
+  />
+</div>
           <div className="grid grid-cols-1 gap-6">
             <div className="space-y-2">
               <label className="text-xs font-bold text-slate-500 uppercase ml-2">Nombre de la Institución</label>

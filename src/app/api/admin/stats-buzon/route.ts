@@ -12,12 +12,12 @@ export async function GET() {
       prisma.settings.findFirst()
     ]);
 
-    // Función auxiliar para contar por categoría y estado
     const getStats = async (cat: string) => {
+      const rec = await prisma.ticket.count({ where: { category: cat } });
       const res = await prisma.ticket.count({ where: { category: cat, status: "RESUELTO" } });
       const ape = await prisma.ticket.count({ where: { category: cat, status: "APELADO" } });
       const neg = await prisma.ticket.count({ where: { category: cat, status: "NO ATENDIDO EN TIEMPO" } });
-      return { resueltos: res, apelados: ape, noAtendidos: neg };
+      return { recibidos: rec, resueltos: res, apelados: ape, noAtendidos: neg };
     };
 
     const autoridades = {
