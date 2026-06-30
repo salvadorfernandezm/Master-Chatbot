@@ -10,7 +10,6 @@ export default function DirectoraPage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Si NO viene de una sesión válida, forzamos a que se detenga la carga automática
     const auth = localStorage.getItem("director_authenticated");
     if (auth === "true") {
       setAuthorized(true);
@@ -38,19 +37,22 @@ export default function DirectoraPage() {
     } else alert("PIN Incorrecto");
   };
 
-  const getFileIcon = (url: string) => {
-    const ext = url.split('.').pop()?.toLowerCase();
-    if (['pdf'].includes(ext || '')) return "📄 PDF";
-    return "🖼️ Imagen";
+  const handleLogout = () => {
+    localStorage.removeItem("director_authenticated");
+    setAuthorized(false);
+    window.location.reload();
   };
 
   if (!authorized) {
     return (
-      <div className="min-h-screen bg-slate-950 flex items-center justify-center p-6 text-white font-sans text-center text-left">
+      <div className="min-h-screen bg-slate-950 flex items-center justify-center p-6 text-white font-sans text-center">
         <div className="max-w-md w-full bg-slate-900 p-12 rounded-[3.5rem] border-b-8 border-purple-500 shadow-2xl">
-          <h1 className="text-2xl font-black uppercase mb-6 tracking-widest">Acceso Directora</h1>
+          <h1 className="text-2xl font-black uppercase mb-6 tracking-widest text-purple-400">Acceso Directora</h1>
           <input type="password" value={pin} onChange={(e) => setPin(e.target.value)} placeholder="PIN de Seguridad" className="w-full bg-black border-2 border-slate-800 p-5 rounded-2xl mb-4 text-center text-xl text-white outline-none focus:border-purple-500" />
-          <button onClick={handleVerify} className="w-full bg-purple-600 p-5 rounded-2xl font-black uppercase hover:bg-purple-500 transition-all">Entrar al Despacho</button>
+          <button onClick={handleVerify} className="w-full bg-purple-600 p-5 rounded-2xl font-black uppercase hover:bg-purple-500 transition-all shadow-lg">Entrar al Despacho</button>
+          <div className="mt-8">
+            <Link href="/buzon" className="text-slate-500 text-xs font-bold uppercase hover:text-white transition-all">← Volver al Portal</Link>
+          </div>
         </div>
       </div>
     );
@@ -64,22 +66,16 @@ export default function DirectoraPage() {
             <h1 className="text-2xl font-black uppercase tracking-tighter text-purple-400">Panel de Dirección</h1>
             <p className="text-xs text-slate-400 uppercase font-bold tracking-widest">Control Ético Institucional</p>
           </div>
-          <div className="text-3xl font-black bg-white/10 w-16 h-16 rounded-full flex items-center justify-center">{tickets.length}</div>
+          <button onClick={handleLogout} className="bg-red-500/10 hover:bg-red-500 text-red-500 hover:text-white px-4 py-2 rounded-xl text-[10px] font-black uppercase transition-all border border-red-500/20">Salir</button>
         </header>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-10">
           <Link href="/admin/impacto" className="bg-emerald-600 text-white p-8 rounded-[2.5rem] flex items-center justify-between group hover:bg-emerald-500 transition-all shadow-xl">
-            <div className="text-left">
-              <p className="text-[10px] font-black uppercase opacity-60">Resumen Estratégico</p>
-              <h3 className="text-xl font-black uppercase">Ver Impacto Ético</h3>
-            </div>
+            <div className="text-left"><p className="text-[10px] font-black uppercase opacity-60">Resumen Estratégico</p><h3 className="text-xl font-black uppercase">Ver Impacto Ético</h3></div>
             <span className="text-4xl group-hover:scale-110 transition-transform">📊</span>
           </Link>
           <div className="bg-white border-2 border-slate-100 p-8 rounded-[2.5rem] flex items-center justify-between shadow-sm">
-            <div className="text-left text-slate-400">
-              <p className="text-[10px] font-black uppercase opacity-60">Estás viendo el:</p>
-              <h3 className="text-xl font-black uppercase">Listado Detallado</h3>
-            </div>
+            <div className="text-left text-slate-400"><p className="text-[10px] font-black uppercase opacity-60">Estás viendo el:</p><h3 className="text-xl font-black uppercase">Listado Detallado</h3></div>
             <span className="text-4xl text-slate-300">📂</span>
           </div>
         </div>

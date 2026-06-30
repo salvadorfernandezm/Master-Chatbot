@@ -263,6 +263,7 @@ export async function addUrlDocument(formData: FormData) {
 export async function updateSettings(formData: FormData) {
   const data = {
     organizationName: formData.get("organizationName") as string,
+    organizationLogo: formData.get("organizationLogo") as string, // <-- RESTAURADO
     organizationBuzonInfo: formData.get("organizationBuzonInfo") as string,
     isBuzonActive: formData.get("isBuzonActive") === "true",
     nameAcademica: formData.get("nameAcademica") as string,
@@ -278,6 +279,7 @@ export async function updateSettings(formData: FormData) {
   revalidatePath("/admin/settings");
   revalidatePath("/admin/impacto");
   revalidatePath("/buzon");
+  revalidatePath("/buzon/impacto");
 }
 export async function exportFullBackup() {
   const [groups, chatbots, kbs, docs] = await Promise.all([
