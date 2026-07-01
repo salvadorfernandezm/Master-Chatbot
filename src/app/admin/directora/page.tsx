@@ -70,10 +70,13 @@ export default function DirectoraPage() {
         </header>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-10">
-          <Link href="/admin/impacto" className="bg-emerald-600 text-white p-8 rounded-[2.5rem] flex items-center justify-between group hover:bg-emerald-500 transition-all shadow-xl">
-            <div className="text-left"><p className="text-[10px] font-black uppercase opacity-60">Resumen Estratégico</p><h3 className="text-xl font-black uppercase">Ver Impacto Ético</h3></div>
-            <span className="text-4xl group-hover:scale-110 transition-transform">📊</span>
-          </Link>
+          <Link href="/admin/impacto?from=director" className="bg-emerald-600 text-white p-8 rounded-[2.5rem] flex items-center justify-between group hover:bg-emerald-500 transition-all shadow-xl">
+  <div className="text-left">
+    <p className="text-[10px] font-black uppercase opacity-60">Resumen Estratégico</p>
+    <h3 className="text-xl font-black uppercase">Ver Impacto Ético</h3>
+  </div>
+  <span className="text-4xl group-hover:scale-110 transition-transform">📊</span>
+</Link>
           <div className="bg-white border-2 border-slate-100 p-8 rounded-[2.5rem] flex items-center justify-between shadow-sm">
             <div className="text-left text-slate-400"><p className="text-[10px] font-black uppercase opacity-60">Estás viendo el:</p><h3 className="text-xl font-black uppercase">Listado Detallado</h3></div>
             <span className="text-4xl text-slate-300">📂</span>
