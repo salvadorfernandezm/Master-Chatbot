@@ -155,12 +155,18 @@ export async function setStudentSatisfaction(id: string, satisfied: boolean) {
   } catch (error) { return { success: false }; }
 }
 
+// --- FUNCIÓN DE RESPUESTA MEJORADA (PUNTO 3) ---
 export async function submitAuthorityResponse(formData: FormData) {
   const id = formData.get("id") as string;
   const responseText = formData.get("responseText") as string;
   const files = formData.getAll("evidence");
   try {
-    const updatedTicket = await prisma.ticket.update({ where: { id }, data: { authorityResponse: responseText, status: "RESUELTO", updatedAt: new Date() } });
+    const updatedTicket = await prisma.ticket.update({
+      where: { id },
+      data: { authorityResponse: responseText, status: "RESUELTO", updatedAt: new Date() },
+    });
+
+    // Subida de archivos de la autoridad...
     if (supabase && files.length > 0) {
       for (const file of files) {
         const f = file as any;
@@ -173,7 +179,30 @@ export async function submitAuthorityResponse(formData: FormData) {
         }
       }
     }
-    revalidatePath("/admin/buzon"); revalidatePath("/seguimiento"); revalidatePath("/admin/directora"); return { success: true };
+
+    // ENVÍO DE RESPUESTA AL ALUMNO (PUNTO 3)
+    if (updatedTicket.studentEmail && process.env.RESEND_API_KEY) {
+      await resend.emails.send({
+        from: 'Buzon Etico <onboarding@resend.dev>',
+        to: [updatedTicket.studentEmail],
+        subject: `Resolución de tu reporte: ${updatedTicket.folio}`,
+        html: `
+          <div style="font-family:sans-serif;padding:20px;border:1px solid #eee;border-radius:15px;">
+            <h2 style="color:#10b981;">Tu reporte ha sido resuelto</h2>
+            <p>Hola, <strong>${updatedTicket.studentName || 'Anónimo'}</strong>. La autoridad ha emitido la siguiente resolución:</p>
+            <div style="background:#f9f9f9;padding:20px;border-left:5px solid #10b981;margin:20px 0;font-style:italic;">
+              "${responseText}"
+            </div>
+            <p>Si no estás de acuerdo, recuerda que tienes 72 horas para apelar desde nuestro portal.</p>
+            <br/><a href="https://master-chatbot-rho.vercel.app/seguimiento" style="background:#10b981;color:#fff;padding:10px 20px;text-decoration:none;border-radius:5px;">Ir al portal de seguimiento</a>
+          </div>`
+      }).catch(e => console.error(e));
+    }
+
+    revalidatePath("/admin/buzon");
+    revalidatePath("/seguimiento");
+    revalidatePath("/admin/directora");
+    return { success: true };
   } catch (error) { return { success: false }; }
 }
 
