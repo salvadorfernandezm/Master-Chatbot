@@ -9,83 +9,70 @@ export default function PublicImpactoPage() {
   useEffect(() => {
     fetch('/api/admin/stats-buzon')
       .then(res => res.json())
-      .then(d => { setData(d); setLoading(false); })
-      .catch(err => console.error(err));
+      .then(d => { setData(d); setLoading(false); });
   }, []);
 
-  if (loading || !data) return <div className="min-h-screen bg-slate-950 flex items-center justify-center text-emerald-500 font-black animate-pulse">CARGANDO MÉTRICAS PÚBLICAS...</div>;
+  if (loading || !data) return <div className="min-h-screen bg-slate-950 flex items-center justify-center text-emerald-500 font-black animate-pulse">GENERANDO REPORTE PÚBLICO...</div>;
 
   const { resumen, autoridades, settings } = data;
-  const globalEfficiency = resumen.total > 0 ? Math.round((resumen.resueltos / resumen.total) * 100) : 0;
 
   return (
     <div className="min-h-screen bg-slate-50 p-6 md:p-12 font-sans text-slate-900 text-left">
-      <div className="max-w-6xl mx-auto">
+      <div className="max-w-4xl mx-auto">
         <header className="flex flex-col md:flex-row justify-between items-center mb-10 bg-slate-900 p-10 rounded-[3rem] text-white shadow-2xl border-b-8 border-emerald-500">
           <div>
             <h1 className="text-3xl font-black uppercase tracking-tighter">Impacto Institucional</h1>
-            <p className="text-slate-400 text-xs font-bold uppercase mt-1">Portal de Transparencia Pública - Voz Ética</p>
+            <p className="text-slate-400 text-xs font-bold uppercase mt-1">Portal de Transparencia Universitaria</p>
           </div>
-          <Link href="/buzon" className="bg-white/10 hover:bg-white/20 px-8 py-4 rounded-2xl text-[10px] font-black uppercase transition-all shadow-lg">← Volver al Portal</Link>
+          <Link href="/buzon" className="bg-white/10 hover:bg-white/20 px-8 py-4 rounded-2xl text-[10px] font-black uppercase transition-all shadow-lg">← Volver al Buzón</Link>
         </header>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-12">
-          <StatCard title="Total Reportes" value={resumen.total} color="bg-blue-600" />
-          <StatCard title="Solucionados" value={resumen.resueltos} color="bg-emerald-600" />
-          <StatCard title="En Proceso" value={resumen.pendientes + resumen.apelados} color="bg-amber-500" />
-          <StatCard title="Eficiencia" value={`${globalEfficiency}%`} color="bg-slate-800" />
-        </div>
-
-        <div className="bg-white p-10 rounded-[3rem] shadow-xl border border-slate-100">
-            <h2 className="text-xl font-black uppercase mb-10 border-l-8 border-emerald-500 pl-4 text-slate-800">Desempeño por Responsable</h2>
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-x-20 gap-y-12">
-              <DetailBar label="Secretaría Académica" name={settings?.nameAcademica} stats={autoridades.academica} color="bg-purple-500" />
-              <DetailBar label="Secretaría Administrativa" name={settings?.nameAdministrativa} stats={autoridades.logistica} color="bg-blue-500" />
-              <DetailBar label="Dirección General" name={settings?.nameDireccion} stats={autoridades.direccion} color="bg-amber-500" />
-              <DetailBar label="Soporte Técnico" name={settings?.nameTecnico} stats={{recibidos: autoridades.tecnico, resueltos: autoridades.tecnico}} color="bg-slate-500" />
+        <div className="bg-white p-10 rounded-[3rem] shadow-xl border border-slate-100 mb-8">
+            <h2 className="text-xl font-black uppercase mb-8 border-l-8 border-emerald-500 pl-4">Estado de Respuesta por Área</h2>
+            <div className="space-y-12">
+              <PublicCompare label="Gestión Académica" stats={autoridades.academica} color="bg-purple-500" />
+              <PublicCompare label="Gestión Administrativa" stats={autoridades.logistica} color="bg-blue-500" />
+              <PublicCompare label="Dirección General" stats={autoridades.direccion} color="bg-amber-500" />
             </div>
         </div>
+
+        <div className="bg-emerald-900 p-10 rounded-[3rem] text-white text-center shadow-2xl relative overflow-hidden">
+             <div className="absolute top-0 left-0 p-10 opacity-10 text-9xl">⚖️</div>
+             <p className="text-lg font-serif italic mb-2">"La transparencia no es una opción, es el compromiso de nuestra institución con cada voz que se levanta."</p>
+             <p className="text-[10px] font-black uppercase tracking-widest text-emerald-400">Rendición de Cuentas en Tiempo Real</p>
+        </div>
       </div>
     </div>
   );
 }
 
-function StatCard({ title, value, color }: any) {
+function PublicCompare({ label, stats, color }: any) {
+  const percentage = stats.recibidos > 0 ? Math.round((stats.resueltos / stats.recibidos) * 100) : 0;
+  
   return (
-    <div className={`${color} p-8 rounded-[2.5rem] shadow-xl`}>
-      <p className="text-[10px] font-black uppercase opacity-60 text-white mb-2">{title}</p>
-      <p className="text-5xl font-black text-white">{value}</p>
-    </div>
-  );
-}
-
-function DetailBar({ label, name, stats, color }: any) {
-  const efficiency = stats?.recibidos > 0 ? Math.round((stats.resueltos / stats.recibidos) * 100) : 0;
-  return (
-    <div className="space-y-4 bg-slate-50/50 p-6 rounded-[2rem] border border-slate-100">
-      <div className="flex justify-between items-start">
-        <div>
-          <span className="text-[9px] font-black uppercase text-slate-400 block mb-1">{label}</span>
-          <span className="text-[14px] font-black text-slate-800 block leading-tight">{name || "Pendiente"}</span>
+    <div className="space-y-4">
+      <div className="flex justify-between items-end">
+        <span className="text-xs font-black uppercase text-slate-500 tracking-widest">{label}</span>
+        <span className="text-xs font-bold text-slate-400">{percentage}% Atendido</span>
+      </div>
+      
+      <div className="flex gap-1 h-12 w-full rounded-2xl overflow-hidden shadow-inner bg-slate-100 p-1">
+        {/* BARRA DE RESUELTOS */}
+        <div 
+          className={`${color} h-full rounded-xl transition-all duration-1000 flex items-center justify-center text-[10px] font-black text-white`}
+          style={{ width: `${percentage}%`, minWidth: stats.resueltos > 0 ? '40px' : '0' }}
+        >
+          {stats.resueltos > 0 && `✓ ${stats.resueltos}`}
         </div>
-        <div className="text-right">
-            <span className="text-2xl font-black text-slate-900">{efficiency}%</span>
-            <p className="text-[8px] font-bold uppercase text-slate-400">Eficiencia</p>
+        {/* BARRA DE PENDIENTES */}
+        <div 
+          className="bg-slate-300 h-full rounded-xl transition-all duration-1000 flex items-center justify-center text-[10px] font-black text-slate-500"
+          style={{ width: `${100 - percentage}%`, minWidth: (stats.recibidos - stats.resueltos) > 0 ? '40px' : '0' }}
+        >
+          { (stats.recibidos - stats.resueltos) > 0 && `⋯ ${stats.recibidos - stats.resueltos}`}
         </div>
       </div>
-      <div className="grid grid-cols-2 gap-2 text-center">
-          <div className="bg-white p-2 rounded-xl border border-slate-100">
-              <p className="text-[8px] font-black text-slate-400 uppercase">Recibidos</p>
-              <p className="text-sm font-black text-slate-700">{stats?.recibidos || 0}</p>
-          </div>
-          <div className="bg-white p-2 rounded-xl border border-slate-100">
-              <p className="text-[8px] font-black text-emerald-400 uppercase">Resueltos</p>
-              <p className="text-sm font-black text-emerald-600">{stats?.resueltos || 0}</p>
-          </div>
-      </div>
-      <div className="w-full bg-slate-200 h-3 rounded-full overflow-hidden shadow-inner">
-        <div className={`${color} h-full transition-all duration-1000`} style={{ width: `${efficiency}%` }}></div>
-      </div>
+      <p className="text-[9px] text-slate-400 uppercase font-bold italic">Se han recibido {stats.recibidos} reportes en total para esta área.</p>
     </div>
   );
 }
