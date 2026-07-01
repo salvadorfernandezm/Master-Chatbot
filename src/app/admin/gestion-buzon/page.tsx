@@ -1,34 +1,29 @@
 "use client";
-
 import { useState, useEffect } from "react";
 import { updateTicketStatus } from "@/lib/actions";
 
 export default function AdminBuzonPage() {
   const [tickets, setTickets] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [viewArchived, setViewArchived] = useState(false);
 
   useEffect(() => {
-    fetch('/api/buzon/admin') 
-      .then(res => res.json())
-      .then(data => { setTickets(data); setLoading(false); })
-      .catch(err => { console.error(err); setLoading(false); });
-  }, []);
+    fetchData();
+  }, [viewArchived]);
 
-  const getFileIcon = (url: string) => {
-    const ext = url.split('.').pop()?.toLowerCase();
-    if (['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(ext || '')) return null;
-    if (['mp4', 'mov', 'webm'].includes(ext || '')) return "🎥 Video";
-    if (['mp3', 'wav', 'ogg', 'm4a'].includes(ext || '')) return "🎵 Audio";
-    if (['pdf'].includes(ext || '')) return "📄 PDF";
-    if (['doc', 'docx'].includes(ext || '')) return "📝 Word";
-    if (['xls', 'xlsx'].includes(ext || '')) return "📊 Excel";
-    return "📁 Archivo";
+  const fetchData = () => {
+    setLoading(true);
+    const url = viewArchived ? '/api/buzon/admin?view=archived' : '/api/buzon/admin';
+    fetch(url)
+      .then(res => res.json())
+      .then(data => { setTickets(data); setLoading(false); });
   };
 
-  const handleArchive = async (id: string) => {
-    if (confirm("¿Archivar este reporte? Ya no será visible en los paneles principales.")) {
-      await updateTicketStatus(id, "ARCHIVADO");
-      setTickets(tickets.filter(t => t.id !== id));
+  const handleStatusChange = async (id: string, newStatus: string) => {
+    const msg = newStatus === "ARCHIVADO" ? "¿Archivar este reporte?" : "¿Restaurar este reporte?";
+    if (confirm(msg)) {
+      await updateTicketStatus(id, newStatus);
+      fetchData();
     }
   };
 
@@ -36,76 +31,50 @@ export default function AdminBuzonPage() {
     <div className="space-y-8 max-w-6xl mx-auto pb-20 font-sans text-left">
       <header className="bg-slate-950 p-10 rounded-[3.5rem] text-white shadow-2xl flex justify-between items-center border-b-8 border-emerald-500">
         <div>
-          <h1 className="text-3xl font-black uppercase tracking-widest text-emerald-50">Panel General</h1>
-          <p className="text-slate-400 text-xs italic mt-2 uppercase">Gestión y Control Ético</p>
+          <h1 className="text-3xl font-black uppercase tracking-widest">{viewArchived ? "Sótano de Archivos" : "Panel General"}</h1>
+          <p className="text-slate-400 text-xs italic mt-2 uppercase">{viewArchived ? "Histórico de reportes archivados" : "Gestión y Control Ético"}</p>
         </div>
-        <div className="bg-emerald-500 text-black h-14 w-14 rounded-full flex items-center justify-center text-2xl font-black shadow-lg">
-          {tickets.length}
-        </div>
+        <button 
+          onClick={() => setViewArchived(!viewArchived)}
+          className={`px-6 py-3 rounded-2xl font-black uppercase text-[10px] transition-all ${viewArchived ? 'bg-emerald-600 text-white' : 'bg-white/10 text-slate-400 hover:bg-white/20'}`}
+        >
+          {viewArchived ? "← Volver al Panel" : "📁 Ver Archivo"}
+        </button>
       </header>
 
       <div className="grid grid-cols-1 gap-10">
-        {loading ? (
-          <p className="text-center italic text-slate-500 py-20 animate-pulse text-lg tracking-widest uppercase">Cargando...</p>
-        ) : (
+        {loading ? <p className="text-center italic text-slate-500 py-20 animate-pulse uppercase">Cargando...</p> : 
           tickets.map((ticket: any) => (
-            <div key={ticket.id} className="bg-white rounded-[3.5rem] shadow-2xl border border-slate-100 overflow-hidden">
+            <div key={ticket.id} className={`bg-white rounded-[3.5rem] shadow-2xl border border-slate-100 overflow-hidden ${viewArchived ? 'opacity-70 grayscale-[0.5]' : ''}`}>
               <div className="p-12">
-                <div className="flex flex-col lg:flex-row justify-between gap-10 text-slate-800">
+                <div className="flex flex-col lg:flex-row justify-between gap-10">
                   <div className="flex-1 space-y-6">
                     <div className="flex items-center gap-4">
-                      <span className={`px-4 py-1.5 rounded-full text-[10px] font-black uppercase ${ticket.type === 'SOPORTE_TECNICO' ? 'bg-red-500 text-white' : 'bg-blue-600 text-white'}`}>{ticket.type}</span>
-                      {ticket.category && <span className="px-4 py-1.5 rounded-full text-[10px] font-black uppercase bg-purple-100 text-purple-700">{ticket.category}</span>}
+                      <span className="px-4 py-1.5 rounded-full text-[10px] font-black uppercase bg-blue-600 text-white">{ticket.type}</span>
                       <span className="text-[10px] font-bold text-slate-300 uppercase">Folio: {ticket.folio}</span>
                     </div>
-
-                    <h3 className="text-2xl font-black">Reportante: <span className="text-emerald-600 underline decoration-slate-200 underline-offset-8">{ticket.studentName || "Anónimo"}</span></h3>
-
+                    <h3 className="text-2xl font-black text-slate-800">Reportante: {ticket.studentName || "Anónimo"}</h3>
                     <div className="bg-slate-50 p-8 rounded-[2.5rem] border border-slate-100 italic text-slate-700 shadow-inner">"{ticket.content}"</div>
-
-                    {ticket.authorityResponse && (
-                      <div className={`mt-6 p-8 rounded-[2.5rem] border-2 ${ticket.status === 'APELADO' ? 'bg-red-50 border-red-200' : 'bg-emerald-50 border-emerald-100'}`}>
-                        <p className={`text-[10px] font-black uppercase mb-3 ${ticket.status === 'APELADO' ? 'text-red-600' : 'text-emerald-600'}`}>
-                          {ticket.status === 'APELADO' ? '🚨 Registro de Apelación:' : '✅ Resolución Oficial:'}
-                        </p>
-                        <p className="text-sm text-slate-800 whitespace-pre-wrap leading-relaxed">{ticket.authorityResponse}</p>
-                      </div>
-                    )}
-
-                    {ticket.attachments && ticket.attachments.length > 0 && (
-                      <div className="pt-6">
-                        <div className="flex flex-wrap gap-4">
-                          {ticket.attachments.map((att: any) => {
-                            const icon = getFileIcon(att.url);
-                            return (
-                              <a key={att.id} href={att.url} target="_blank" rel="noopener noreferrer" className="group relative h-28 w-28 rounded-3xl overflow-hidden border-4 border-slate-50 hover:border-emerald-500 transition-all bg-slate-50 flex items-center justify-center">
-                                {icon ? <span className="text-[10px] font-black text-slate-400 text-center p-2 uppercase">{icon}</span> : <img src={att.url} className="h-full w-full object-cover" alt="evidencia" />}
-                                <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center"><span className="text-[10px] text-white font-black">VER</span></div>
-                              </a>
-                            );
-                          })}
-                        </div>
-                      </div>
-                    )}
                   </div>
 
                   <div className="w-full lg:w-56 space-y-4">
-                    <div className={`text-xs font-black p-4 rounded-2xl text-center uppercase tracking-widest shadow-lg ${
-                      ticket.status === 'PENDIENTE' ? 'bg-amber-500 text-white animate-pulse' : 
-                      ticket.status === 'APELADO' ? 'bg-red-600 text-white animate-bounce' : 
-                      ticket.status === 'NO ATENDIDO EN TIEMPO' ? 'bg-black text-red-500 border-2 border-red-500 animate-pulse' : 
-                      'bg-emerald-600 text-white'
-                    }`}>
-                      {ticket.status}
-                    </div>
-                    <button onClick={() => handleArchive(ticket.id)} className="w-full text-[10px] font-black py-3 rounded-2xl border-2 border-slate-100 text-slate-400 hover:bg-slate-50 transition-all uppercase">📁 Archivar</button>
+                    <div className={`text-xs font-black p-4 rounded-2xl text-center uppercase tracking-widest ${ticket.status === 'ARCHIVADO' ? 'bg-slate-800 text-white' : 'bg-emerald-600 text-white'}`}>{ticket.status}</div>
+                    
+                    {/* BOTÓN DINÁMICO: ARCHIVAR O RESTAURAR */}
+                    <button 
+                      onClick={() => handleStatusChange(ticket.id, viewArchived ? "PENDIENTE" : "ARCHIVADO")}
+                      className="w-full text-[10px] font-black py-3 rounded-2xl border-2 border-slate-100 text-slate-500 hover:bg-slate-50 transition-all uppercase"
+                    >
+                      {viewArchived ? "🔓 Restaurar Caso" : "📁 Archivar"}
+                    </button>
+                    
                     <div className="text-[9px] text-slate-400 uppercase font-bold text-center">Recibido: {new Date(ticket.createdAt).toLocaleDateString()}</div>
                   </div>
                 </div>
               </div>
             </div>
           ))
-        )}
+        }
       </div>
     </div>
   );
