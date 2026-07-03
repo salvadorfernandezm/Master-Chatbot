@@ -322,4 +322,32 @@ export async function importFullBackup(data: any) {
     if (groups) await prisma.group.createMany({ data: groups, skipDuplicates: true });
     revalidatePath("/admin"); return { success: true, error: "" };
   } catch (error: any) { return { success: false, error: error.message || "Error" }; }
+// --- FUNCIÓN DE EXPORTACIÓN TOTAL (PUNTO 9) ---
+export async function downloadFullHistory() {
+  try {
+    const tickets = await prisma.ticket.findMany({
+      include: { attachments: true },
+      orderBy: { createdAt: 'desc' }
+    });
+
+    // Transformamos los datos a un formato que Excel entienda fácil (CSV)
+    const headers = ["Folio", "Fecha", "Tipo", "Categoria", "Remitente", "Email", "Contenido", "Estatus", "Respuesta Autoridad", "Evidencias"];
+    const rows = tickets.map(t => [
+      t.folio,
+      t.createdAt.toLocaleDateString(),
+      t.type,
+      t.category || "N/A",
+      t.studentName || "Anónimo",
+      t.studentEmail || "N/A",
+      `"${t.content.replace(/"/g, '""')}"`, // Limpiamos comillas para el CSV
+      t.status,
+      `"${(t.authorityResponse || "").replace(/"/g, '""')}"`,
+      t.attachments.map(a => a.url).join(" | ")
+    ]);
+
+    const csvContent = [headers, ...rows].map(e => e.join(",")).join("\n");
+    return { success: true, data: csvContent };
+  } catch (error) {
+    return { success: false, data: "" };
+  }
 }
