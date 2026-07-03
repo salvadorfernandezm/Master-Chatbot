@@ -233,7 +233,7 @@ export async function downloadFullHistory() {
       t.attachments.map(a => a.url).join(" | ")
     ]);
 
-    const csvContent = [headers, ...rows].map(e => e.join(",")).join("\n");
+    const csvContent = "\ufeff" + [headers, ...rows].map(e => e.join(",")).join("\n");
     return { success: true, data: csvContent };
   } catch (error) { return { success: false, data: "" }; }
 }
