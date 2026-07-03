@@ -12,9 +12,16 @@ const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "";
 const supabase = (supabaseUrl && supabaseKey) ? createClient(supabaseUrl, supabaseKey) : null;
 
-// MOTOR DE ESCALAMIENTO
+// ==========================================
+// 1. SEGURIDAD Y ESCALAMIENTO
+// ==========================================
+
+export async function verifyDirectorPin(pin: string) {
+  return pin === process.env.DIRECTOR_PIN;
+}
+
 export async function runEscalationLogic() {
-  const limiteHoras = 72; // <-- De vuelta a 72 horas
+  const limiteHoras = 72;
   const ahora = new Date();
   const fechaLimite = new Date(ahora.getTime() - (limiteHoras * 60 * 60 * 1000));
 
@@ -22,23 +29,21 @@ export async function runEscalationLogic() {
     where: {
       status: "PENDIENTE",
       createdAt: { lt: fechaLimite },
-      NOT: { type: "SOPORTE_TECNICO" } // <-- Volvemos a proteger el Soporte Técnico
+      NOT: { type: "SOPORTE_TECNICO" }
     }
   });
 
-  if (expirados.length > 0) {
-    for (const ticket of expirados) {
-      await prisma.ticket.update({
-        where: { id: ticket.id },
-        data: { status: "NO ATENDIDO EN TIEMPO" }
-      });
-    }
+  for (const ticket of expirados) {
+    await prisma.ticket.update({
+      where: { id: ticket.id },
+      data: { status: "NO ATENDIDO EN TIEMPO" }
+    });
   }
 }
 
-export async function verifyDirectorPin(pin: string) {
-  return pin === process.env.DIRECTOR_PIN;
-}
+// ==========================================
+// 2. MOTOR DEL BUZÓN (TICKETS Y CORREOS)
+// ==========================================
 
 export async function createTicket(formData: FormData): Promise<{ success: boolean; folio: string }> {
   const type = formData.get("type") as string;
@@ -74,7 +79,7 @@ export async function createTicket(formData: FormData): Promise<{ success: boole
       }
     }
 
-    // 1. CORREO PARA LA AUTORIDAD
+    // CORREO A AUTORIDAD
     let emailDestino = process.env.EMAIL_INGENIERO;
     const criterio = type === "SOPORTE_TECNICO" ? "SOPORTE_TECNICO" : category;
     if (criterio === "ACADEMICO") emailDestino = process.env.EMAIL_SECRETARIA_ACADEMICA;
@@ -101,7 +106,7 @@ export async function createTicket(formData: FormData): Promise<{ success: boole
       }).catch(e => console.error(e));
     }
 
-    // 2. CORREO PARA EL ALUMNO (Tu idea, hermano)
+    // CORREO AL ALUMNO
     if (process.env.RESEND_API_KEY && studentEmail) {
       await resend.emails.send({
         from: 'Buzon Etico <onboarding@resend.dev>',
@@ -109,13 +114,8 @@ export async function createTicket(formData: FormData): Promise<{ success: boole
         subject: `Confirmación de Reporte: ${folio}`,
         html: `<div style="font-family:sans-serif;padding:20px;border:1px solid #eee;border-radius:15px;">
                 <h2 style="color:#10b981;">Tu voz ha sido registrada</h2>
-                <p>Hola, <strong>${studentName || 'Anónimo'}</strong>. Hemos recibido tu reporte correctamente.</p>
-                <div style="background:#f0fdf4;padding:20px;border-radius:10px;text-align:center;margin:20px 0;">
-                  <p style="margin:0;font-size:12px;color:#166534;text-transform:uppercase;font-weight:bold;">Tu Folio de Seguimiento</p>
-                  <p style="margin:5px 0 0 0;font-size:32px;font-weight:black;letter-spacing:-1px;">${folio}</p>
-                </div>
-                <p>Puedes consultar el estatus de tu solicitud en cualquier momento usando este folio en nuestro portal.</p>
-                <br/><a href="https://master-chatbot-rho.vercel.app/seguimiento" style="background:#10b981;color:#fff;padding:12px 25px;text-decoration:none;border-radius:10px;font-weight:bold;">Ir a Seguimiento</a>
+                <p>Folio: <strong>${folio}</strong></p>
+                <p>Usa este folio para seguir el caso en nuestro portal.</p>
                </div>`
       }).catch(e => console.error(e));
     }
@@ -144,18 +144,12 @@ export async function submitAppeal(id: string, reason: string) {
         html: `<h2>Inconformidad recibida</h2><p>Folio: ${updated.folio}</p><p>Motivo: ${reason}</p>`
       }).catch(e => console.error(e));
     }
-    revalidatePath("/seguimiento"); revalidatePath("/admin/buzon"); return { success: true };
+    revalidatePath("/seguimiento");
+    revalidatePath("/admin/buzon");
+    return { success: true };
   } catch (error) { return { success: false }; }
 }
 
-export async function setStudentSatisfaction(id: string, satisfied: boolean) {
-  try {
-    await prisma.ticket.update({ where: { id }, data: { studentResolved: satisfied } });
-    revalidatePath("/seguimiento"); return { success: true };
-  } catch (error) { return { success: false }; }
-}
-
-// --- FUNCIÓN DE RESPUESTA MEJORADA (PUNTO 3) ---
 export async function submitAuthorityResponse(formData: FormData) {
   const id = formData.get("id") as string;
   const responseText = formData.get("responseText") as string;
@@ -166,7 +160,6 @@ export async function submitAuthorityResponse(formData: FormData) {
       data: { authorityResponse: responseText, status: "RESUELTO", updatedAt: new Date() },
     });
 
-    // Subida de archivos de la autoridad...
     if (supabase && files.length > 0) {
       for (const file of files) {
         const f = file as any;
@@ -180,22 +173,17 @@ export async function submitAuthorityResponse(formData: FormData) {
       }
     }
 
-    // ENVÍO DE RESPUESTA AL ALUMNO (PUNTO 3)
     if (updatedTicket.studentEmail && process.env.RESEND_API_KEY) {
       await resend.emails.send({
         from: 'Buzon Etico <onboarding@resend.dev>',
         to: [updatedTicket.studentEmail],
         subject: `Resolución de tu reporte: ${updatedTicket.folio}`,
-        html: `
-          <div style="font-family:sans-serif;padding:20px;border:1px solid #eee;border-radius:15px;">
-            <h2 style="color:#10b981;">Tu reporte ha sido resuelto</h2>
-            <p>Hola, <strong>${updatedTicket.studentName || 'Anónimo'}</strong>. La autoridad ha emitido la siguiente resolución:</p>
-            <div style="background:#f9f9f9;padding:20px;border-left:5px solid #10b981;margin:20px 0;font-style:italic;">
-              "${responseText}"
-            </div>
-            <p>Si no estás de acuerdo, recuerda que tienes 72 horas para apelar desde nuestro portal.</p>
-            <br/><a href="https://master-chatbot-rho.vercel.app/seguimiento" style="background:#10b981;color:#fff;padding:10px 20px;text-decoration:none;border-radius:5px;">Ir al portal de seguimiento</a>
-          </div>`
+        html: `<div style="font-family:sans-serif;padding:20px;border:1px solid #eee;border-radius:15px;">
+                <h2>Tu reporte ha sido resuelto</h2>
+                <p>La autoridad ha emitido la siguiente resolución:</p>
+                <blockquote style="font-style:italic; border-left: 4px solid #eee; padding-left: 10px;">"${responseText}"</blockquote>
+                <br/><a href="https://master-chatbot-rho.vercel.app/seguimiento">Ver en el portal</a>
+               </div>`
       }).catch(e => console.error(e));
     }
 
@@ -206,10 +194,53 @@ export async function submitAuthorityResponse(formData: FormData) {
   } catch (error) { return { success: false }; }
 }
 
+export async function setStudentSatisfaction(id: string, satisfied: boolean) {
+  try {
+    await prisma.ticket.update({ where: { id }, data: { studentResolved: satisfied } });
+    revalidatePath("/seguimiento");
+    return { success: true };
+  } catch (error) { return { success: false }; }
+}
+
 export async function updateTicketStatus(id: string, newStatus: string) {
   await prisma.ticket.update({ where: { id }, data: { status: newStatus } });
-  revalidatePath("/admin/buzon"); revalidatePath("/admin/directora");
+  revalidatePath("/admin/buzon");
+  revalidatePath("/admin/directora");
 }
+
+// ==========================================
+// 3. EXPORTACIÓN HISTÓRICA (PUNTO 9)
+// ==========================================
+
+export async function downloadFullHistory() {
+  try {
+    const tickets = await prisma.ticket.findMany({
+      include: { attachments: true },
+      orderBy: { createdAt: 'desc' }
+    });
+
+    const headers = ["Folio", "Fecha", "Tipo", "Categoria", "Remitente", "Email", "Contenido", "Estatus", "Respuesta", "Evidencias"];
+    const rows = tickets.map(t => [
+      t.folio,
+      t.createdAt.toLocaleDateString(),
+      t.type,
+      t.category || "N/A",
+      t.studentName || "Anónimo",
+      t.studentEmail || "N/A",
+      `"${t.content.replace(/"/g, '""')}"`,
+      t.status,
+      `"${(t.authorityResponse || "").replace(/"/g, '""')}"`,
+      t.attachments.map(a => a.url).join(" | ")
+    ]);
+
+    const csvContent = [headers, ...rows].map(e => e.join(",")).join("\n");
+    return { success: true, data: csvContent };
+  } catch (error) { return { success: false, data: "" }; }
+}
+
+// ==========================================
+// 4. CHATBOTS, GRUPOS Y CONFIGURACIÓN
+// ==========================================
 
 export async function createGroup(formData: FormData) {
   const name = formData.get("name") as string;
@@ -290,25 +321,27 @@ export async function addUrlDocument(formData: FormData) {
   revalidatePath(`/admin/knowledge/${kbId}`);
 }
 export async function updateSettings(formData: FormData) {
-  const data = {
-    organizationName: formData.get("organizationName") as string,
-    organizationLogo: formData.get("organizationLogo") as string, // <-- RESTAURADO
-    organizationBuzonInfo: formData.get("organizationBuzonInfo") as string,
-    isBuzonActive: formData.get("isBuzonActive") === "true",
-    nameAcademica: formData.get("nameAcademica") as string,
-    nameAdministrativa: formData.get("nameAdministrativa") as string,
-    nameDireccion: formData.get("nameDireccion") as string,
-    nameTecnico: formData.get("nameTecnico") as string,
-  };
+  const orgName = formData.get("organizationName") as string;
+  const orgLogo = formData.get("organizationLogo") as string;
+  const orgInfo = formData.get("organizationBuzonInfo") as string;
+  const isBuzonActive = formData.get("isBuzonActive") === "true";
+  const nameAcad = formData.get("nameAcademica") as string;
+  const nameAdmin = formData.get("nameAdministrativa") as string;
+  const nameDir = formData.get("nameDireccion") as string;
+  const nameTec = formData.get("nameTecnico") as string;
 
   const settings = await prisma.settings.findFirst();
+  const data = { 
+    organizationName: orgName, organizationLogo: orgLogo, organizationBuzonInfo: orgInfo, isBuzonActive,
+    nameAcademica: nameAcad, nameAdministrativa: nameAdmin, nameDireccion: nameDir, nameTecnico: nameTec
+  };
+
   if (settings) await prisma.settings.update({ where: { id: settings.id }, data });
   else await prisma.settings.create({ data });
 
   revalidatePath("/admin/settings");
   revalidatePath("/admin/impacto");
   revalidatePath("/buzon");
-  revalidatePath("/buzon/impacto");
 }
 export async function exportFullBackup() {
   const [groups, chatbots, kbs, docs] = await Promise.all([
@@ -320,34 +353,7 @@ export async function importFullBackup(data: any) {
   try {
     const { groups, kbs, chatbots } = data;
     if (groups) await prisma.group.createMany({ data: groups, skipDuplicates: true });
-    revalidatePath("/admin"); return { success: true, error: "" };
+    revalidatePath("/admin");
+    return { success: true, error: "" };
   } catch (error: any) { return { success: false, error: error.message || "Error" }; }
-// --- FUNCIÓN DE EXPORTACIÓN TOTAL (PUNTO 9) ---
-export async function downloadFullHistory() {
-  try {
-    const tickets = await prisma.ticket.findMany({
-      include: { attachments: true },
-      orderBy: { createdAt: 'desc' }
-    });
-
-    // Transformamos los datos a un formato que Excel entienda fácil (CSV)
-    const headers = ["Folio", "Fecha", "Tipo", "Categoria", "Remitente", "Email", "Contenido", "Estatus", "Respuesta Autoridad", "Evidencias"];
-    const rows = tickets.map(t => [
-      t.folio,
-      t.createdAt.toLocaleDateString(),
-      t.type,
-      t.category || "N/A",
-      t.studentName || "Anónimo",
-      t.studentEmail || "N/A",
-      `"${t.content.replace(/"/g, '""')}"`, // Limpiamos comillas para el CSV
-      t.status,
-      `"${(t.authorityResponse || "").replace(/"/g, '""')}"`,
-      t.attachments.map(a => a.url).join(" | ")
-    ]);
-
-    const csvContent = [headers, ...rows].map(e => e.join(",")).join("\n");
-    return { success: true, data: csvContent };
-  } catch (error) {
-    return { success: false, data: "" };
-  }
 }
