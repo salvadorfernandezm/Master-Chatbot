@@ -356,4 +356,35 @@ export async function importFullBackup(data: any) {
     revalidatePath("/admin");
     return { success: true, error: "" };
   } catch (error: any) { return { success: false, error: error.message || "Error" }; }
+// ==========================================
+// 5. INICIATIVA DE EXCELENCIA (PROPUESTAS)
+// ==========================================
+
+export async function createProposal(formData: FormData) {
+  try {
+    const title = formData.get("title") as string;
+    const content = formData.get("content") as string;
+    const category = formData.get("category") as string;
+    const studentName = formData.get("studentName") as string;
+    const studentEmail = formData.get("studentEmail") as string;
+    const aiFeedback = formData.get("aiFeedback") as string;
+
+    const proposal = await prisma.proposal.create({
+      data: {
+        title,
+        content,
+        category,
+        studentName: studentName || "Anónimo",
+        studentEmail: studentEmail || null,
+        aiFeedback: aiFeedback || null,
+        status: "EN_REVISION"
+      }
+    });
+
+    revalidatePath("/excelencia");
+    return { success: true, id: proposal.id };
+  } catch (error) {
+    console.error("Error al crear propuesta:", error);
+    return { success: false };
+  }
 }

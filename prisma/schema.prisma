@@ -130,3 +130,17 @@ model Settings {
   nameDireccion          String?  @default("Dirección General")
   nameTecnico            String?  @default("Soporte Técnico")
 }
+
+model Proposal {
+  id           String   @id @default(cuid())
+  title        String
+  content      String   @db.Text
+  category     String   // Académica, Diálogo Socrático, Logística, etc.
+  status       String   @default("EN_REVISION") // EN_REVISION, APROBADA, VIRAL, ARCHIVADA
+  studentName  String?
+  studentEmail String?
+  aiFeedback   String?  @db.Text // El consejo que la IA le dio al alumno
+  votes        Int      @default(0) // Para medir qué tan "viral" se vuelve
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
