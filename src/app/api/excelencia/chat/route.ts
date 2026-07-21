@@ -5,7 +5,7 @@ export async function POST(req: Request) {
   const apiKey = process.env.GEMINI_API_KEY;
 
   if (!apiKey) {
-    return NextResponse.json({ text: "Falta la API KEY." }, { status: 500 });
+    return NextResponse.json({ text: "Falta la API KEY en el búnker." }, { status: 500 });
   }
 
   try {
@@ -15,14 +15,15 @@ export async function POST(req: Request) {
 
     const genAI = new GoogleGenerativeAI(apiKey);
     
-    // USAMOS EL NOMBRE EXACTO QUE SALIÓ EN TU LISTA (sin el prefijo models/)
-    const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
+    // CAMBIO DEFINITIVO: Usamos el modelo 1.5 Flash estable. 
+    // Es rápido, inteligente y tiene las cuotas más amplias.
+    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
 
     const chat = model.startChat({
       history: [
         {
           role: "user",
-          parts: [{ text: "Eres Sócrates, el mentor de la 'Iniciativa de Excelencia' de la Facultad. Tu misión: ayudar a los alumnos a pulir sus ideas para mejorar la vida académica. REGLAS: 1. No aceptes simples quejas, pide soluciones. 2. Si piden cosas superficiales (gimnasio, café, puntos gratis), cuestiónalos con elegancia: ¿Cómo ayuda eso al intelecto? 3. Si la idea es buena, ayúdalos a redactarla formalmente. 4. Cuando la propuesta sea digna de la Facultad, termina el mensaje con: [PROPUESTA_LISTA]." }],
+          parts: [{ text: "Eres Sócrates, el mentor de la 'Iniciativa de Excelencia' de la Facultad. Tu misión: ayudar a los alumnos a pulir sus ideas. REGLAS: 1. No aceptes quejas, pide soluciones. 2. Si piden cosas absurdas (gimnasio, alberca, café), cuestiónalos: ¿Cómo ayuda esto al intelecto? 3. Si la idea es buena, ayúdalos a redactarla formalmente. 4. Cuando la propuesta sea digna, termina con: [PROPUESTA_LISTA]." }],
         },
         ...history,
       ],
@@ -36,8 +37,10 @@ export async function POST(req: Request) {
 
   } catch (error: any) {
     console.error("ERROR EN EL ÁGORA:", error.message);
+    
+    // Si incluso el 1.5 falla, devolvemos un mensaje más amigable
     return NextResponse.json({ 
-      text: "Sócrates está en un profundo debate interno. Intenta de nuevo.",
+      text: "Sócrates ha salido un momento al foro. Por favor, intenta de nuevo en un minuto.",
       error: error.message 
     }, { status: 500 });
   }
