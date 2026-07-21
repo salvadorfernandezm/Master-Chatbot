@@ -5,7 +5,7 @@ export async function POST(req: Request) {
   const apiKey = process.env.GEMINI_API_KEY;
 
   if (!apiKey) {
-    return NextResponse.json({ text: "Falta la API KEY en Vercel." }, { status: 500 });
+    return NextResponse.json({ text: "Falta la API KEY." }, { status: 500 });
   }
 
   try {
@@ -15,14 +15,14 @@ export async function POST(req: Request) {
 
     const genAI = new GoogleGenerativeAI(apiKey);
     
-    // Probamos con el nombre estándar. Si este falla, el log nos dirá por qué.
-    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+    // USAMOS EL NOMBRE EXACTO QUE SALIÓ EN TU LISTA (sin el prefijo models/)
+    const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
 
     const chat = model.startChat({
       history: [
         {
           role: "user",
-          parts: [{ text: "Eres Sócrates, mentor de la 'Iniciativa de Excelencia'. Tu misión es ayudar a alumnos a pulir propuestas académicas sólidas. REGLAS: 1. No aceptes quejas. 2. Si piden cosas absurdas, cuestiónalos. 3. Cuando la propuesta sea digna, termina con la clave exacta: [PROPUESTA_LISTA]." }],
+          parts: [{ text: "Eres Sócrates, el mentor de la 'Iniciativa de Excelencia' de la Facultad. Tu misión: ayudar a los alumnos a pulir sus ideas para mejorar la vida académica. REGLAS: 1. No aceptes simples quejas, pide soluciones. 2. Si piden cosas superficiales (gimnasio, café, puntos gratis), cuestiónalos con elegancia: ¿Cómo ayuda eso al intelecto? 3. Si la idea es buena, ayúdalos a redactarla formalmente. 4. Cuando la propuesta sea digna de la Facultad, termina el mensaje con: [PROPUESTA_LISTA]." }],
         },
         ...history,
       ],
@@ -30,12 +30,14 @@ export async function POST(req: Request) {
 
     const result = await chat.sendMessage(userMessage);
     const response = await result.response;
-    return NextResponse.json({ text: response.text() });
+    const text = response.text();
+
+    return NextResponse.json({ text });
 
   } catch (error: any) {
     console.error("ERROR EN EL ÁGORA:", error.message);
     return NextResponse.json({ 
-      text: "Sócrates está en silencio. Revisa la ruta /api/excelencia/debug",
+      text: "Sócrates está en un profundo debate interno. Intenta de nuevo.",
       error: error.message 
     }, { status: 500 });
   }
