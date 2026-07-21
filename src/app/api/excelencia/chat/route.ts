@@ -1,25 +1,27 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { NextResponse } from "next/server";
 
-// Usamos el nombre que ya tienes en Vercel: GEMINI_API_KEY
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || "");
-
 export async function POST(req: Request) {
+  // 1. Extraemos la llave justo al momento de la llamada
+  const apiKey = process.env.GEMINI_API_KEY;
+
+  if (!apiKey) {
+    console.error("ERROR: No se encontró la variable GEMINI_API_KEY en Vercel");
+    return NextResponse.json({ text: "Error de configuración: Falta la llave API." }, { status: 500 });
+  }
+
   try {
     const { message, history } = await req.json();
-
-    // Verificamos si la llave existe en el servidor
-    if (!process.env.GEMINI_API_KEY) {
-      return NextResponse.json({ text: "Error: El búnker no tiene la llave GEMINI_API_KEY configurada." }, { status: 500 });
-    }
-
+    const genAI = new GoogleGenerativeAI(apiKey);
+    
+    // Usamos el modelo más rápido y ligero para evitar timeouts
     const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
 
     const chat = model.startChat({
       history: [
         {
           role: "user",
-          parts: [{ text: "Eres Sócrates, el mentor de la 'Iniciativa de Excelencia'. Tu misión es ayudar a los alumnos a transformar ideas simples en propuestas académicas sólidas. REGLAS: 1. No aceptes quejas, solo propuestas proactivas. 2. Si piden cosas absurdas o superficiales (como café, gimnasios o puntos), cuestiónalos con ironía socrática para que piensen en la excelencia académica. 3. Ayúdalos a redactar de forma elegante y formal. 4. Cuando la propuesta sea digna de la Facultad, termina tu mensaje con la clave exacta: [PROPUESTA_LISTA]." }],
+          parts: [{ text: "Eres Sócrates, mentor de la 'Iniciativa de Excelencia'. Tu misión es ayudar a alumnos a pulir propuestas académicas. REGLAS: 1. No aceptes quejas, solo propuestas proactivas. 2. Si piden cosas absurdas (gimnasios, albercas, puntos), cuestiónalos socráticamente. 3. Cuando la propuesta sea digna, termina con: [PROPUESTA_LISTA]." }],
         },
         ...history,
       ],
@@ -31,7 +33,11 @@ export async function POST(req: Request) {
 
     return NextResponse.json({ text });
   } catch (error: any) {
-    console.error("ERROR SOCRÁTICO:", error);
-    return NextResponse.json({ error: "Conexión con el Ágora interrumpida", details: error.message }, { status: 500 });
+    // ESTO ES LO MÁS IMPORTANTE: Ver el error real en la consola de Vercel
+    console.error("DETALLE DEL ERROR EN EL ÁGORA:", error.message);
+    return NextResponse.json({ 
+      text: "Sócrates está meditando (Error de conexión). Verifica tu API Key.",
+      error: error.message 
+    }, { status: 500 });
   }
 }
