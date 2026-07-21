@@ -79,7 +79,6 @@ export async function createTicket(formData: FormData): Promise<{ success: boole
       }
     }
 
-    // CORREO A AUTORIDAD
     let emailDestino = process.env.EMAIL_INGENIERO;
     const criterio = type === "SOPORTE_TECNICO" ? "SOPORTE_TECNICO" : category;
     if (criterio === "ACADEMICO") emailDestino = process.env.EMAIL_SECRETARIA_ACADEMICA;
@@ -98,15 +97,13 @@ export async function createTicket(formData: FormData): Promise<{ success: boole
         subject: `[72h Plazo] Nuevo Reporte: ${folio}`,
         html: `<div style="font-family:sans-serif;padding:20px;border:1px solid #eee;border-radius:15px;">
                 <h2>Reporte Recibido</h2>
-                <p><strong>Folio:</strong> ${folio}</p>
+                <p>Folio: ${folio}</p>
                 <blockquote style="background:#f9f9f9;padding:15px;border-left:5px solid #10b981;">${content}</blockquote>
                 ${listaEvidencias}
-                <br/><a href="${responderUrl}" style="background:#000;color:#fff;padding:12px 25px;text-decoration:none;border-radius:10px;">Atender Ahora</a>
-               </div>`
+                <br/><a href="${responderUrl}">Atender Ahora</a></div>`
       }).catch(e => console.error(e));
     }
 
-    // CORREO AL ALUMNO
     if (process.env.RESEND_API_KEY && studentEmail) {
       await resend.emails.send({
         from: 'Buzon Etico <onboarding@resend.dev>',
@@ -115,7 +112,6 @@ export async function createTicket(formData: FormData): Promise<{ success: boole
         html: `<div style="font-family:sans-serif;padding:20px;border:1px solid #eee;border-radius:15px;">
                 <h2 style="color:#10b981;">Tu voz ha sido registrada</h2>
                 <p>Folio: <strong>${folio}</strong></p>
-                <p>Usa este folio para seguir el caso en nuestro portal.</p>
                </div>`
       }).catch(e => console.error(e));
     }
@@ -129,23 +125,17 @@ export async function submitAppeal(id: string, reason: string) {
   try {
     const currentTicket = await prisma.ticket.findUnique({ where: { id } });
     const newHistory = `[RESPUESTA DE AUTORIDAD]: ${currentTicket?.authorityResponse || 'Sin respuesta'}\n\n[RAZÓN DE APELACIÓN]: ${reason}`;
-    const updated = await prisma.ticket.update({ where: { id }, data: { status: "APELADO", authorityResponse: newHistory } });
-
-    let emailDestino = process.env.EMAIL_INGENIERO;
-    if (updated.category === "ACADEMICO") emailDestino = process.env.EMAIL_SECRETARIA_ACADEMICA;
-    else if (updated.category === "LOGISTICA") emailDestino = process.env.EMAIL_SECRETARIA_ADMINISTRATIVA;
-    else if (updated.category === "GRAVE") emailDestino = process.env.EMAIL_DIRECCION;
-
-    if (process.env.RESEND_API_KEY && emailDestino) {
-      await resend.emails.send({
-        from: 'Buzon Etico <onboarding@resend.dev>',
-        to: [emailDestino as string],
-        subject: `🚨 APELACIÓN: ${updated.folio}`,
-        html: `<h2>Inconformidad recibida</h2><p>Folio: ${updated.folio}</p><p>Motivo: ${reason}</p>`
-      }).catch(e => console.error(e));
-    }
+    await prisma.ticket.update({ where: { id }, data: { status: "APELADO", authorityResponse: newHistory } });
     revalidatePath("/seguimiento");
     revalidatePath("/admin/buzon");
+    return { success: true };
+  } catch (error) { return { success: false }; }
+}
+
+export async function setStudentSatisfaction(id: string, satisfied: boolean) {
+  try {
+    await prisma.ticket.update({ where: { id }, data: { studentResolved: satisfied } });
+    revalidatePath("/seguimiento");
     return { success: true };
   } catch (error) { return { success: false }; }
 }
@@ -159,7 +149,6 @@ export async function submitAuthorityResponse(formData: FormData) {
       where: { id },
       data: { authorityResponse: responseText, status: "RESUELTO", updatedAt: new Date() },
     });
-
     if (supabase && files.length > 0) {
       for (const file of files) {
         const f = file as any;
@@ -172,32 +161,9 @@ export async function submitAuthorityResponse(formData: FormData) {
         }
       }
     }
-
-    if (updatedTicket.studentEmail && process.env.RESEND_API_KEY) {
-      await resend.emails.send({
-        from: 'Buzon Etico <onboarding@resend.dev>',
-        to: [updatedTicket.studentEmail],
-        subject: `Resolución de tu reporte: ${updatedTicket.folio}`,
-        html: `<div style="font-family:sans-serif;padding:20px;border:1px solid #eee;border-radius:15px;">
-                <h2>Tu reporte ha sido resuelto</h2>
-                <p>La autoridad ha emitido la siguiente resolución:</p>
-                <blockquote style="font-style:italic; border-left: 4px solid #eee; padding-left: 10px;">"${responseText}"</blockquote>
-                <br/><a href="https://master-chatbot-rho.vercel.app/seguimiento">Ver en el portal</a>
-               </div>`
-      }).catch(e => console.error(e));
-    }
-
     revalidatePath("/admin/buzon");
     revalidatePath("/seguimiento");
     revalidatePath("/admin/directora");
-    return { success: true };
-  } catch (error) { return { success: false }; }
-}
-
-export async function setStudentSatisfaction(id: string, satisfied: boolean) {
-  try {
-    await prisma.ticket.update({ where: { id }, data: { studentResolved: satisfied } });
-    revalidatePath("/seguimiento");
     return { success: true };
   } catch (error) { return { success: false }; }
 }
@@ -209,30 +175,18 @@ export async function updateTicketStatus(id: string, newStatus: string) {
 }
 
 // ==========================================
-// 3. EXPORTACIÓN HISTÓRICA (PUNTO 9)
+// 3. EXPORTACIÓN HISTÓRICA
 // ==========================================
 
 export async function downloadFullHistory() {
   try {
-    const tickets = await prisma.ticket.findMany({
-      include: { attachments: true },
-      orderBy: { createdAt: 'desc' }
-    });
-
+    const tickets = await prisma.ticket.findMany({ include: { attachments: true }, orderBy: { createdAt: 'desc' } });
     const headers = ["Folio", "Fecha", "Tipo", "Categoria", "Remitente", "Email", "Contenido", "Estatus", "Respuesta", "Evidencias"];
     const rows = tickets.map(t => [
-      t.folio,
-      t.createdAt.toLocaleDateString(),
-      t.type,
-      t.category || "N/A",
-      t.studentName || "Anónimo",
-      t.studentEmail || "N/A",
-      `"${t.content.replace(/"/g, '""')}"`,
-      t.status,
-      `"${(t.authorityResponse || "").replace(/"/g, '""')}"`,
+      t.folio, t.createdAt.toLocaleDateString(), t.type, t.category || "N/A", t.studentName || "Anónimo",
+      t.studentEmail || "N/A", `"${t.content.replace(/"/g, '""')}"`, t.status, `"${(t.authorityResponse || "").replace(/"/g, '""')}"`,
       t.attachments.map(a => a.url).join(" | ")
     ]);
-
     const csvContent = "\ufeff" + [headers, ...rows].map(e => e.join(",")).join("\n");
     return { success: true, data: csvContent };
   } catch (error) { return { success: false, data: "" }; }
@@ -329,33 +283,24 @@ export async function updateSettings(formData: FormData) {
   const nameAdmin = formData.get("nameAdministrativa") as string;
   const nameDir = formData.get("nameDireccion") as string;
   const nameTec = formData.get("nameTecnico") as string;
-
   const settings = await prisma.settings.findFirst();
-  const data = { 
-    organizationName: orgName, organizationLogo: orgLogo, organizationBuzonInfo: orgInfo, isBuzonActive,
-    nameAcademica: nameAcad, nameAdministrativa: nameAdmin, nameDireccion: nameDir, nameTecnico: nameTec
-  };
-
+  const data = { organizationName: orgName, organizationLogo: orgLogo, organizationBuzonInfo: orgInfo, isBuzonActive, nameAcademica: nameAcad, nameAdministrativa: nameAdmin, nameDireccion: nameDir, nameTecnico: nameTec };
   if (settings) await prisma.settings.update({ where: { id: settings.id }, data });
   else await prisma.settings.create({ data });
-
-  revalidatePath("/admin/settings");
-  revalidatePath("/admin/impacto");
-  revalidatePath("/buzon");
+  revalidatePath("/admin/settings"); revalidatePath("/admin/impacto"); revalidatePath("/buzon");
 }
 export async function exportFullBackup() {
-  const [groups, chatbots, kbs, docs] = await Promise.all([
-    prisma.group.findMany(), prisma.chatbot.findMany(), prisma.knowledgeBase.findMany(), prisma.document.findMany()
-  ]);
+  const [groups, chatbots, kbs, docs] = await Promise.all([prisma.group.findMany(), prisma.chatbot.findMany(), prisma.knowledgeBase.findMany(), prisma.document.findMany()]);
   return { groups, chatbots, kbs, docs };
 }
 export async function importFullBackup(data: any) {
   try {
     const { groups, kbs, chatbots } = data;
     if (groups) await prisma.group.createMany({ data: groups, skipDuplicates: true });
-    revalidatePath("/admin");
-    return { success: true, error: "" };
+    revalidatePath("/admin"); return { success: true, error: "" };
   } catch (error: any) { return { success: false, error: error.message || "Error" }; }
+}
+
 // ==========================================
 // 5. INICIATIVA DE EXCELENCIA (PROPUESTAS)
 // ==========================================
