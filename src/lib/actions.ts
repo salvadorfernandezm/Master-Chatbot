@@ -349,9 +349,17 @@ export async function voteProposal(id: string) {
 }
 
 export async function updateProposalStatus(id: string, status: string) {
-  await prisma.proposal.update({ where: { id }, data: { status } });
-  revalidatePath("/admin/gestion-propuestas");
-  revalidatePath("/excelencia/mural");
+  try {
+    await prisma.proposal.update({
+      where: { id },
+      data: { status }
+    });
+    revalidatePath("/admin/gestion-propuestas");
+    revalidatePath("/excelencia/mural");
+    return { success: true };
+  } catch (error) {
+    return { success: false };
+  }
 }
 
 // Y necesitamos esta API para ver todas en el admin
