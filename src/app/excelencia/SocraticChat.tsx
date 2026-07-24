@@ -59,7 +59,9 @@ export default function SocraticChat() {
     formData.append("aiFeedback", "Validado por el Agente Socrático");
     const res = await createProposal(formData);
     if (res.success) {
-      window.location.assign("/excelencia?success=true");
+      // Usamos un alert simple por ahora o redirigimos
+      alert("¡Tu propuesta ha sido enviada al búnker para revisión final! Gracias por poner tu corazón en la Facultad.");
+      window.location.assign("/excelencia");
     } else {
       alert("Error al guardar en el búnker.");
     }
