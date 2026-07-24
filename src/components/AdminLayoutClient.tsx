@@ -53,6 +53,7 @@ export default function AdminLayoutClient({ children, orgName, orgLogo }: AdminL
     { name: "Dashboard", href: "/admin", icon: "📊" },
     { name: "Impacto Ético", href: "/admin/impacto", icon: "🛡️" }, // <-- AGREGADO
     { name: "Buzón Ético", href: "/admin/gestion-buzon", icon: "🏛️" },
+ { name: "Propuestas", href: "/admin/gestion-propuestas", icon: "💡" }, // <-- ESTE ES EL NUEVO
     { name: "Grupos", href: "/admin/groups", icon: "👥" },
     { name: "Conocimiento", href: "/admin/knowledge", icon: "📚" },
     { name: "Chatbots", href: "/admin/chatbots", icon: "🤖" },

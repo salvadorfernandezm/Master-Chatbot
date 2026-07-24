@@ -347,3 +347,20 @@ export async function voteProposal(id: string) {
     return { success: false };
   }
 }
+
+export async function updateProposalStatus(id: string, status: string) {
+  await prisma.proposal.update({ where: { id }, data: { status } });
+  revalidatePath("/admin/gestion-propuestas");
+  revalidatePath("/excelencia/mural");
+}
+
+// Y necesitamos esta API para ver todas en el admin
+// Crea el archivo: src/app/api/admin/all-proposals/route.ts
+/*
+import { prisma } from "@/lib/prisma";
+import { NextResponse } from "next/server";
+export async function GET() {
+  const data = await prisma.proposal.findMany({ orderBy: { createdAt: 'desc' } });
+  return NextResponse.json(data);
+}
+*/

@@ -24,11 +24,11 @@ export default function ExcelenciaClient({ settings }: { settings: any }) {
         {!showChat ? (
           <div className="animate-in fade-in duration-700">
             <header className="mb-16">
-              <h2 className="text-5xl md:text-7xl font-black text-slate-900 tracking-tighter mb-6 leading-none">
+              <h2 className="text-5xl md:text-7xl font-black text-slate-900 tracking-tighter mb-6 leading-none text-left">
                 La <span className="text-emerald-600 italic">Cura</span> de la <br/>Facultad.
               </h2>
-              <p className="text-xl text-slate-500 font-serif italic leading-relaxed max-w-2xl">
-                "Porque cuidar nuestra facultad es ponerle corazón. Tus propuestas son el pulso de la excelencia académica."
+              <p className="text-xl text-slate-500 font-serif italic leading-relaxed max-w-2xl text-left">
+                "Porque cuidar nuestra facultad es ponerle corazón. Tus propuestas son el pulso de la excelencia académica que construimos juntos."
               </p>
               <div className="h-1.5 w-24 bg-emerald-500 mt-8 rounded-full"></div>
             </header>
@@ -46,16 +46,26 @@ export default function ExcelenciaClient({ settings }: { settings: any }) {
               </div>
             </div>
 
+            {/* SECCIÓN DE BOTONES ACTUALIZADA */}
             <section className="bg-slate-900 rounded-[4rem] p-12 text-white text-center relative overflow-hidden shadow-2xl">
               <div className="absolute top-0 right-0 p-10 opacity-10 text-9xl">💡</div>
               <h3 className="text-3xl font-black uppercase mb-4 tracking-tight">¿Tienes una gran idea?</h3>
-              <p className="text-slate-400 mb-8 max-w-lg mx-auto">Nuestro Agente Socrático te ayudará a pulir tu propuesta.</p>
-              <button 
-                onClick={() => setShowChat(true)}
-                className="bg-emerald-500 hover:bg-white text-black px-12 py-5 rounded-2xl font-black uppercase tracking-widest transition-all shadow-lg"
-              >
-                Iniciar Propuesta
-              </button>
+              <p className="text-slate-400 mb-10 max-w-lg mx-auto">Nuestro Agente Socrático te ayudará a pulir tu propuesta antes de pasar al mural público.</p>
+              
+              <div className="flex flex-col sm:flex-row gap-4 justify-center">
+                <button 
+                  onClick={() => setShowChat(true)}
+                  className="bg-emerald-500 hover:bg-white text-black px-12 py-5 rounded-2xl font-black uppercase tracking-widest transition-all shadow-lg active:scale-95"
+                >
+                  Iniciar Propuesta
+                </button>
+                <Link 
+                  href="/excelencia/mural"
+                  className="bg-slate-800 hover:bg-slate-700 text-white border-2 border-white/10 px-12 py-5 rounded-2xl font-black uppercase tracking-widest transition-all text-center"
+                >
+                  Ver Mural Público
+                </Link>
+              </div>
             </section>
           </div>
         ) : (
