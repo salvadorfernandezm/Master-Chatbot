@@ -333,3 +333,17 @@ export async function createProposal(formData: FormData) {
     return { success: false };
   }
 }
+
+// --- VOTACIÓN DE PROPUESTAS ---
+export async function voteProposal(id: string) {
+  try {
+    await prisma.proposal.update({
+      where: { id },
+      data: { votes: { increment: 1 } }
+    });
+    revalidatePath("/excelencia/mural");
+    return { success: true };
+  } catch (error) {
+    return { success: false };
+  }
+}

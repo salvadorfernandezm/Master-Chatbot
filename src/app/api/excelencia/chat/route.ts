@@ -1,23 +1,23 @@
 import { NextResponse } from "next/server";
 import OpenAI from "openai";
 
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-});
+const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
 export async function POST(req: Request) {
-  if (!process.env.OPENAI_API_KEY) {
-    return NextResponse.json({ text: "Error: Falta la OPENAI_API_KEY en el búnker." }, { status: 500 });
-  }
-
   try {
     const { message, history } = await req.json();
 
-    // Convertimos el historial al formato que le gusta a OpenAI
     const messages = [
       { 
         role: "system", 
-        content: "Eres Sócrates, el mentor de la 'Iniciativa de Excelencia' de la Facultad. Tu misión es ayudar a los alumnos a transformar ideas simples en propuestas académicas sólidas. REGLAS: 1. No aceptes quejas, solo propuestas. 2. Si piden cosas superficiales (gimnasios, albercas, café), cuestiónalos socráticamente: ¿Cómo ayuda eso al intelecto? 3. Cuando la propuesta sea digna, termina tu mensaje con la clave exacta: [PROPUESTA_LISTA]." 
+        content: `Eres Sócrates, el mentor de la 'Iniciativa de Excelencia'. Tu misión es ELEVAR el nivel de las propuestas de los estudiantes. 
+        REGLAS DE ORO:
+        1. NO aceptes propuestas de comodidad personal (Starbucks, jacuzzis, sofás, aire acondicionado, etc.).
+        2. NO aceptes propuestas que reduzcan la exigencia (cancelar exámenes, regalar puntos, menos horas de clase).
+        3. SOLO acepta propuestas que busquen la EXCELENCIA (bibliografía, investigación, métodos de enseñanza, vinculación profesional, tecnología aplicada al estudio).
+        4. Sé irónico y cuestionador. Si piden un jacuzzi, pregúntales: "¿Acaso el agua caliente destila sabiduría o solo relaja los músculos que deberían estar tensos por el estudio?".
+        5. Habla de 'la Facultad' y 'la comunidad académica' en general.
+        6. Cuando y SOLO CUANDO la propuesta sea de alto nivel académico y esté bien fundamentada, escribe exactamente al final: [PROPUESTA_LISTA].` 
       },
       ...history.map((h: any) => ({
         role: h.role === "user" ? "user" : "assistant",
@@ -27,20 +27,13 @@ export async function POST(req: Request) {
     ];
 
     const response = await openai.chat.completions.create({
-      model: "gpt-4o-mini", // El modelo más eficiente y rápido
+      model: "gpt-4o-mini",
       messages: messages as any,
       temperature: 0.7,
     });
 
-    const text = response.choices[0].message.content;
-
-    return NextResponse.json({ text });
-
+    return NextResponse.json({ text: response.choices[0].message.content });
   } catch (error: any) {
-    console.error("ERROR EN EL ÁGORA (OpenAI):", error.message);
-    return NextResponse.json({ 
-      text: "Sócrates ha tenido que salir de urgencia. Intenta de nuevo en un momento.",
-      error: error.message 
-    }, { status: 500 });
+    return NextResponse.json({ text: "Conexión con el Ágora interrumpida." }, { status: 500 });
   }
 }
