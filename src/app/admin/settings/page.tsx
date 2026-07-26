@@ -93,13 +93,14 @@ export default function SettingsPage() {
             <p className="text-xs text-slate-400">Si lo apagas, los alumnos verán un mensaje de mantenimiento.</p>
           </div>
           <select 
-            name="isBuzonActive" 
-            defaultValue={settings?.isBuzonActive?.toString()}
-            className="bg-slate-100 p-4 rounded-2xl font-bold outline-none"
-          >
-            <option value="true">🟢 Activo</option>
-            <option value="false">🔴 Apagado</option>
-          </select>
+  name="isBuzonActive" 
+  key={settings?.isBuzonActive} // La key fuerza a React a redibujar el valor real
+  defaultValue={settings?.isBuzonActive?.toString()}
+  className="bg-slate-100 p-4 rounded-2xl font-bold outline-none"
+>
+  <option value="true">🟢 Activo</option>
+  <option value="false">🔴 Apagado</option>
+</select>
         </div>
 
         <button 
