@@ -55,8 +55,9 @@ export default function DirectoraPage() {
   if (!authorized) {
     return (
       <div className="min-h-screen bg-slate-950 flex items-center justify-center p-6 text-white font-sans text-center">
-        <div className="max-w-md w-full bg-slate-900 p-12 rounded-[3.5rem] border-b-8 border-purple-500 shadow-2xl">
-          {settings?.organizationLogo && <img src={settings.organizationLogo} alt="Logo" className="h-16 mx-auto mb-6 object-contain" />}
+        <div className="bg-white p-4 rounded-2xl mb-6 inline-block shadow-inner">
+  {settings?.organizationLogo && <img src={settings.organizationLogo} alt="Logo" className="h-12 object-contain" />}
+</div>
           <h1 className="text-2xl font-black uppercase mb-6 tracking-widest text-purple-400">Acceso Directora</h1>
           <input type="password" value={pin} onChange={(e) => setPin(e.target.value)} placeholder="PIN" className="w-full bg-black border-2 border-slate-800 p-5 rounded-2xl mb-4 text-center text-xl text-white outline-none focus:border-purple-500" />
           <button onClick={handleVerify} className="w-full bg-purple-600 p-5 rounded-2xl font-black uppercase hover:bg-purple-500 transition-all">Entrar</button>
@@ -69,9 +70,9 @@ export default function DirectoraPage() {
     <div className="min-h-screen bg-slate-50 p-6 md:p-12 font-sans text-left text-slate-800">
       <div className="max-w-5xl mx-auto">
         <header className="flex justify-between items-center mb-10 bg-slate-900 p-8 rounded-[2.5rem] text-white shadow-xl">
-          <div className="flex items-center gap-4">
-            {settings?.organizationLogo && <img src={settings.organizationLogo} alt="Logo" className="h-10 object-contain" />}
-            <div>
+          <div className="bg-white p-2 rounded-xl shadow-inner flex items-center justify-center">
+  {settings?.organizationLogo && <img src={settings.organizationLogo} alt="Logo" className="h-8 object-contain" />}
+</div>
               <h1 className="text-2xl font-black uppercase tracking-tighter text-purple-400">Panel de Dirección</h1>
               <p className="text-xs text-slate-400 uppercase font-bold tracking-widest">Control Ético Institucional</p>
             </div>

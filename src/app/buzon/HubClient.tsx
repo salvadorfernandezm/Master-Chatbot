@@ -6,7 +6,12 @@ export default function HubClient({ settings, latestResolved }: { settings: any,
   const actions = [
     { title: "Iniciar Reporte", desc: "Reporta de forma segura.", icon: "✍️", href: "/buzon/registro", color: "bg-emerald-500" },
     { title: "Seguimiento", desc: "¿Ya reportaste?", icon: "🔍", href: "/seguimiento", color: "bg-blue-500" },
-    { title: "Analíticas", desc: "Datos públicos de impacto.", icon: "📊", href: "/buzon/impacto", color: "bg-purple-500" },
+   {
+  title: "Analíticas",
+  desc: "Datos públicos de impacto.",
+  icon: "📊",
+  href: "/buzon/impacto", // <-- CAMBIAR ESTA LÍNEA
+},
     { title: "Dirección", desc: "Acceso exclusivo.", icon: "🏛️", href: "/admin/directora", color: "bg-slate-700" }
   ];
 
