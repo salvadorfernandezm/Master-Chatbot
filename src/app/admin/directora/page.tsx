@@ -19,13 +19,13 @@ export default function DirectoraPage() {
       setAuthorized(false);
       setLoading(false);
     }
-    // Cargamos settings para el logo
+    // Cargamos settings para el logo institucional
     fetch('/api/admin/stats-buzon').then(res => res.json()).then(d => setSettings(d.settings));
   }, []);
 
   const fetchData = () => {
     setLoading(true);
-    fetch('/api/buzon/directora')
+    fetch('/api/api/buzon/directora')
       .then(res => res.json())
       .then(data => { setTickets(data); setLoading(false); })
       .catch(err => setLoading(false));
@@ -55,12 +55,25 @@ export default function DirectoraPage() {
   if (!authorized) {
     return (
       <div className="min-h-screen bg-slate-950 flex items-center justify-center p-6 text-white font-sans text-center">
-        <div className="bg-white p-4 rounded-2xl mb-6 inline-block shadow-inner">
-  {settings?.organizationLogo && <img src={settings.organizationLogo} alt="Logo" className="h-12 object-contain" />}
-</div>
+        <div className="max-w-md w-full bg-slate-900 p-12 rounded-[3.5rem] border-b-8 border-purple-500 shadow-2xl">
+          {/* LOGO CON FONDO BLANCO EN LOGIN */}
+          <div className="bg-white p-4 rounded-2xl mb-6 inline-block shadow-inner">
+            {settings?.organizationLogo && (
+              <img src={settings.organizationLogo} alt="Logo" className="h-12 object-contain" />
+            )}
+          </div>
           <h1 className="text-2xl font-black uppercase mb-6 tracking-widest text-purple-400">Acceso Directora</h1>
-          <input type="password" value={pin} onChange={(e) => setPin(e.target.value)} placeholder="PIN" className="w-full bg-black border-2 border-slate-800 p-5 rounded-2xl mb-4 text-center text-xl text-white outline-none focus:border-purple-500" />
-          <button onClick={handleVerify} className="w-full bg-purple-600 p-5 rounded-2xl font-black uppercase hover:bg-purple-500 transition-all">Entrar</button>
+          <input 
+            type="password" 
+            value={pin} 
+            onChange={(e) => setPin(e.target.value)} 
+            placeholder="PIN de Seguridad" 
+            className="w-full bg-black border-2 border-slate-800 p-5 rounded-2xl mb-4 text-center text-xl text-white outline-none focus:border-purple-500" 
+          />
+          <button onClick={handleVerify} className="w-full bg-purple-600 p-5 rounded-2xl font-black uppercase hover:bg-purple-500 transition-all shadow-lg">Entrar al Despacho</button>
+          <div className="mt-8">
+            <Link href="/buzon" className="text-slate-500 text-xs font-bold uppercase hover:text-white transition-all">← Volver al Portal</Link>
+          </div>
         </div>
       </div>
     );
@@ -70,14 +83,19 @@ export default function DirectoraPage() {
     <div className="min-h-screen bg-slate-50 p-6 md:p-12 font-sans text-left text-slate-800">
       <div className="max-w-5xl mx-auto">
         <header className="flex justify-between items-center mb-10 bg-slate-900 p-8 rounded-[2.5rem] text-white shadow-xl">
-          <div className="bg-white p-2 rounded-xl shadow-inner flex items-center justify-center">
-  {settings?.organizationLogo && <img src={settings.organizationLogo} alt="Logo" className="h-8 object-contain" />}
-</div>
+          <div className="flex items-center gap-4">
+            {/* LOGO CON FONDO BLANCO EN DASHBOARD */}
+            <div className="bg-white p-2 rounded-xl shadow-inner flex items-center justify-center">
+              {settings?.organizationLogo && (
+                <img src={settings.organizationLogo} alt="Logo" className="h-8 object-contain" />
+              )}
+            </div>
+            <div>
               <h1 className="text-2xl font-black uppercase tracking-tighter text-purple-400">Panel de Dirección</h1>
               <p className="text-xs text-slate-400 uppercase font-bold tracking-widest">Control Ético Institucional</p>
             </div>
           </div>
-          <button onClick={handleLogout} className="bg-red-500/10 hover:bg-red-500 text-red-500 hover:text-white px-4 py-2 rounded-xl text-[10px] font-black uppercase transition-all">Salir</button>
+          <button onClick={handleLogout} className="bg-red-500/10 hover:bg-red-500 text-red-500 hover:text-white px-4 py-2 rounded-xl text-[10px] font-black uppercase transition-all border border-red-500/20">Salir</button>
         </header>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-10">
@@ -85,19 +103,18 @@ export default function DirectoraPage() {
             <div className="text-left"><p className="text-[10px] font-black uppercase opacity-60">Resumen</p><h3 className="text-xl font-black uppercase">Impacto</h3></div>
             <span className="text-4xl">📊</span>
           </Link>
-          {/* BOTÓN MURAL (IDEA NUEVA) */}
           <Link href="/excelencia/mural" className="bg-blue-600 text-white p-8 rounded-[2.5rem] flex items-center justify-between group hover:bg-blue-500 transition-all shadow-xl">
             <div className="text-left"><p className="text-[10px] font-black uppercase opacity-60">Alumnos</p><h3 className="text-xl font-black uppercase">Mural</h3></div>
             <span className="text-4xl">💡</span>
           </Link>
           <div className="bg-white border-2 border-slate-100 p-8 rounded-[2.5rem] flex items-center justify-between shadow-sm opacity-50">
             <div className="text-left text-slate-400"><p className="text-[10px] font-black uppercase opacity-60">Viendo:</p><h3 className="text-xl font-black uppercase">Expedientes</h3></div>
-            <span className="text-4xl">📂</span>
+            <span className="text-4xl text-slate-300">📂</span>
           </div>
         </div>
 
-        <div className="space-y-8">
-          {loading ? <p className="text-center py-20 animate-pulse font-black text-slate-300 uppercase">Cargando...</p> : 
+        <div className="space-y-8 text-left">
+          {loading ? <p className="text-center py-20 animate-pulse font-black text-slate-300 uppercase">Cargando expedientes...</p> : 
             tickets.map((t) => (
               <div key={t.id} className="bg-white p-10 rounded-[3rem] shadow-xl border border-slate-100 relative overflow-hidden">
                 <div className="flex flex-col md:flex-row justify-between gap-6">
@@ -106,14 +123,14 @@ export default function DirectoraPage() {
                       <span className="bg-purple-100 text-purple-700 px-3 py-1 rounded-full">{t.category || 'GENERAL'}</span>
                       <span className="text-slate-300">Folio: {t.folio}</span>
                     </div>
-                    <h2 className="text-xl font-black underline decoration-purple-200 underline-offset-4">Reportante: {t.studentName || "Anónimo"}</h2>
-                    <div className="bg-slate-50 p-6 rounded-2xl border border-slate-100 italic text-slate-600 text-sm">"{t.content}"</div>
+                    <h2 className="text-xl font-black underline decoration-purple-200 underline-offset-4 text-left">Reportante: {t.studentName || "Anónimo"}</h2>
+                    <div className="bg-slate-50 p-6 rounded-2xl border border-slate-100 italic text-slate-600 text-sm text-left">"{t.content}"</div>
                     {t.authorityResponse && (
                       <div className={`mt-6 p-8 rounded-[2.5rem] border-2 ${t.status === 'APELADO' ? 'bg-red-50 border-red-200' : 'bg-emerald-50 border-emerald-100'}`}>
                         <p className={`text-[10px] font-black uppercase mb-3 ${t.status === 'APELADO' ? 'text-red-600' : 'text-emerald-600'}`}>
                           {t.status === 'APELADO' ? '🚨 Registro de Apelación:' : '✅ Resolución Oficial:'}
                         </p>
-                        <p className="text-sm text-slate-800 whitespace-pre-wrap">{t.authorityResponse}</p>
+                        <p className="text-sm text-slate-800 whitespace-pre-wrap text-left leading-relaxed">{t.authorityResponse}</p>
                       </div>
                     )}
                   </div>
