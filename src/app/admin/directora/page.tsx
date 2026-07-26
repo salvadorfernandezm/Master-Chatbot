@@ -24,11 +24,10 @@ export default function DirectoraPage() {
 
   const fetchData = () => {
     setLoading(true);
-    // CORREGIDO: Eliminamos el doble /api/
     fetch('/api/buzon/directora') 
       .then(res => res.json())
       .then(data => { setTickets(data); setLoading(false); })
-      .catch(err => { console.error(err); setLoading(false); });
+      .catch(err => setLoading(false));
   };
 
   const handleVerify = async () => {
@@ -83,30 +82,38 @@ export default function DirectoraPage() {
           <button onClick={handleLogout} className="bg-red-500/10 hover:bg-red-500 text-red-500 hover:text-white px-4 py-2 rounded-xl text-[10px] font-black uppercase transition-all border border-red-500/20">Salir</button>
         </header>
 
-        {/* NAVEGACIÓN ENTRE IMPACTO Y EXPEDIENTES */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-10">
+        {/* NAVEGACIÓN COMPLETA (EL TRIDENTE) */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-10">
           <Link href="/admin/impacto?from=director" className="bg-white border-2 border-slate-100 p-8 rounded-[2.5rem] flex items-center justify-between group hover:border-emerald-500 transition-all shadow-sm">
             <div className="text-left">
-              <p className="text-[10px] font-black uppercase text-slate-400">Ver Resumen</p>
-              <h3 className="text-xl font-black uppercase text-slate-600 group-hover:text-emerald-600">Impacto Ético</h3>
+              <p className="text-[10px] font-black uppercase text-slate-400">Resumen</p>
+              <h3 className="text-xl font-black uppercase text-slate-600 group-hover:text-emerald-600">Impacto</h3>
             </div>
             <span className="text-4xl grayscale group-hover:grayscale-0 transition-all">📊</span>
+          </Link>
+
+          <Link href="/excelencia/mural" className="bg-white border-2 border-slate-100 p-8 rounded-[2.5rem] flex items-center justify-between group hover:border-blue-500 transition-all shadow-sm">
+            <div className="text-left">
+              <p className="text-[10px] font-black uppercase text-slate-400">Alumnos</p>
+              <h3 className="text-xl font-black uppercase text-slate-600 group-hover:text-blue-600">Mural</h3>
+            </div>
+            <span className="text-4xl grayscale group-hover:grayscale-0 transition-all">💡</span>
           </Link>
           
           <div className="bg-purple-600 text-white p-8 rounded-[2.5rem] flex items-center justify-between shadow-xl">
             <div className="text-left">
-              <p className="text-[10px] font-black uppercase opacity-60">Estás viendo el:</p>
-              <h3 className="text-xl font-black uppercase">Listado Detallado</h3>
+              <p className="text-[10px] font-black uppercase opacity-60">Viendo el:</p>
+              <h3 className="text-xl font-black uppercase">Listado</h3>
             </div>
             <span className="text-4xl">📂</span>
           </div>
         </div>
 
         <div className="space-y-8 text-left">
-          {loading ? <p className="text-center py-20 animate-pulse font-black text-slate-300 uppercase">Cargando expedientes...</p> : 
+          {loading ? <p className="text-center py-20 animate-pulse font-black text-slate-300 uppercase">Cargando...</p> : 
             tickets.length === 0 ? (
               <div className="bg-white p-20 rounded-[3rem] border-4 border-dashed border-slate-100 text-center">
-                 <p className="text-slate-300 text-xl italic">No hay reportes para mostrar en este momento.</p>
+                 <p className="text-slate-300 text-xl italic font-serif">Sin reportes pendientes.</p>
               </div>
             ) : (
               tickets.map((t) => (
@@ -118,7 +125,7 @@ export default function DirectoraPage() {
                         <span className="text-slate-300">Folio: {t.folio}</span>
                       </div>
                       <h2 className="text-xl font-black underline decoration-purple-200 underline-offset-4">Reportante: {t.studentName || "Anónimo"}</h2>
-                      <div className="bg-slate-50 p-6 rounded-2xl border border-slate-100 italic text-slate-600 text-sm">"{t.content}"</div>
+                      <div className="bg-slate-50 p-6 rounded-2xl border border-slate-100 italic text-slate-700 text-sm">"{t.content}"</div>
                       {t.authorityResponse && (
                         <div className={`mt-6 p-8 rounded-[2.5rem] border-2 ${t.status === 'APELADO' ? 'bg-red-50 border-red-200' : 'bg-emerald-50 border-emerald-100'}`}>
                           <p className={`text-[10px] font-black uppercase mb-3 ${t.status === 'APELADO' ? 'text-red-600' : 'text-emerald-600'}`}>
