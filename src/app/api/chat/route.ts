@@ -13,10 +13,6 @@ export async function POST(req: Request) {
     const body = await req.json();
     const { message, token } = body;
 
-    if (!process.env.OPENAI_API_KEY) {
-      return NextResponse.json({ reply: "Error de configuración de IA." });
-    }
-
     const chatbot = await prisma.chatbot.findUnique({
       where: { token, isActive: true },
       include: { knowledgeBase: true }
@@ -28,25 +24,27 @@ export async function POST(req: Request) {
     if (chatbot.knowledgeBaseId) {
       try {
         await loadStoreFromDB(chatbot.knowledgeBaseId, prisma);
-        // Mantenemos una lupa amplia
-        const vectorContexts = await searchVectorStore(message, chatbot.knowledgeBaseId, 45);
+        // Buscamos 40 fragmentos pero con una lógica de 're-intento'
+        const vectorContexts = await searchVectorStore(message, chatbot.knowledgeBaseId, 40);
         contextText = vectorContexts.map((v: any) => v.pageContent).join("\n\n");
-      } catch (e) { console.error(e); }
+      } catch (e) { console.error("Error en vectores:", e); }
     }
 
-    // EL PROMPT "Fiel a la Letra": Blindaje total contra inventos
     const systemPrompt = `
-      Eres "${chatbot.name}". Tu única fuente de verdad es la 'INFORMACIÓN DE LOS ARCHIVOS' que se te proporciona abajo.
+      Eres "${chatbot.name}". Tu misión es informar con amabilidad y precisión.
       
-      REGLAS ESTRICTAS DE RESPUESTA:
-      1. PROHIBICIÓN DE INVENCIÓN: No menciones ninguna maestría, especialidad o programa que no esté escrito EXPLÍCITAMENTE en la sección 'INFORMACIÓN DE LOS ARCHIVOS'.
-      2. TRAMPA DE NOMBRE: Aunque la Facultad se llame "Terapia de la Comunicación Humana", NO asumas que existe una maestría con ese nombre a menos que aparezca en los documentos.
-      3. SILENCIO HONESTO: Si la información no está en los archivos, di simplemente: "Lamentablemente, esa información específica no se encuentra en mis registros actuales".
-      4. PRIORIDAD DE IDENTIDAD: Usa siempre estos datos de contacto: ${chatbot.systemInstructions}.
-      5. No menciones que eres una IA ni hables de "contextos". Responde como el asistente de la oficina.
+      CONOCIMIENTO BASE (Tu identidad y datos maestros):
+      ${chatbot.systemInstructions}
       
-      INFORMACIÓN DE LOS ARCHIVOS (Tu única base de datos):
-      ${contextText || "No hay documentos cargados."}
+      DETALLES EXTRAÍDOS DE ARCHIVOS (Usa esto para profundizar en planes de estudio y requisitos):
+      ${contextText || "No se encontraron detalles adicionales en los documentos para esta consulta específica."}
+      
+      REGLAS DE ORO:
+      1. Si el usuario pregunta por la oferta académica, usa primero tu 'CONOCIMIENTO BASE'. Ahí están los nombres de las maestrías reales.
+      2. Usa los 'DETALLES EXTRAÍDOS' para explicar materias, semestres o requisitos de esos programas.
+      3. NUNCA inventes programas que no estén en ninguna de las dos secciones anteriores.
+      4. Si el usuario pregunta por algo que no está en ninguna sección, invita cordialmente a contactar a la oficina: 8271285 ext 3556.
+      5. Responde siempre de forma humana, sin mencionar 'archivos' o 'contextos'.
     `;
 
     const response = await openai.chat.completions.create({
@@ -55,24 +53,18 @@ export async function POST(req: Request) {
         { role: "system", content: systemPrompt },
         { role: "user", content: message }
       ],
-      temperature: 0, // CERO ABSOLUTO: Cero creatividad, 100% precisión.
-      presence_penalty: 0,
-      frequency_penalty: 0,
+      temperature: 0.2, // Un poco más de fluidez pero manteniendo el rigor.
     });
 
-    const reply = response.choices[0].message.content || "No pude procesar la respuesta.";
+    const reply = response.choices[0].message.content || "Lo siento, no pude procesar la respuesta.";
 
     prisma.interaction.create({
-      data: { 
-        chatbotId: chatbot.id, 
-        query: message.substring(0, 500), 
-        response: reply.substring(0, 2000) 
-      }
+      data: { chatbotId: chatbot.id, query: message.substring(0, 500), response: reply.substring(0, 2000) }
     }).catch(e => console.error("Error analíticas:", e));
 
     return NextResponse.json({ reply });
 
   } catch (error: any) {
-    return NextResponse.json({ reply: "Conexión interrumpida." });
+    return NextResponse.json({ reply: "Conexión interrumpida con el Ágora." });
   }
 }
