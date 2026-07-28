@@ -33,7 +33,7 @@ export async function POST(req: Request) {
     if (chatbot.knowledgeBaseId) {
       try {
         await loadStoreFromDB(chatbot.knowledgeBaseId, prisma);
-        const vectorContexts = await searchVectorStore(message, chatbot.knowledgeBaseId, 25);
+        const vectorContexts = await searchVectorStore(message, chatbot.knowledgeBaseId, 40);
         contextText = vectorContexts.map((v: any) => v.pageContent).join("\n\n");
       } catch (e) {
         console.error("Error cargando conocimiento:", e);
