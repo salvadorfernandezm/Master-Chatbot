@@ -28,29 +28,27 @@ export async function POST(req: Request) {
     if (chatbot.knowledgeBaseId) {
       try {
         await loadStoreFromDB(chatbot.knowledgeBaseId, prisma);
-        // Mantenemos la lupa alta para pescar todo
-        const vectorContexts = await searchVectorStore(message, chatbot.knowledgeBaseId, 40);
+        // SUBIMOS A 45 FRAGMENTOS PARA ASEGURAR QUE LLEGUEN LAS OPCIONES TERMINALES
+        const vectorContexts = await searchVectorStore(message, chatbot.knowledgeBaseId, 45);
         contextText = vectorContexts.map((v: any) => v.pageContent).join("\n\n");
       } catch (e) { console.error(e); }
     }
 
-    // EL PROMPT "CON VALOR": Le quitamos la timidez
     const systemPrompt = `
-      Eres "${chatbot.name}". Tu misión es informar con PRECISIÓN usando los documentos que tienes.
+      Eres "${chatbot.name}". Tu misión es ser un INFORMANTE PROACTIVO Y DETALLISTA.
       
-      PERSONALIDAD:
+      PERSONALIDAD E INSTRUCCIONES DEL CREADOR:
       ${chatbot.systemInstructions || "Eres un asistente académico experto."}
       
-      INFORMACIÓN EXTRAÍDA DE TUS ARCHIVOS (Úsala como tu única fuente de verdad):
+      BASE DE CONOCIMIENTO (Tu única fuente de verdad):
       ${contextText || "No se encontraron datos específicos en los documentos."}
       
-      INSTRUCCIONES DE RESPUESTA:
-      1. Tu prioridad absoluta es responder con la 'Información extraída'. 
-      2. Si en los archivos ves nombres de maestrías, especialidades o procesos, lístalos detalladamente. 
-      3. No seas vago. Si los datos están ahí, entrégalos al usuario.
-      4. Solo si la pregunta es totalmente ajena a tus archivos, usa tus datos de contacto oficiales para invitar al usuario a la oficina.
-      5. Responde siempre en español, de forma humana y profesional.
-      6. No menciones frases como "según el contexto proporcionado" o "mis archivos dicen". Responde directamente.
+      REGLAS DE ORO PARA TUS RESPUESTAS:
+      1. Si el usuario pregunta por "maestrías" o "programas", NO te limites a dar los títulos. Investiga en la 'BASE DE CONOCIMIENTO' si existen OPCIONES TERMINALES, ESPECIALIDADES o áreas de acentuación y lístalas siempre.
+      2. Si encuentras un plan de estudios o requisitos, menciónalos de forma estructurada. Al usuario le encanta el detalle.
+      3. Sé exhaustivo: es mejor dar mucha información verídica que ser demasiado breve y parecer desinformado.
+      4. Si la información NO está en la base de datos, NO la inventes, pero usa tus datos de contacto para ofrecer ayuda personalizada.
+      5. Responde siempre de forma natural, humana y profesional. Evita frases como "según el texto".
     `;
 
     const response = await openai.chat.completions.create({
@@ -59,7 +57,7 @@ export async function POST(req: Request) {
         { role: "system", content: systemPrompt },
         { role: "user", content: message }
       ],
-      temperature: 0.4, // Subimos un pelín la temperatura para que sea más elocuente
+      temperature: 0.3, 
     });
 
     const reply = response.choices[0].message.content || "Lo siento, no pude procesar la respuesta.";
