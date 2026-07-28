@@ -14,7 +14,7 @@ export async function POST(req: Request) {
     const { message, token } = body;
 
     if (!process.env.OPENAI_API_KEY) {
-      return NextResponse.json({ reply: "Error: Falta la configuración de IA." });
+      return NextResponse.json({ reply: "Configuración incompleta." });
     }
 
     const chatbot = await prisma.chatbot.findUnique({
@@ -22,39 +22,33 @@ export async function POST(req: Request) {
       include: { knowledgeBase: true }
     });
 
-    if (!chatbot) {
-      return NextResponse.json({ reply: "Asistente no disponible." });
-    }
+    if (!chatbot) return NextResponse.json({ reply: "Asistente fuera de línea." });
 
     let contextText = "";
-    
     if (chatbot.knowledgeBaseId) {
       try {
         await loadStoreFromDB(chatbot.knowledgeBaseId, prisma);
-        // AUMENTAMOS LA LUPA A 40 FRAGMENTOS PARA NO PERDER DETALLES
-        const vectorContexts = await searchVectorStore(message, chatbot.knowledgeBaseId, 40);
+        const vectorContexts = await searchVectorStore(message, chatbot.knowledgeBaseId, 35);
         contextText = vectorContexts.map((v: any) => v.pageContent).join("\n\n");
-      } catch (e) {
-        console.error("Error cargando conocimiento:", e);
-      }
+      } catch (e) { console.error(e); }
     }
 
-    // PROMPT REFORZADO: LA CAMISA DE FUERZA
+    // EL PROMPT REFINADO (Para evitar que transcriba las instrucciones)
     const systemPrompt = `
-      Eres "${chatbot.name}".
+      Eres "${chatbot.name}". Actúa de forma profesional, amable y servicial.
       
-      IDENTIDAD Y CONTACTO (Úsalo siempre):
-      ${chatbot.systemInstructions || "Eres un asistente servicial."}
+      TU IDENTIDAD Y MISIÓN:
+      ${chatbot.systemInstructions || "Eres un asistente académico."}
       
-      CONTEXTO DE INFORMACIÓN (Toda tu verdad está aquí):
-      ${contextText || "No hay información disponible en los documentos."}
+      INFORMACIÓN DE APOYO (Base de datos):
+      ${contextText || "No hay datos específicos en los documentos para esta consulta."}
       
-      REGLAS CRÍTICAS DE RESPUESTA:
-      1. SOLO menciona maestrías o programas que aparezcan EXPLÍCITAMENTE en el 'CONTEXTO DE INFORMACIÓN'. 
-      2. No inventes programas basados en el nombre de la Facultad. 
-      3. Si el usuario pregunta por maestrías y no encuentras una lista clara en el contexto, responde: "Lamentablemente, no tengo la lista de maestrías vigentes en mis archivos actuales, por favor contacta a la División".
-      4. Está terminantemente PROHIBIDO alucinar o suponer programas académicos.
-      5. Si la información es ambigua, prioriza los datos de contacto que tienes en tus instrucciones.
+      NORMAS DE CONDUCTA:
+      1. Usa la 'Información de apoyo' para responder con precisión.
+      2. NUNCA transcribas frases como "IMPORTANTE: Tus datos de contacto son...". Simplemente usa esa información para responder de forma natural (ej: "Puede contactarnos al...").
+      3. Si el usuario pregunta por maestrías, revisa la 'Información de apoyo'. SOLO menciona las que aparezcan ahí. Si no hay una lista clara, responde con amabilidad que la oferta se actualiza constantemente y sugiere contactar a la oficina.
+      4. Mantén un tono humano. No menciones que eres una IA.
+      5. Si no encuentras la respuesta en los documentos, apóyate en tus datos de contacto oficiales para invitar al alumno a la oficina.
     `;
 
     const response = await openai.chat.completions.create({
@@ -63,23 +57,18 @@ export async function POST(req: Request) {
         { role: "system", content: systemPrompt },
         { role: "user", content: message }
       ],
-      temperature: 0.1, // BAJAMOS LA TEMPERATURA AL MÍNIMO PARA QUE NO SEA CREATIVO
+      temperature: 0.3, // Subimos un pelín para que no sea un robot de madera
     });
 
-    const reply = response.choices[0].message.content || "No pude procesar la respuesta.";
+    const reply = response.choices[0].message.content || "Lo siento, no pude procesar la respuesta.";
 
     prisma.interaction.create({
-      data: { 
-        chatbotId: chatbot.id, 
-        query: message.substring(0, 500), 
-        response: reply.substring(0, 2000) 
-      }
-    }).catch(e => console.error("Error analíticas:", e));
+      data: { chatbotId: chatbot.id, query: message.substring(0, 500), response: reply.substring(0, 2000) }
+    }).catch(e => console.error(e));
 
     return NextResponse.json({ reply });
 
   } catch (error: any) {
-    console.error("Error en el chat:", error);
-    return NextResponse.json({ reply: "Sistema en mantenimiento técnico. Reintenta pronto." });
+    return NextResponse.json({ reply: "El Ágora está llena. Intenta en un momento." });
   }
 }
