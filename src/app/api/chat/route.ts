@@ -2,83 +2,86 @@ export const dynamic = 'force-dynamic';
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { searchVectorStore, loadStoreFromDB } from "@/lib/vectorStore";
+import OpenAI from "openai";
+
+const openai = new OpenAI({
+  apiKey: process.env.OPENAI_API_KEY,
+});
 
 export async function POST(req: Request) {
   try {
     const body = await req.json();
     const { message, token } = body;
-    const apiKey = process.env.GEMINI_API_KEY;
 
-    if (!apiKey) return NextResponse.json({ error: "Falta API Key" }, { status: 500 });
+    if (!process.env.OPENAI_API_KEY) {
+      return NextResponse.json({ reply: "Error: Falta la configuración del motor de IA." });
+    }
 
-    // Buscamos el chatbot y su base de conocimiento asociada
+    // Buscamos el chatbot y su base de conocimiento
     const chatbot = await prisma.chatbot.findUnique({
       where: { token, isActive: true },
       include: { knowledgeBase: true }
     });
 
-    if (!chatbot) return NextResponse.json({ error: "Chatbot no encontrado o inactivo" }, { status: 404 });
+    if (!chatbot) {
+      return NextResponse.json({ reply: "Este asistente no se encuentra disponible por ahora." });
+    }
 
     let contextText = "";
     
-    // 1. CARGAR CONTEXTO SOLO SI TIENE UNA BASE ASIGNADA
+    // 1. CARGAR CONTEXTO DE LA BASE DE DATOS (Si tiene una asignada)
     if (chatbot.knowledgeBaseId) {
-      console.log(`Buscando en la base: ${chatbot.knowledgeBaseId}`);
-      await loadStoreFromDB(chatbot.knowledgeBaseId, prisma);
-      const vectorContexts = await searchVectorStore(message, chatbot.knowledgeBaseId, 25);
-      contextText = vectorContexts.map((v: any) => v.pageContent).join("\n\n");
+      try {
+        await loadStoreFromDB(chatbot.knowledgeBaseId, prisma);
+        const vectorContexts = await searchVectorStore(message, chatbot.knowledgeBaseId, 25);
+        contextText = vectorContexts.map((v: any) => v.pageContent).join("\n\n");
+      } catch (e) {
+        console.error("Error cargando conocimiento:", e);
+      }
     }
 
-    // 2. CONSTRUIR EL PROMPT (Dándole prioridad a tus instrucciones)
+    // 2. CONSTRUIR LA IDENTIDAD DINÁMICA
+    // Aquí el bot toma la personalidad que TÚ le escribiste en el panel
     const systemPrompt = `
-      Eres "${chatbot.name}". 
-      Instrucciones críticas de tu identidad: ${chatbot.systemInstructions || "Eres un asistente amable."}
+      Eres "${chatbot.name}".
       
-      CONTEXTO DE TU BASE DE DATOS:
-      ${contextText || "No hay información específica en la base de datos para esta pregunta."}
+      INSTRUCCIONES DE TU CREADOR (Sigue esto estrictamente):
+      ${chatbot.systemInstructions || "Eres un asistente servicial y amable."}
       
-      REGLAS DE RESPUESTA:
-      1. Usa el CONTEXTO proporcionado para responder de forma precisa.
-      2. Si la información no está en el contexto, responde basado en tus instrucciones de identidad.
-      3. Mantén siempre un tono profesional y servicial.
-      4. Si el usuario pregunta algo que no sabes, sugiere contactar a la División de Estudios de Posgrado.
+      CONTEXTO DE INFORMACIÓN (Usa esto para responder):
+      ${contextText || "No hay documentos específicos para esta pregunta en tu base de datos."}
+      
+      REGLAS:
+      1. Responde siempre basándote en las 'Instrucciones de tu creador' y el 'Contexto de información'.
+      2. Si la respuesta no está en el contexto, usa tu conocimiento general pero mantén tu personalidad.
+      3. No menciones que eres una IA o un modelo de lenguaje, actúa siempre como el asistente asignado.
     `;
 
-    // 3. LLAMADA A GOOGLE (Usando el modelo flash que es más rápido)
-    const modelName = "gemini-1.5-flash"; 
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${apiKey}`;
-
-    const response = await fetch(url, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        contents: [{ 
-          parts: [{ text: systemPrompt + "\n\nPregunta del usuario: " + message }] 
-        }],
-        generationConfig: { 
-          temperature: 0.3, // Un poco más bajo para que sea más preciso con los datos
-          maxOutputTokens: 2048 
-        }
-      })
+    // 3. LLAMADA A OPENAI (Mucho más estable que Google)
+    const response = await openai.chat.completions.create({
+      model: "gpt-4o-mini",
+      messages: [
+        { role: "system", content: systemPrompt },
+        { role: "user", content: message }
+      ],
+      temperature: 0.3, // Bajo para que no invente cosas y sea fiel a los PDFs
     });
 
-    const data = await response.json();
-    
-    if (!data.candidates || !data.candidates[0]) {
-        return NextResponse.json({ reply: "Sócrates está meditando. Por favor, intenta de nuevo." });
-    }
+    const reply = response.choices[0].message.content || "Lo siento, no pude procesar la respuesta.";
 
-    const reply = data.candidates[0].content.parts[0].text;
-
-    // 4. GUARDAR ANALÍTICAS (Sin bloquear la respuesta)
+    // 4. GUARDAR ANALÍTICAS
     prisma.interaction.create({
-      data: { chatbotId: chatbot.id, query: message.substring(0, 500), response: reply.substring(0, 2000) }
+      data: { 
+        chatbotId: chatbot.id, 
+        query: message.substring(0, 500), 
+        response: reply.substring(0, 2000) 
+      }
     }).catch(e => console.error("Error analíticas:", e));
 
     return NextResponse.json({ reply });
 
   } catch (error: any) {
-    console.error("Error en el chat:", error);
-    return NextResponse.json({ error: "El Ágora está saturada. Reintentando..." }, { status: 500 });
+    console.error("Error en el motor del chat:", error);
+    return NextResponse.json({ reply: "El sistema está procesando mucha información. Por favor, intenta de nuevo." });
   }
 }
