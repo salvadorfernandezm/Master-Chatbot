@@ -18,8 +18,19 @@ export default async function ChatbotsPage() {
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-      <div><ChatbotFormWrapper groups={groups} knowledgeBases={kbs} /></div>
-      <div className="lg:col-span-2"><ChatbotList chatbots={chatbots as any} /></div>
+      {/* Columna del formulario para crear nuevos */}
+      <div>
+        <ChatbotFormWrapper groups={groups} knowledgeBases={kbs} />
+      </div>
+
+      {/* Columna de la lista para gestionar y editar los existentes */}
+      <div className="lg:col-span-2">
+        <ChatbotList 
+          chatbots={chatbots as any} 
+          groups={groups} 
+          knowledgeBases={kbs} 
+        />
+      </div>
     </div>
   );
 }

@@ -266,14 +266,31 @@ export async function createChatbot(formData: FormData) {
   await prisma.chatbot.create({ data: { name, token, groupId, knowledgeBaseId: kbId, isActive: true } });
   revalidatePath("/admin/chatbots");
 }
-export async function updateChatbot(formData: FormData) { 
+export async function updateChatbot(formData: FormData) {
   const id = formData.get("id") as string;
   const updateData: any = {};
-  ["name", "welcomeMessage", "systemInstructions", "inputPlaceholder", "fallbackMessage", "infoMessage", "logoUrl"].forEach(f => {
-    const v = formData.get(f); if (v !== null) updateData[f] = v as string;
+  
+  // Lista de campos a actualizar, incluyendo ahora la base de conocimiento
+  const fields = [
+    "name", 
+    "welcomeMessage", 
+    "systemInstructions", 
+    "inputPlaceholder", 
+    "fallbackMessage", 
+    "infoMessage", 
+    "logoUrl",
+    "knowledgeBaseId", // <--- ESTO ES LO QUE LE DEVUELVE LA MEMORIA AL BOT
+    "groupId"          // De paso permitimos cambiarlo de grupo
+  ];
+
+  fields.forEach(field => {
+    const value = formData.get(field);
+    if (value !== null) updateData[field] = value as string;
   });
+
   const isActive = formData.get("isActive");
   if (isActive !== null) updateData.isActive = isActive === "true";
+
   await prisma.chatbot.update({ where: { id }, data: updateData });
   revalidatePath("/admin/chatbots");
 }

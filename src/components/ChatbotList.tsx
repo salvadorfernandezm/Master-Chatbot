@@ -13,6 +13,8 @@ interface Chatbot {
   systemInstructions: string | null;
   fallbackMessage: string | null;
   inputPlaceholder: string | null;
+  groupId: string;
+  knowledgeBaseId: string;
   group: { name: string };
   knowledgeBase: { name: string };
 }
@@ -33,7 +35,7 @@ function TrashIcon() {
   );
 }
 
-function ChatbotCard({ bot }: { bot: Chatbot }) {
+function ChatbotCard({ bot, groups, knowledgeBases }: { bot: Chatbot, groups: any[], knowledgeBases: any[] }) {
   const [editingId, setEditingId] = useState(false);
   const [isToggling, setIsToggling] = useState(false);
 
@@ -60,7 +62,7 @@ function ChatbotCard({ bot }: { bot: Chatbot }) {
           <div className="flex-1">
             <div className="flex items-center gap-3 mb-2">
               <h3 className="font-extrabold text-slate-800 text-xl">{bot.name}</h3>
-              <button onClick={handleToggleActive} className={`px-4 py-1 rounded-full text-[10px] font-black uppercase tracking-tighter ${bot.isActive ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-500'}`}>
+              <button onClick={handleToggleActive} disabled={isToggling} className={`px-4 py-1 rounded-full text-[10px] font-black uppercase tracking-tighter ${bot.isActive ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-500'}`}>
                 {bot.isActive ? '● En Línea' : '○ Apagado'}
               </button>
             </div>
@@ -75,11 +77,10 @@ function ChatbotCard({ bot }: { bot: Chatbot }) {
             <button onClick={() => setEditingId(!editingId)} className="p-2.5 bg-slate-100 text-slate-600 rounded-2xl hover:bg-purple-600 hover:text-white transition-all shadow-md">
                 <PencilIcon />
             </button>
-            <button onClick={() => deleteChatbot(bot.id)} className="p-2.5 bg-slate-100 text-slate-400 rounded-2xl hover:bg-red-500 hover:text-white transition-all"><TrashIcon /></button>
+            <button onClick={() => { if(confirm("¿Borrar este bot?")) deleteChatbot(bot.id) }} className="p-2.5 bg-slate-100 text-slate-400 rounded-2xl hover:bg-red-500 hover:text-white transition-all"><TrashIcon /></button>
           </div>
         </div>
 
-        {/* LINK DIRECTO PARA EL PROFESOR (Lo que pediste) */}
         <div className="mt-4 p-4 bg-slate-50 rounded-2xl border border-dashed border-slate-500">
            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Acceso Académico (Token: {bot.token})</p>
            <div className="flex items-center justify-between">
@@ -90,38 +91,52 @@ function ChatbotCard({ bot }: { bot: Chatbot }) {
       </div>
 
       {editingId && (
-        <div className="p-6 bg-slate-50 border-t border-slate-500">
+        <div className="p-6 bg-slate-50 border-t border-slate-500 animate-in slide-in-from-top-4 duration-300">
           <form action={updateChatbot} onSubmit={() => setEditingId(false)} className="space-y-4">
             <input type="hidden" name="id" value={bot.id} />
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="text-[10px] font-bold text-slate-400 uppercase ml-2">Nombre del Bot</label>
+                <input name="name" defaultValue={bot.name} required className="w-full p-3 rounded-xl border border-slate-200 outline-none focus:border-purple-500" />
+              </div>
+
+              {/* SELECTOR DE GRUPO */}
+              <div>
+                <label className="text-[10px] font-bold text-slate-400 uppercase ml-2">Asignar a Grupo</label>
+                <select name="groupId" defaultValue={bot.groupId} className="w-full p-3 rounded-xl border border-slate-200 outline-none bg-white">
+                  {groups.map(g => <option key={g.id} value={g.id}>{g.name}</option>)}
+                </select>
+              </div>
+            </div>
+
+            {/* SELECTOR DE BASE DE CONOCIMIENTO (Aquí recuperas la memoria del bot) */}
             <div>
-              <label className="text-[10px] font-bold text-slate-400 uppercase">Nombre</label>
-              <input name="name" defaultValue={bot.name} required className="w-full p-3 rounded-xl border border-slate-200 outline-none" />
+              <label className="text-[10px] font-bold text-slate-400 uppercase ml-2">Base de Conocimiento</label>
+              <select name="knowledgeBaseId" defaultValue={bot.knowledgeBaseId} className="w-full p-3 rounded-xl border border-slate-200 outline-none bg-white font-bold text-purple-700">
+                {knowledgeBases.map(kb => <option key={kb.id} value={kb.id}>{kb.name}</option>)}
+              </select>
             </div>
 
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="text-[10px] font-bold text-slate-400 uppercase">Bienvenida</label>
+                <label className="text-[10px] font-bold text-slate-400 uppercase ml-2">Mensaje Bienvenida</label>
                 <textarea name="welcomeMessage" defaultValue={bot.welcomeMessage || ""} rows={2} className="w-full p-3 rounded-xl border border-slate-200 outline-none text-sm" />
               </div>
               <div>
-                <label className="text-[10px] font-bold text-slate-400 uppercase">Escribiendo...</label>
+                <label className="text-[10px] font-bold text-slate-400 uppercase ml-2">Placeholder Input</label>
                 <input name="inputPlaceholder" defaultValue={bot.inputPlaceholder || ""} className="w-full p-3 rounded-xl border border-slate-200 outline-none text-sm" />
               </div>
             </div>
 
             <div>
-              <label className="text-[10px] font-bold text-slate-400 uppercase">Mensaje de Información (Boton "i")</label>
-              <textarea name="infoMessage" defaultValue={bot.infoMessage || ""} rows={3} className="w-full p-3 rounded-xl border border-slate-200 outline-none text-sm" placeholder="Escribe instrucciones aquí..." />
+              <label className="text-[10px] font-bold text-slate-400 uppercase ml-2">Instrucciones del Sistema (Prompt)</label>
+              <textarea name="systemInstructions" defaultValue={bot.systemInstructions || ""} rows={4} className="w-full p-3 rounded-xl border border-slate-200 outline-none font-mono text-[10px] bg-white" />
             </div>
 
-            <div>
-              <label className="text-[10px] font-bold text-slate-400 uppercase">System Prompt (IA)</label>
-              <textarea name="systemInstructions" defaultValue={bot.systemInstructions || ""} rows={2} className="w-full p-3 rounded-xl border border-slate-200 outline-none font-mono text-[10px]" />
-            </div>
-
-            <div className="flex justify-end gap-2">
+            <div className="flex justify-end gap-2 pt-2">
               <button type="button" onClick={() => setEditingId(false)} className="text-sm font-bold text-slate-400 px-4">Cancelar</button>
-              <button type="submit" className="bg-slate-900 text-white px-8 py-3 rounded-2xl font-bold text-sm shadow-xl shadow-slate-300">Actualizar Chatbot</button>
+              <button type="submit" className="bg-purple-600 text-white px-8 py-3 rounded-2xl font-black text-xs uppercase shadow-xl hover:bg-purple-700 transition-all">Guardar Cambios</button>
             </div>
           </form>
         </div>
@@ -130,7 +145,18 @@ function ChatbotCard({ bot }: { bot: Chatbot }) {
   );
 }
 
-export function ChatbotList({ chatbots }: { chatbots: Chatbot[] }) {
-  if (chatbots.length === 0) return <div className="p-10 text-center text-slate-400 italic">No has creado bots todavía.</div>;
-  return <div>{chatbots.map(bot => <ChatbotCard key={bot.id} bot={bot} />)}</div>;
+export function ChatbotList({ chatbots, groups, knowledgeBases }: { chatbots: Chatbot[], groups: any[], knowledgeBases: any[] }) {
+  if (chatbots.length === 0) return <div className="p-10 text-center text-slate-400 italic">No hay bots configurados.</div>;
+  return (
+    <div>
+      {chatbots.map(bot => (
+        <ChatbotCard 
+          key={bot.id} 
+          bot={bot} 
+          groups={groups} 
+          knowledgeBases={knowledgeBases} 
+        />
+      ))}
+    </div>
+  );
 }
