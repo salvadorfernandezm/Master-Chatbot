@@ -14,7 +14,7 @@ export async function POST(req: Request) {
     const { message, token } = body;
 
     if (!process.env.OPENAI_API_KEY) {
-      return NextResponse.json({ reply: "Configuración incompleta." });
+      return NextResponse.json({ reply: "Falta configuración de motor." });
     }
 
     const chatbot = await prisma.chatbot.findUnique({
@@ -22,33 +22,35 @@ export async function POST(req: Request) {
       include: { knowledgeBase: true }
     });
 
-    if (!chatbot) return NextResponse.json({ reply: "Asistente fuera de línea." });
+    if (!chatbot) return NextResponse.json({ reply: "Asistente inactivo." });
 
     let contextText = "";
     if (chatbot.knowledgeBaseId) {
       try {
         await loadStoreFromDB(chatbot.knowledgeBaseId, prisma);
-        const vectorContexts = await searchVectorStore(message, chatbot.knowledgeBaseId, 35);
+        // Mantenemos la lupa alta para pescar todo
+        const vectorContexts = await searchVectorStore(message, chatbot.knowledgeBaseId, 40);
         contextText = vectorContexts.map((v: any) => v.pageContent).join("\n\n");
       } catch (e) { console.error(e); }
     }
 
-    // EL PROMPT REFINADO (Para evitar que transcriba las instrucciones)
+    // EL PROMPT "CON VALOR": Le quitamos la timidez
     const systemPrompt = `
-      Eres "${chatbot.name}". Actúa de forma profesional, amable y servicial.
+      Eres "${chatbot.name}". Tu misión es informar con PRECISIÓN usando los documentos que tienes.
       
-      TU IDENTIDAD Y MISIÓN:
-      ${chatbot.systemInstructions || "Eres un asistente académico."}
+      PERSONALIDAD:
+      ${chatbot.systemInstructions || "Eres un asistente académico experto."}
       
-      INFORMACIÓN DE APOYO (Base de datos):
-      ${contextText || "No hay datos específicos en los documentos para esta consulta."}
+      INFORMACIÓN EXTRAÍDA DE TUS ARCHIVOS (Úsala como tu única fuente de verdad):
+      ${contextText || "No se encontraron datos específicos en los documentos."}
       
-      NORMAS DE CONDUCTA:
-      1. Usa la 'Información de apoyo' para responder con precisión.
-      2. NUNCA transcribas frases como "IMPORTANTE: Tus datos de contacto son...". Simplemente usa esa información para responder de forma natural (ej: "Puede contactarnos al...").
-      3. Si el usuario pregunta por maestrías, revisa la 'Información de apoyo'. SOLO menciona las que aparezcan ahí. Si no hay una lista clara, responde con amabilidad que la oferta se actualiza constantemente y sugiere contactar a la oficina.
-      4. Mantén un tono humano. No menciones que eres una IA.
-      5. Si no encuentras la respuesta en los documentos, apóyate en tus datos de contacto oficiales para invitar al alumno a la oficina.
+      INSTRUCCIONES DE RESPUESTA:
+      1. Tu prioridad absoluta es responder con la 'Información extraída'. 
+      2. Si en los archivos ves nombres de maestrías, especialidades o procesos, lístalos detalladamente. 
+      3. No seas vago. Si los datos están ahí, entrégalos al usuario.
+      4. Solo si la pregunta es totalmente ajena a tus archivos, usa tus datos de contacto oficiales para invitar al usuario a la oficina.
+      5. Responde siempre en español, de forma humana y profesional.
+      6. No menciones frases como "según el contexto proporcionado" o "mis archivos dicen". Responde directamente.
     `;
 
     const response = await openai.chat.completions.create({
@@ -57,7 +59,7 @@ export async function POST(req: Request) {
         { role: "system", content: systemPrompt },
         { role: "user", content: message }
       ],
-      temperature: 0.3, // Subimos un pelín para que no sea un robot de madera
+      temperature: 0.4, // Subimos un pelín la temperatura para que sea más elocuente
     });
 
     const reply = response.choices[0].message.content || "Lo siento, no pude procesar la respuesta.";
@@ -69,6 +71,6 @@ export async function POST(req: Request) {
     return NextResponse.json({ reply });
 
   } catch (error: any) {
-    return NextResponse.json({ reply: "El Ágora está llena. Intenta en un momento." });
+    return NextResponse.json({ reply: "Conexión interrumpida con el Ágora." });
   }
 }
