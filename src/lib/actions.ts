@@ -43,20 +43,19 @@ export async function runEscalationLogic() {
 }
 
 // ==========================================
-// 2. MOTOR DEL BUZÓN (TICKETS Y CORREOS)
+// 2. MOTOR DEL BUZÓN
 // ==========================================
 
 export async function createTicket(formData: FormData): Promise<{ success: boolean; folio: string }> {
-  const type = formData.get("type") as string;
-  const category = formData.get("category") as string;
+  const type = formData.get("type") as string || "DENUNCIA";
+  const category = formData.get("category") as string || "GENERAL";
   const academicProgram = formData.get("academicProgram") as string || "Psicología";
   const modality = formData.get("modality") as string || "Presencial";
-  const content = formData.get("content") as string;
-  const studentName = formData.get("studentName") as string;
-  const studentEmail = formData.get("studentEmail") as string;
+  const content = formData.get("content") as string || "";
+  const studentName = formData.get("studentName") as string || "Anónimo Protegido";
+  const studentEmail = formData.get("studentEmail") as string || "sin-correo@ujed.mx";
   
-  // VALIDACIÓN ESTRICTA: Si faltan datos obligatorios, cancelamos
-  if (!content || !type || !studentName || !studentEmail) return { success: false, folio: "" };
+  if (!content) return { success: false, folio: "" };
   
   const folio = `ETH-${Math.random().toString(36).substring(2, 7).toUpperCase()}`;
   const attachmentLinks: string[] = [];
@@ -64,15 +63,8 @@ export async function createTicket(formData: FormData): Promise<{ success: boole
   try {
     const ticket = await prisma.ticket.create({
       data: { 
-        folio, 
-        type, 
-        category, 
-        content, 
-        studentName, // Ya no usamos "|| null" porque es obligatorio
-        studentEmail, // Ya no usamos "|| null" porque es obligatorio
-        academicProgram, 
-        modality,
-        status: "PENDIENTE" 
+        folio, type, category, content, studentName, studentEmail, 
+        academicProgram, modality, status: "PENDIENTE" 
       },
     });
 
@@ -94,38 +86,12 @@ export async function createTicket(formData: FormData): Promise<{ success: boole
       }
     }
 
-    // AVISOS POR CORREO
-    let emailDestino = process.env.EMAIL_INGENIERO;
-    const criterio = type === "SOPORTE_TECNICO" ? "SOPORTE_TECNICO" : category;
-    if (criterio === "ACADEMICO") emailDestino = process.env.EMAIL_SECRETARIA_ACADEMICA;
-    else if (criterio === "LOGISTICA") emailDestino = process.env.EMAIL_SECRETARIA_ADMINISTRATIVA;
-    else if (criterio === "GRAVE") emailDestino = process.env.EMAIL_DIRECCION;
-
-    if (process.env.RESEND_API_KEY && emailDestino) {
-      const responderUrl = `https://master-chatbot-rho.vercel.app/admin/responder?folio=${folio}`;
-      const listaEvidencias = attachmentLinks.length > 0 ? `<ul>${attachmentLinks.map(l => `<li><a href="${l}">Ver</a></li>`).join('')}</ul>` : '';
-      await resend.emails.send({
-        from: 'Buzon Etico <onboarding@resend.dev>',
-        to: [emailDestino as string],
-        subject: `[${academicProgram}] Nuevo Reporte: ${folio}`,
-        html: `<p><strong>Programa:</strong> ${academicProgram} (${modality})</p><p><strong>Autor:</strong> ${studentName}</p><p><strong>Mensaje:</strong> ${content}</p>${listaEvidencias}<br/><a href="${responderUrl}">Atender Ahora</a>`
-      }).catch(e => console.error(e));
-    }
-
-    if (process.env.RESEND_API_KEY && studentEmail) {
-      await resend.emails.send({
-        from: 'Buzon Etico <onboarding@resend.dev>',
-        to: [studentEmail as string],
-        subject: `Folio de Seguimiento: ${folio}`,
-        html: `<h2>Tu voz ha sido registrada</h2><p><strong>Folio:</strong> ${folio}</p><p>Usa este código para consultar tu respuesta en el portal.</p>`
-      }).catch(e => console.error(e));
-    }
-
     revalidatePath("/admin/buzon");
     return { success: true, folio: ticket.folio };
   } catch (error) { return { success: false, folio: "" }; }
 }
 
+// ... (El resto de funciones siguen igual abajo)
 export async function submitAppeal(id: string, reason: string) {
   try {
     const currentTicket = await prisma.ticket.findUnique({ where: { id } });
@@ -170,10 +136,6 @@ export async function updateTicketStatus(id: string, newStatus: string) {
   revalidatePath("/admin/directora");
 }
 
-// ==========================================
-// 3. EXPORTACIÓN HISTÓRICA
-// ==========================================
-
 export async function downloadFullHistory() {
   try {
     const [tickets, proposals] = await Promise.all([
@@ -187,10 +149,6 @@ export async function downloadFullHistory() {
     return { success: true, data: csv };
   } catch (error) { return { success: false, data: "" }; }
 }
-
-// ==========================================
-// 4. CHATBOTS, GRUPOS Y CONFIGURACIÓN
-// ==========================================
 
 export async function createGroup(formData: FormData) {
   const name = formData.get("name") as string;
@@ -301,17 +259,8 @@ export async function importFullBackup(data: any) {
   } catch (error: any) { return { success: false, error: error.message || "Error" }; }
 }
 
-// ==========================================
-// 5. INICIATIVA DE EXCELENCIA (PROPUESTAS)
-// ==========================================
-
 export async function createProposal(formData: FormData) {
   try {
-    const studentName = formData.get("studentName") as string;
-    const studentEmail = formData.get("studentEmail") as string;
-    
-    // Si en las propuestas se permite anónimo pero la DB pide obligatorio,
-    // usamos un valor por defecto si no viene en el form.
     const proposal = await prisma.proposal.create({
       data: {
         title: formData.get("title") as string,
@@ -319,8 +268,8 @@ export async function createProposal(formData: FormData) {
         category: formData.get("category") as string,
         academicProgram: formData.get("academicProgram") as string || "Psicología",
         modality: formData.get("modality") as string || "Presencial",
-        studentName: studentName || "Anónimo de Excelencia",
-        studentEmail: studentEmail || "excelencia@ujed.mx",
+        studentName: formData.get("studentName") as string || "Anónimo",
+        studentEmail: formData.get("studentEmail") as string || "sin-correo@ujed.mx",
         aiFeedback: formData.get("aiFeedback") as string,
         status: "EN_REVISION"
       }
