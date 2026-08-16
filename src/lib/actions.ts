@@ -49,12 +49,13 @@ export async function runEscalationLogic() {
 export async function createTicket(formData: FormData): Promise<{ success: boolean; folio: string }> {
   const type = formData.get("type") as string;
   const category = formData.get("category") as string;
-  const academicProgram = formData.get("academicProgram") as string; // <--- NUEVO
-  const modality = formData.get("modality") as string || "Presencial"; // <--- NUEVO
+  const academicProgram = formData.get("academicProgram") as string || "Psicología";
+  const modality = formData.get("modality") as string || "Presencial";
   const content = formData.get("content") as string;
   const studentName = formData.get("studentName") as string;
   const studentEmail = formData.get("studentEmail") as string;
   
+  // VALIDACIÓN ESTRICTA: Si faltan datos obligatorios, cancelamos
   if (!content || !type || !studentName || !studentEmail) return { success: false, folio: "" };
   
   const folio = `ETH-${Math.random().toString(36).substring(2, 7).toUpperCase()}`;
@@ -63,8 +64,14 @@ export async function createTicket(formData: FormData): Promise<{ success: boole
   try {
     const ticket = await prisma.ticket.create({
       data: { 
-        folio, type, category, content, studentName, studentEmail, 
-        academicProgram, modality, // <--- GUARDAMOS LOS NUEVOS DATOS
+        folio, 
+        type, 
+        category, 
+        content, 
+        studentName, // Ya no usamos "|| null" porque es obligatorio
+        studentEmail, // Ya no usamos "|| null" porque es obligatorio
+        academicProgram, 
+        modality,
         status: "PENDIENTE" 
       },
     });
@@ -87,7 +94,7 @@ export async function createTicket(formData: FormData): Promise<{ success: boole
       }
     }
 
-    // AVISO A AUTORIDAD
+    // AVISOS POR CORREO
     let emailDestino = process.env.EMAIL_INGENIERO;
     const criterio = type === "SOPORTE_TECNICO" ? "SOPORTE_TECNICO" : category;
     if (criterio === "ACADEMICO") emailDestino = process.env.EMAIL_SECRETARIA_ACADEMICA;
@@ -101,7 +108,7 @@ export async function createTicket(formData: FormData): Promise<{ success: boole
         from: 'Buzon Etico <onboarding@resend.dev>',
         to: [emailDestino as string],
         subject: `[${academicProgram}] Nuevo Reporte: ${folio}`,
-        html: `<p><strong>Programa:</strong> ${academicProgram} (${modality})</p><p><strong>Mensaje:</strong> ${content}</p>${listaEvidencias}<br/><a href="${responderUrl}">Responder</a>`
+        html: `<p><strong>Programa:</strong> ${academicProgram} (${modality})</p><p><strong>Autor:</strong> ${studentName}</p><p><strong>Mensaje:</strong> ${content}</p>${listaEvidencias}<br/><a href="${responderUrl}">Atender Ahora</a>`
       }).catch(e => console.error(e));
     }
 
@@ -110,7 +117,7 @@ export async function createTicket(formData: FormData): Promise<{ success: boole
         from: 'Buzon Etico <onboarding@resend.dev>',
         to: [studentEmail as string],
         subject: `Folio de Seguimiento: ${folio}`,
-        html: `<h2>Tu voz ha sido registrada</h2><p><strong>Folio:</strong> ${folio}</p><p>Programa: ${academicProgram}</p>`
+        html: `<h2>Tu voz ha sido registrada</h2><p><strong>Folio:</strong> ${folio}</p><p>Usa este código para consultar tu respuesta en el portal.</p>`
       }).catch(e => console.error(e));
     }
 
@@ -159,11 +166,12 @@ export async function submitAuthorityResponse(formData: FormData) {
 
 export async function updateTicketStatus(id: string, newStatus: string) {
   await prisma.ticket.update({ where: { id }, data: { status: newStatus } });
-  revalidatePath("/admin/buzon"); revalidatePath("/admin/directora");
+  revalidatePath("/admin/buzon");
+  revalidatePath("/admin/directora");
 }
 
 // ==========================================
-// 3. EXPORTACIÓN HISTÓRICA (EXCEL)
+// 3. EXPORTACIÓN HISTÓRICA
 // ==========================================
 
 export async function downloadFullHistory() {
@@ -299,15 +307,20 @@ export async function importFullBackup(data: any) {
 
 export async function createProposal(formData: FormData) {
   try {
+    const studentName = formData.get("studentName") as string;
+    const studentEmail = formData.get("studentEmail") as string;
+    
+    // Si en las propuestas se permite anónimo pero la DB pide obligatorio,
+    // usamos un valor por defecto si no viene en el form.
     const proposal = await prisma.proposal.create({
       data: {
         title: formData.get("title") as string,
         content: formData.get("content") as string,
         category: formData.get("category") as string,
-        academicProgram: formData.get("academicProgram") as string,
+        academicProgram: formData.get("academicProgram") as string || "Psicología",
         modality: formData.get("modality") as string || "Presencial",
-        studentName: formData.get("studentName") as string,
-        studentEmail: formData.get("studentEmail") as string,
+        studentName: studentName || "Anónimo de Excelencia",
+        studentEmail: studentEmail || "excelencia@ujed.mx",
         aiFeedback: formData.get("aiFeedback") as string,
         status: "EN_REVISION"
       }
