@@ -116,6 +116,40 @@ function BuzonFormContent({ reglamento }: { reglamento: string }) {
               </div>
             </div>
 
+<div className="bg-slate-800/30 p-6 rounded-[2rem] border border-white/5 space-y-6">
+  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+    <div className="space-y-2">
+      <label className="text-[10px] font-black uppercase text-emerald-500 ml-2">Tu Programa Académico</label>
+      <select 
+        name="academicProgram" 
+        required 
+        onChange={(e) => setProgram(e.target.value)}
+        className="w-full bg-black border-2 border-slate-800 p-4 rounded-2xl text-white outline-none focus:border-emerald-500"
+      >
+        <option value="Psicología">Lic. en Psicología</option>
+        <option value="Terapia de la Comunicación">Lic. en Terapia de la Com. Humana</option>
+        <option value="Posgrado">Posgrado (Maestrías)</option>
+      </select>
+    </div>
+
+    {/* SOLO APARECE SI ES PSICOLOGÍA */}
+    {program === "Psicología" && (
+      <div className="space-y-2 animate-in fade-in slide-in-from-left-2">
+        <label className="text-[10px] font-black uppercase text-emerald-500 ml-2">Modalidad</label>
+        <select name="modality" required className="w-full bg-black border-2 border-slate-800 p-4 rounded-2xl text-white outline-none focus:border-emerald-500">
+          <option value="Presencial">Presencial</option>
+          <option value="Virtual">Virtual</option>
+        </select>
+      </div>
+    )}
+  </div>
+
+  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+    <input name="studentName" required placeholder="Tu Nombre Completo" className="w-full bg-black border-2 border-slate-800 p-4 rounded-2xl text-sm" />
+    <input name="studentEmail" required type="email" placeholder="Tu Correo Institucional" className="w-full bg-black border-2 border-slate-800 p-4 rounded-2xl text-sm" />
+  </div>
+</div>
+
             <div className="space-y-3">
               <label className="text-[10px] font-black text-emerald-500 uppercase tracking-widest ml-2">Descripción de los hechos</label>
               <textarea name="content" required rows={6} placeholder="Describe aquí con detalle..." className="w-full bg-black border-2 border-slate-800 p-5 rounded-[1.5rem] text-sm outline-none focus:border-emerald-500 resize-none"></textarea>

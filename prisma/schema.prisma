@@ -89,18 +89,21 @@ model Interaction {
 model Ticket {
   id                String       @id @default(cuid())
   folio             String       @unique
-  type              String
+  type              String       @default("DENUNCIA")
+  category          String?
+  // --- NUEVOS CAMPOS ---
+  academicProgram   String       @default("Psicología") // <--- 
+  modality          String       @default("Presencial") // <---
+  
   content           String       @db.Text
-  studentName       String?
-  studentEmail      String?
-   category    String? 
-status            String       @default("PENDIENTE")
+  studentName       String       @default("Registro Anterior")
+  studentEmail      String       @default("sin-correo@registrado.com")
+  status            String       @default("PENDIENTE")
   authorityResponse String?      @db.Text
-  authorityEvidence String?      @db.Text
-  studentResolved   Boolean      @default(false)
+  studentResolved   Boolean?
+  attachments       Attachment[]
   createdAt         DateTime     @default(now())
   updatedAt         DateTime     @updatedAt
-  attachments       Attachment[]
 }
 
 model Attachment {
@@ -132,15 +135,19 @@ model Settings {
 }
 
 model Proposal {
-  id           String   @id @default(cuid())
-  title        String
-  content      String   @db.Text
-  category     String   // Académica, Diálogo Socrático, Logística, etc.
-  status       String   @default("EN_REVISION") // EN_REVISION, APROBADA, VIRAL, ARCHIVADA
-  studentName  String?
-  studentEmail String?
-  aiFeedback   String?  @db.Text // El consejo que la IA le dio al alumno
-  votes        Int      @default(0) // Para medir qué tan "viral" se vuelve
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  id              String   @id @default(cuid())
+  title           String
+  content         String   @db.Text
+  category        String   
+  // --- NUEVOS CAMPOS ---
+  academicProgram String   @default("Psicología") // <---
+  modality        String   @default("Presencial") // <---
+  
+  status          String   @default("EN_REVISION")
+  studentName     String   @default("Registro Anterior")
+  studentEmail    String   @default("sin-correo@registrado.com")
+  aiFeedback      String?  @db.Text
+  votes           Int      @default(0)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
 }

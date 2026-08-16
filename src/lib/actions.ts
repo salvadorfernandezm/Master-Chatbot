@@ -113,19 +113,29 @@ export async function updateSettings(formData: FormData) {
 // 5. MOTOR DEL BUZÓN Y PROPUESTAS (RESTO DE FUNCIONES)
 // ==========================================
 export async function createTicket(formData: FormData): Promise<{ success: boolean; folio: string }> {
+  export async function createTicket(formData: FormData): Promise<{ success: boolean; folio: string }> {
   const type = formData.get("type") as string;
   const category = formData.get("category") as string;
+  const program = formData.get("academicProgram") as string; // <---
+  const modality = formData.get("modality") as string; // <---
   const content = formData.get("content") as string;
   const studentName = formData.get("studentName") as string;
   const studentEmail = formData.get("studentEmail") as string;
-  const files = formData.getAll("evidence"); 
+const files = formData.getAll("evidence"); 
   if (!content || !type) return { success: false, folio: "" };
   const folio = `ETH-${Math.random().toString(36).substring(2, 7).toUpperCase()}`;
   const attachmentLinks: string[] = [];
   try {
-    const ticket = await prisma.ticket.create({
-      data: { folio, type, category, content, studentName: studentName || "Anónimo Protegido", studentEmail: studentEmail || null, status: "PENDIENTE" },
-    });
+   const ticket = await prisma.ticket.create({
+    data: { 
+      folio, type, category, content, 
+      academicProgram: program, // <---
+      modality: modality,       // <---
+      studentName, studentEmail, status: "PENDIENTE" 
+    },
+  });
+  // ...
+}
     if (supabase && files.length > 0) {
       for (const file of files) {
         const f = file as any;
@@ -213,15 +223,22 @@ export async function updateTicketStatus(id: string, newStatus: string) {
 
 export async function createProposal(formData: FormData) {
   try {
-    const title = formData.get("title") as string;
-    const content = formData.get("content") as string;
-    const category = formData.get("category") as string;
-    const studentName = formData.get("studentName") as string;
-    const studentEmail = formData.get("studentEmail") as string;
-    const aiFeedback = formData.get("aiFeedback") as string;
     const proposal = await prisma.proposal.create({
-      data: { title, content, category, studentName: studentName || "Anónimo", studentEmail: studentEmail || null, aiFeedback: aiFeedback || null, status: "EN_REVISION" }
+      data: {
+        title: formData.get("title") as string,
+        content: formData.get("content") as string,
+        category: formData.get("category") as string,
+        academicProgram: formData.get("academicProgram") as string, // <---
+        modality: formData.get("modality") as string,               // <---
+        studentName: formData.get("studentName") as string,
+        studentEmail: formData.get("studentEmail") as string,
+        aiFeedback: formData.get("aiFeedback") as string,
+        status: "EN_REVISION"
+      }
     });
+    // ...
+  }
+}
     revalidatePath("/excelencia"); return { success: true, id: proposal.id };
   } catch (error) { return { success: false }; }
 }

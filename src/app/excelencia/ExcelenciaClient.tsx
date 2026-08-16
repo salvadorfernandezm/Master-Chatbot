@@ -46,6 +46,12 @@ export default function ExcelenciaClient({ settings }: { settings: any }) {
               </div>
             </div>
 
+<div className="bg-blue-500/5 border border-blue-500/20 p-6 rounded-3xl mb-8">
+  <p className="text-[10px] text-blue-400 font-bold uppercase tracking-widest mb-2">⚖️ Aviso de Participación</p>
+  <p className="text-xs text-slate-500 italic leading-relaxed">
+    "La votación y respaldo a las propuestas sirve como un termómetro de la voluntad estudiantil. Sin embargo, su ejecución efectiva queda sujeta a la revisión de viabilidad técnica, presupuestal y normativa por parte de las autoridades de la Facultad."
+  </p>
+</div>
             {/* SECCIÓN DE BOTONES ACTUALIZADA */}
             <section className="bg-slate-900 rounded-[4rem] p-12 text-white text-center relative overflow-hidden shadow-2xl">
               <div className="absolute top-0 right-0 p-10 opacity-10 text-9xl">💡</div>
