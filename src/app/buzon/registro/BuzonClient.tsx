@@ -118,7 +118,7 @@ function BuzonFormContent({ reglamento }: { reglamento: string }) {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-left">
                 <div className="space-y-2 text-left">
                     <label className="text-[10px] font-black text-slate-500 uppercase ml-2 text-left block text-left">Nombre Completo</label>
-                    <input name="studentName" required placeholder="Escribe tu nombre..." className="w-full bg-black border-2 border-slate-800 p-5 rounded-2xl text-sm outline-none focus:border-emerald-500 text-left" />
+                    <input name="studentName" required minLength={5} placeholder="Escribe tu nombre..." className="w-full bg-black border-2 border-slate-800 p-5 rounded-2xl text-sm outline-none focus:border-emerald-500 text-left" />
                 </div>
                 <div className="space-y-2 text-left">
                     <label className="text-[10px] font-black text-slate-500 uppercase ml-2 text-left block text-left">Correo Institucional</label>

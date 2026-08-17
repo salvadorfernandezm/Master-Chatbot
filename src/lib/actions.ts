@@ -291,3 +291,7 @@ export async function updateProposalStatus(id: string, status: string) {
     revalidatePath("/admin/gestion-propuestas"); revalidatePath("/excelencia/mural"); return { success: true };
   } catch (error) { return { success: false }; }
 }
+
+export async function verifyPosgradoPin(pin: string) {
+  return pin === process.env.POSGRADO_PIN;
+}
