@@ -60,10 +60,11 @@ export default function ImpactoPage() {
         <div className="bg-white p-10 rounded-[3rem] shadow-xl border border-slate-100">
             <h2 className="text-xl font-black uppercase mb-10 border-l-8 border-red-500 pl-4 text-slate-900">Carga de Trabajo y Eficiencia</h2>
             <div className="space-y-12">
-              <VolumeBar label="Gestión Académica" name={settings?.nameAcademica} stats={autoridades.academica} max={maxRecibidos} />
-              <VolumeBar label="Gestión Administrativa" name={settings?.nameAdministrativa} stats={autoridades.logistica} max={maxRecibidos} />
-              <VolumeBar label="Dirección General" name={settings?.nameDireccion} stats={autoridades.direccion} max={maxRecibidos} />
-            </div>
+  <VolumeBar label="Gestión Académica" name={settings?.nameAcademica} stats={autoridades.academica} max={maxRecibidos} />
+  <VolumeBar label="Gestión Administrativa" name={settings?.nameAdministrativa} stats={autoridades.logistica} max={maxRecibidos} />
+  <VolumeBar label="Posgrado e Investigación" name="Jefatura de Posgrado" stats={autoridades.posgrado} max={maxRecibidos} />
+  <VolumeBar label="Dirección General" name={settings?.nameDireccion} stats={autoridades.direccion} max={maxRecibidos} />
+</div>
         </div>
       </div>
     </div>

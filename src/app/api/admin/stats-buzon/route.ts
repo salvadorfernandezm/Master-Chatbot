@@ -20,10 +20,18 @@ export async function GET() {
       return { recibidos: rec, resueltos: res, apelados: ape, noAtendidos: neg };
     };
 
+    // Nueva función para filtrar por programa académico (Posgrado)
+    const getProgStats = async (prog: string) => {
+      const rec = await prisma.ticket.count({ where: { academicProgram: prog } });
+      const res = await prisma.ticket.count({ where: { academicProgram: prog, status: "RESUELTO" } });
+      return { recibidos: rec, resueltos: res };
+    };
+
     const autoridades = {
       academica: await getStats("ACADEMICO"),
       logistica: await getStats("LOGISTICA"),
       direccion: await getStats("GRAVE"),
+      posgrado: await getProgStats("Posgrado"), // <--- NUEVA MÉTRICA
       tecnico: await prisma.ticket.count({ where: { type: "SOPORTE_TECNICO", status: "RESUELTO" } }),
     };
 
