@@ -89,13 +89,13 @@ export default function PosgradoPage() {
 
         {/* NAVEGACIÓN TRIDENTE (PUNTO 2) */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-10">
-          <Link href="/admin/impacto?from=director" className="bg-white border-2 border-slate-100 p-8 rounded-[2.5rem] flex items-center justify-between group hover:border-emerald-500 transition-all shadow-sm">
-            <div className="text-left">
-              <p className="text-[10px] font-black uppercase text-slate-400">Rendición</p>
-              <h3 className="text-xl font-black uppercase text-slate-600 group-hover:text-emerald-600">Impacto</h3>
-            </div>
-            <span className="text-4xl grayscale group-hover:grayscale-0 transition-all">📊</span>
-          </Link>
+          <Link href="/admin/impacto?from=posgrado" className="bg-emerald-600 text-white p-8 rounded-[2.5rem] flex items-center justify-between group hover:bg-emerald-500 transition-all shadow-xl">
+  <div className="text-left">
+    <p className="text-[10px] font-black uppercase opacity-60">Rendición</p>
+    <h3 className="text-xl font-black uppercase">Impacto</h3>
+  </div>
+  <span className="text-4xl">📊</span>
+</Link>
 
           <Link href="/excelencia/mural" className="bg-white border-2 border-slate-100 p-8 rounded-[2.5rem] flex items-center justify-between group hover:border-blue-500 transition-all shadow-sm">
             <div className="text-left">
