@@ -23,6 +23,7 @@ export default function AdminLayoutClient({ children, orgName, orgLogo }: AdminL
     pathname === "/admin/directora" || 
     pathname === "/admin/responder" || 
     pathname === "/admin/impacto"; // <-- AÑADIMOS ESTA RUTA
+ pathname === "/admin/posgrado"; 
 
   useEffect(() => {
     if (status === "unauthenticated") {
