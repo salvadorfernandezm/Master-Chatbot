@@ -18,30 +18,29 @@ export default function AdminLayoutClient({ children, orgName, orgLogo }: AdminL
   const pathname = usePathname();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
-  // SENSOR DE PANELES SIN BARRA LATERAL
+  // --- REFUERZO DE PRIVACIDAD: SENSOR DE PANELES INDEPENDIENTES ---
+  // Si la URL es de la Directora, Posgrado, Impacto o Responder, OCULTAMOS el menú de Admin.
   const isStandalonePanel = 
-    pathname === "/admin/directora" || 
-    pathname === "/admin/responder" || 
-    pathname === "/admin/impacto"; // <-- AÑADIMOS ESTA RUTA
- pathname === "/admin/posgrado"; 
+    pathname.startsWith("/admin/directora") || 
+    pathname.startsWith("/admin/posgrado") || 
+    pathname.startsWith("/admin/impacto") || 
+    pathname.startsWith("/admin/responder");
 
   useEffect(() => {
-    if (status === "unauthenticated") {
+    if (status === "unauthenticated" && !isStandalonePanel) {
       router.push("/login");
     }
-  }, [status, router]);
+  }, [status, router, isStandalonePanel]);
 
   useEffect(() => {
     setIsSidebarOpen(false);
   }, [pathname]);
 
   if (status === "loading") {
-    return <div className="h-screen flex items-center justify-center bg-slate-900 text-white font-semibold italic animate-pulse">Cargando Sistema...</div>;
+    return <div className="h-screen flex items-center justify-center bg-slate-900 text-white font-semibold italic animate-pulse">Cargando Búnker...</div>;
   }
 
-  if (!session) return null;
-
-  // SI ES PANEL DE DIRECTORA O RESPUESTA, SOLO MUESTRA EL CONTENIDO
+  // SI ES PANEL INDEPENDIENTE (Posgrado/Directora), NO MUESTRA NADA DEL ADMIN
   if (isStandalonePanel) {
     return (
       <main className="min-h-screen bg-slate-50 overflow-y-auto">
@@ -50,11 +49,15 @@ export default function AdminLayoutClient({ children, orgName, orgLogo }: AdminL
     );
   }
 
+  // Si no hay sesión y no es standalone, no mostramos nada (el useEffect redirigirá)
+  if (!session) return null;
+
+  // TU MENÚ PERSONAL (ADMIN MAESTRO)
   const links = [
     { name: "Dashboard", href: "/admin", icon: "📊" },
-    { name: "Impacto Ético", href: "/admin/impacto", icon: "🛡️" }, // <-- AGREGADO
+    { name: "Impacto Ético", href: "/admin/impacto", icon: "🛡️" },
     { name: "Buzón Ético", href: "/admin/gestion-buzon", icon: "🏛️" },
- { name: "Propuestas", href: "/admin/gestion-propuestas", icon: "💡" }, // <-- ESTE ES EL NUEVO
+    { name: "Propuestas", href: "/admin/gestion-propuestas", icon: "💡" },
     { name: "Grupos", href: "/admin/groups", icon: "👥" },
     { name: "Conocimiento", href: "/admin/knowledge", icon: "📚" },
     { name: "Chatbots", href: "/admin/chatbots", icon: "🤖" },
@@ -64,9 +67,10 @@ export default function AdminLayoutClient({ children, orgName, orgLogo }: AdminL
 
   return (
     <div className="flex h-screen bg-slate-50 overflow-hidden font-sans">
+      {/* BARRA LATERAL - SOLO PARA TI */}
       <aside className={`fixed inset-y-0 left-0 z-50 w-64 bg-slate-900 text-slate-300 shadow-2xl flex flex-col transform transition-transform duration-300 md:relative md:translate-x-0 ${isSidebarOpen ? "translate-x-0" : "-translate-x-full"}`}>
         <div className="p-6 border-b border-slate-700/50 flex items-center justify-between">
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 text-left">
              <div className="h-8 w-8 bg-gradient-to-br from-purple-500 to-indigo-500 rounded-lg flex items-center justify-center text-white font-bold">{orgName?.charAt(0) || "M"}</div>
              <h1 className="text-sm font-bold truncate max-w-[120px]">{orgName}</h1>
           </div>
@@ -76,7 +80,7 @@ export default function AdminLayoutClient({ children, orgName, orgLogo }: AdminL
           {links.map((link) => (
             <Link key={link.name} href={link.href} className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${pathname === link.href ? "bg-purple-600/20 text-purple-300" : "hover:bg-slate-800 hover:text-white"}`}>
               <span className="text-xl">{link.icon}</span>
-              <span className="font-medium">{link.name}</span>
+              <span className="font-medium text-sm">{link.name}</span>
             </Link>
           ))}
         </nav>
@@ -92,7 +96,7 @@ export default function AdminLayoutClient({ children, orgName, orgLogo }: AdminL
               <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-6 h-6"><path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" /></svg>
             </button>
             <h2 className="text-lg font-black text-slate-800 uppercase tracking-tight truncate">
-              {pathname === "/admin" ? "Resumen General" : pathname.split('/').pop()?.replace('-', ' ')}
+              {pathname === "/admin" ? "Monitor Maestro" : pathname.split('/').pop()?.replace('-', ' ')}
             </h2>
           </div>
         </header>
