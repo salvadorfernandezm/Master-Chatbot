@@ -11,7 +11,12 @@ const openai = new OpenAI({
 export async function POST(req: Request) {
   try {
     const body = await req.json();
-    const { message, token } = body;
+    // Ahora recibimos 'history' además del mensaje y el token
+    const { message, token, history = [] } = body;
+
+    if (!process.env.OPENAI_API_KEY) {
+      return NextResponse.json({ reply: "Error: Configuración de IA ausente." });
+    }
 
     const chatbot = await prisma.chatbot.findUnique({
       where: { token, isActive: true },
@@ -24,49 +29,52 @@ export async function POST(req: Request) {
     if (chatbot.knowledgeBaseId) {
       try {
         await loadStoreFromDB(chatbot.knowledgeBaseId, prisma);
-        const vectorContexts = await searchVectorStore(message, chatbot.knowledgeBaseId, 40);
+        // Buscamos contexto basado en el mensaje actual
+        const vectorContexts = await searchVectorStore(message, chatbot.knowledgeBaseId, 30);
         contextText = vectorContexts.map((v: any) => v.pageContent).join("\n\n");
       } catch (e) { console.error("Error en vectores:", e); }
     }
 
+    // PROMPT DINÁMICO
     const systemPrompt = `
-      Eres "${chatbot.name}". Tu misión es informar con amabilidad y precisión.
-      CONOCIMIENTO BASE: ${chatbot.systemInstructions}
-      DETALLES EXTRAÍDOS: ${contextText || "No hay detalles adicionales."}
-      REGLAS:
-      1. Usa el CONOCIMIENTO BASE para tu identidad.
-      2. Usa los DETALLES EXTRAÍDOS para dar respuestas técnicas.
-      3. No inventes programas. Si no sabes, invita a contactar a la oficina.
+      Eres "${chatbot.name}". 
+      Tu identidad: ${chatbot.systemInstructions}
+      
+      CONTEXTO DE APOYO (PDFs):
+      ${contextText || "No hay información adicional en los documentos."}
+      
+      REGLAS DE CONVERSACIÓN:
+      1. Mantén la continuidad del diálogo. Recuerda lo que el usuario te preguntó antes.
+      2. Usa el CONTEXTO DE APOYO para dar respuestas técnicas precisas.
+      3. Si no sabes algo, no lo inventes; usa tus datos de contacto oficiales.
     `;
+
+    // --- CONSTRUIMOS EL MENSAJE PARA OPENAI INCLUYENDO EL HISTORIAL ---
+    const messagesForAI = [
+      { role: "system", content: systemPrompt },
+      ...history.map((msg: any) => ({
+        role: msg.role === "user" ? "user" : "assistant",
+        content: msg.text
+      })),
+      { role: "user", content: message }
+    ];
 
     const response = await openai.chat.completions.create({
       model: "gpt-4o-mini",
-      messages: [
-        { role: "system", content: systemPrompt },
-        { role: "user", content: message }
-      ],
-      temperature: 0.2,
+      messages: messagesForAI as any,
+      temperature: 0.3,
     });
 
-    const reply = response.choices[0].message.content || "Lo siento, no pude procesar la respuesta.";
+    const reply = response.choices[0].message.content || "Lo siento, no pude procesar eso.";
 
-    // --- EL TAQUÍGRAFO AHORA SÍ ESPERA (AWAIT) ---
-    try {
-      await prisma.interaction.create({
-        data: { 
-          chatbotId: chatbot.id, 
-          query: message.substring(0, 500), 
-          response: reply.substring(0, 2000) 
-        }
-      });
-    } catch (e) { 
-      console.error("Error guardando analíticas:", e); 
-    }
+    // Guardar analítica
+    prisma.interaction.create({
+      data: { chatbotId: chatbot.id, query: message.substring(0, 500), response: reply.substring(0, 2000) }
+    }).catch(e => console.error("Error analíticas:", e));
 
     return NextResponse.json({ reply });
 
   } catch (error: any) {
-    console.error("Error general en chat:", error);
-    return NextResponse.json({ reply: "Conexión interrumpida con el Ágora." });
+    return NextResponse.json({ reply: "El Ágora está procesando muchas ideas. Reintenta." });
   }
 }
