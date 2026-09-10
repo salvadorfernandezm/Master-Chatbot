@@ -50,6 +50,14 @@ export default function ChatClient({ token, name, welcomeMessage, infoMessage, i
     setInput("");
     if (textareaRef.current) textareaRef.current.style.height = "auto";
     
+    // Guardamos el historial actual antes de añadir el nuevo mensaje del usuario
+    // Saltamos el primer mensaje (bienvenida) para no saturar el contexto inicial si no es necesario,
+    // o inclúyelo si prefieres que la IA siempre recuerde su saludo. Aquí lo incluimos todo:
+    const historyForAPI = messages.map(m => ({
+      role: m.role,
+      text: m.content // La API espera 'text', el cliente usa 'content'
+    }));
+
     setMessages(prev => [...prev, { role: "user", content: userMsg }]);
     setLoading(true);
 
@@ -57,7 +65,11 @@ export default function ChatClient({ token, name, welcomeMessage, infoMessage, i
       const res = await fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message: userMsg, token }),
+        body: JSON.stringify({ 
+          message: userMsg, 
+          token,
+          history: historyForAPI // <--- ¡AQUÍ VA LA MEMORIA!
+        }),
       });
 
       const data = await res.json();
@@ -86,40 +98,39 @@ export default function ChatClient({ token, name, welcomeMessage, infoMessage, i
             </div>
           </div>
 
-         {infoMessage && (
-  <button 
-    onClick={() => setIsInfoOpen(true)}
-    className="h-7 w-7 md:h-9 md:w-9 flex-shrink-0 rounded-full border-2 border-emerald-500 text-emerald-500 font-black flex items-center justify-center hover:bg-emerald-500 hover:text-white transition-all text-xs md:text-base"
-  >
-    i
-  </button>
-)}
+          {infoMessage && (
+            <button 
+              onClick={() => setIsInfoOpen(true)}
+              className="h-7 w-7 md:h-9 md:w-9 flex-shrink-0 rounded-full border-2 border-emerald-500 text-emerald-500 font-black flex items-center justify-center hover:bg-emerald-500 hover:text-white transition-all text-xs md:text-base"
+            >
+              i
+            </button>
+          )}
         </div>
       </header>
 
-      <main className="flex-1 overflow-y-auto p-3 md:p-8"> {/* Bajamos p-4 a p-3 */}
-  <div className="max-w-3xl mx-auto space-y-4"> {/* Bajamos space-y-6 a 4 */}
-    {messages.map((msg, i) => (
-      <div key={i} className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
-        <div 
-          className={`max-w-[90%] md:max-w-[75%] p-3 md:p-4 rounded-2xl ${
-            msg.role === "user" 
-              ? "bg-indigo-600 text-white shadow-lg" 
-              : "bg-white border border-slate-200 shadow-sm text-slate-800"
-          }`}
-        >
-          {/* AQUÍ ESTÁ EL TRUCO: text-[13px] para móvil, sm para PC */}
-          <div className="prose prose-slate max-w-none text-[13px] md:text-sm leading-snug md:leading-relaxed">
-            <ReactMarkdown remarkPlugins={[remarkGfm]}>
-              {msg.content}
-            </ReactMarkdown>
-          </div>
+      <main className="flex-1 overflow-y-auto p-3 md:p-8">
+        <div className="max-w-3xl mx-auto space-y-4">
+          {messages.map((msg, i) => (
+            <div key={i} className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
+              <div 
+                className={`max-w-[90%] md:max-w-[75%] p-3 md:p-4 rounded-2xl ${
+                  msg.role === "user" 
+                    ? "bg-indigo-600 text-white shadow-lg" 
+                    : "bg-white border border-slate-200 shadow-sm text-slate-800"
+                }`}
+              >
+                <div className="prose prose-slate max-w-none text-[13px] md:text-sm leading-snug md:leading-relaxed">
+                  <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                    {msg.content}
+                  </ReactMarkdown>
+                </div>
+              </div>
+            </div>
+          ))}
+          <div ref={messagesEndRef} />
         </div>
-      </div>
-    ))}
-    <div ref={messagesEndRef} />
-  </div>
-</main>
+      </main>
 
       <footer className="bg-white border-t border-slate-200 p-4">
         <div className="max-w-3xl mx-auto">
