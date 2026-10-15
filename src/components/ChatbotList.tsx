@@ -13,6 +13,8 @@ interface Chatbot {
   systemInstructions: string | null;
   fallbackMessage: string | null;
   inputPlaceholder: string | null;
+  logoUrl: string | null;
+  backgroundImageUrl: string | null; // <--- Nuestra nueva joya
   groupId: string;
   knowledgeBaseId: string;
   group: { name: string };
@@ -46,12 +48,6 @@ function ChatbotCard({ bot, groups, knowledgeBases }: { bot: Chatbot, groups: an
     window.location.reload(); 
   };
 
-  const handleCopyWhatsApp = () => {
-    const url = `${window.location.origin}/chat/${bot.token}`;
-    const message = `🎓 *${bot.name}* — Tu Tutor IA\n\nEstá disponible las 24 horas para tus dudas.\n\n👉 Accede aquí: ${url}`;
-    window.open(`https://wa.me/?text=${encodeURIComponent(message)}`, '_blank');
-  };
-
   return (
     <div className={`bg-white border-2 rounded-3xl shadow-md overflow-hidden mb-6 ${!bot.isActive ? 'opacity-60 border-slate-200' : 'border-slate-500'}`}>
       <div className="p-6">
@@ -69,20 +65,15 @@ function ChatbotCard({ bot, groups, knowledgeBases }: { bot: Chatbot, groups: an
             </div>
           </div>
           <div className="flex gap-2">
-            <button onClick={() => setEditingId(!editingId)} className="p-2.5 bg-slate-100 text-slate-600 rounded-2xl hover:bg-purple-600 hover:text-white transition-all shadow-md">
+            <button onClick={() => setEditingId(!editingId)} className="p-2.5 bg-slate-100 text-slate-600 rounded-2xl hover:bg-purple-600 hover:text-white transition-all">
                 <PencilIcon />
             </button>
-            <button onClick={() => { if(confirm("¿Borrar este bot?")) deleteChatbot(bot.id) }} className="p-2.5 bg-slate-100 text-slate-400 rounded-2xl hover:bg-red-500 hover:text-white transition-all"><TrashIcon /></button>
+            <button onClick={() => { if(confirm("¿Borrar bot?")) deleteChatbot(bot.id) }} className="p-2.5 bg-slate-100 text-slate-400 rounded-2xl hover:bg-red-500 hover:text-white transition-all"><TrashIcon /></button>
           </div>
         </div>
-
-        {/* --- BLOQUE DE ACCESO RESTAURADO --- */}
-        <div className="mt-4 p-4 bg-slate-50 rounded-2xl border border-dashed border-slate-500">
-           <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1 text-left">Acceso Académico (Token: {bot.token})</p>
-           <div className="flex items-center justify-between">
-              <a href={`/chat/${bot.token}`} target="_blank" className="text-sm font-black text-purple-600 hover:underline">/chat/{bot.token} ↗</a>
-              <button onClick={handleCopyWhatsApp} className="text-[10px] bg-green-600 text-white px-3 py-1 rounded-full font-bold">WhatsApp</button>
-           </div>
+        <div className="mt-4 p-4 bg-slate-50 rounded-2xl border border-dashed border-slate-500 flex justify-between items-center">
+            <span className="text-xs font-black text-purple-600">/chat/{bot.token}</span>
+            <a href={`/chat/${bot.token}`} target="_blank" className="text-[10px] font-black uppercase bg-slate-900 text-white px-4 py-2 rounded-xl">Probar Chat</a>
         </div>
       </div>
 
@@ -94,7 +85,7 @@ function ChatbotCard({ bot, groups, knowledgeBases }: { bot: Chatbot, groups: an
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="text-[10px] font-bold text-slate-400 uppercase ml-2">Nombre</label>
-                <input name="name" defaultValue={bot.name} required className="w-full p-3 rounded-xl border border-slate-200 outline-none focus:border-purple-500" />
+                <input name="name" defaultValue={bot.name} required className="w-full p-3 rounded-xl border border-slate-200 outline-none" />
               </div>
               <div>
                 <label className="text-[10px] font-bold text-slate-400 uppercase ml-2">Base de Conocimiento</label>
@@ -104,30 +95,37 @@ function ChatbotCard({ bot, groups, knowledgeBases }: { bot: Chatbot, groups: an
               </div>
             </div>
 
-            <div>
-              <label className="text-[10px] font-bold text-slate-400 uppercase ml-2">Mensaje de Información (Boton "i")</label>
-              <textarea name="infoMessage" defaultValue={bot.infoMessage || ""} rows={3} className="w-full p-3 rounded-xl border border-slate-200 outline-none text-sm focus:border-purple-500" placeholder="Instrucciones para el usuario..." />
+            {/* SECCIÓN DE APARIENCIA */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 bg-white rounded-2xl border border-slate-200">
+               <div>
+                 <label className="text-[10px] font-bold text-slate-400 uppercase ml-2">URL Logo (Círculo)</label>
+                 <input name="logoUrl" defaultValue={bot.logoUrl || ""} placeholder="https://..." className="w-full p-3 rounded-xl border border-slate-100 outline-none text-xs" />
+               </div>
+               <div>
+                 <label className="text-[10px] font-bold text-slate-400 uppercase ml-2">URL Fondo (Wallpaper)</label>
+                 <input name="backgroundImageUrl" defaultValue={bot.backgroundImageUrl || ""} placeholder="https://..." className="w-full p-3 rounded-xl border border-slate-100 outline-none text-xs" />
+               </div>
             </div>
 
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="text-[10px] font-bold text-slate-400 uppercase ml-2">Bienvenida</label>
-                <textarea name="welcomeMessage" defaultValue={bot.welcomeMessage || ""} rows={2} className="w-full p-3 rounded-xl border border-slate-200 outline-none text-sm focus:border-purple-500" />
+                <label className="text-[10px] font-bold text-slate-400 uppercase ml-2">Mensaje Bienvenida</label>
+                <textarea name="welcomeMessage" defaultValue={bot.welcomeMessage || ""} rows={2} className="w-full p-3 rounded-xl border border-slate-200 outline-none text-sm" />
               </div>
               <div>
-                <label className="text-[10px] font-bold text-slate-400 uppercase ml-2">Placeholder Input</label>
-                <input name="inputPlaceholder" defaultValue={bot.inputPlaceholder || ""} className="w-full p-3 rounded-xl border border-slate-200 outline-none text-sm focus:border-purple-500" />
+                <label className="text-[10px] font-bold text-slate-400 uppercase ml-2">Escribiendo...</label>
+                <input name="inputPlaceholder" defaultValue={bot.inputPlaceholder || ""} className="w-full p-3 rounded-xl border border-slate-200 outline-none text-sm" />
               </div>
             </div>
 
             <div>
               <label className="text-[10px] font-bold text-slate-400 uppercase ml-2">Instrucciones del Sistema (Prompt)</label>
-              <textarea name="systemInstructions" defaultValue={bot.systemInstructions || ""} rows={4} className="w-full p-3 rounded-xl border border-slate-200 outline-none font-mono text-[10px] bg-white focus:border-purple-500" />
+              <textarea name="systemInstructions" defaultValue={bot.systemInstructions || ""} rows={4} className="w-full p-3 rounded-xl border border-slate-200 outline-none font-mono text-[10px] bg-white" />
             </div>
 
             <div className="flex justify-end gap-2 pt-2">
               <button type="button" onClick={() => setEditingId(false)} className="text-sm font-bold text-slate-400 px-4">Cancelar</button>
-              <button type="submit" className="bg-purple-600 text-white px-8 py-3 rounded-2xl font-black text-xs uppercase shadow-xl hover:bg-purple-700 transition-all">Guardar Cambios</button>
+              <button type="submit" className="bg-purple-600 text-white px-8 py-3 rounded-2xl font-black text-xs uppercase shadow-xl">Guardar Cambios</button>
             </div>
           </form>
         </div>
@@ -137,7 +135,7 @@ function ChatbotCard({ bot, groups, knowledgeBases }: { bot: Chatbot, groups: an
 }
 
 export function ChatbotList({ chatbots, groups, knowledgeBases }: { chatbots: Chatbot[], groups: any[], knowledgeBases: any[] }) {
-  if (chatbots.length === 0) return <div className="p-10 text-center text-slate-400 italic">No hay bots configurados.</div>;
+  if (chatbots.length === 0) return <div className="p-10 text-center text-slate-400 italic">No hay bots.</div>;
   return (
     <div>
       {chatbots.map(bot => (

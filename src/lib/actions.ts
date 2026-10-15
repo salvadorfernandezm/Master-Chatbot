@@ -178,16 +178,23 @@ export async function createChatbot(formData: FormData) {
 export async function updateChatbot(formData: FormData) {
   const id = formData.get("id") as string;
   const updateData: any = {};
-  ["name", "welcomeMessage", "systemInstructions", "inputPlaceholder", "fallbackMessage", "infoMessage", "logoUrl", "knowledgeBaseId", "groupId"].forEach(f => {
-    const v = formData.get(f); if (v !== null) updateData[f] = v as string;
+  
+  const fields = [
+    "name", "welcomeMessage", "systemInstructions", "inputPlaceholder", 
+    "fallbackMessage", "infoMessage", "logoUrl", "knowledgeBaseId", 
+    "groupId", 
+    "backgroundImageUrl" // <--- AGREGADO
+  ];
+
+  fields.forEach(field => {
+    const value = formData.get(field);
+    if (value !== null) updateData[field] = value as string;
   });
+
   const isActive = formData.get("isActive");
   if (isActive !== null) updateData.isActive = isActive === "true";
+
   await prisma.chatbot.update({ where: { id }, data: updateData });
-  revalidatePath("/admin/chatbots");
-}
-export async function deleteChatbot(id: string) {
-  await prisma.chatbot.delete({ where: { id } });
   revalidatePath("/admin/chatbots");
 }
 export async function createKnowledgeBase(formData: FormData) {
