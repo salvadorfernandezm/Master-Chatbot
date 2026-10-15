@@ -13,7 +13,7 @@ const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PU
 const supabase = (supabaseUrl && supabaseKey) ? createClient(supabaseUrl, supabaseKey) : null;
 
 // ==========================================
-// 1. SEGURIDAD Y ACCESO
+// 1. SEGURIDAD Y ESCALAMIENTO
 // ==========================================
 export async function verifyDirectorPin(pin: string) {
   return pin === process.env.DIRECTOR_PIN;
@@ -129,7 +129,6 @@ export async function createChatbot(formData: FormData) {
   revalidatePath("/admin/chatbots");
 }
 
-// --- ACTUALIZACIÓN DE CHATBOT (CON FONDO DE PANTALLA) ---
 export async function updateChatbot(formData: FormData) {
   const id = formData.get("id") as string;
   const updateData: any = {};
@@ -143,19 +142,31 @@ export async function updateChatbot(formData: FormData) {
   revalidatePath("/admin/chatbots");
 }
 
-// LA FUNCIÓN QUE FALTABA
 export async function deleteChatbot(id: string) {
   await prisma.chatbot.delete({ where: { id } });
   revalidatePath("/admin/chatbots");
 }
 
 // ==========================================
-// 4. CONOCIMIENTO Y BACKUP
+// 4. CONOCIMIENTO (KNOWLEDGE BASE)
 // ==========================================
 export async function createKnowledgeBase(formData: FormData) {
   const name = formData.get("name") as string;
   const description = formData.get("description") as string;
   await prisma.knowledgeBase.create({ data: { name, description } });
+  revalidatePath("/admin/knowledge");
+}
+
+export async function updateKnowledgeBase(formData: FormData) {
+  const id = formData.get("id") as string;
+  const name = formData.get("name") as string;
+  const description = formData.get("description") as string;
+  await prisma.knowledgeBase.update({ where: { id }, data: { name, description } });
+  revalidatePath("/admin/knowledge");
+}
+
+export async function deleteKnowledgeBase(id: string) {
+  await prisma.knowledgeBase.delete({ where: { id } });
   revalidatePath("/admin/knowledge");
 }
 
@@ -183,6 +194,9 @@ export async function addUrlDocument(formData: FormData) {
   revalidatePath(`/admin/knowledge/${kbId}`);
 }
 
+// ==========================================
+// 5. CONFIGURACIÓN Y BACKUP
+// ==========================================
 export async function updateSettings(formData: FormData) {
   const orgName = formData.get("organizationName") as string;
   const orgLogo = formData.get("organizationLogo") as string;
