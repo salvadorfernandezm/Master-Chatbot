@@ -14,7 +14,7 @@ type ChatbotProps = {
   infoMessage?: string | null;
   inputPlaceholder: string;
   logoUrl?: string | null;
-  backgroundImageUrl?: string | null; // <--- RECIBIMOS EL FONDO
+  backgroundImageUrl?: string | null;
   orgName: string;
 }
 
@@ -49,26 +49,30 @@ export default function ChatClient({ token, name, welcomeMessage, infoMessage, i
       const data = await res.json();
       setMessages(prev => [...prev, { role: "assistant", content: data.reply }]);
     } catch (error) {
-      setMessages(prev => [...prev, { role: "assistant", content: "⚠️ Error de conexión." }]);
+      setMessages(prev => [...prev, { role: "assistant", content: "⚠️ Error de conexión con el Ágora." }]);
     } finally { setLoading(false); }
   };
 
   return (
-    <div className="relative flex flex-col h-screen overflow-hidden font-sans text-slate-900 bg-slate-100">
+    <div className="relative flex flex-col h-screen overflow-hidden font-sans text-slate-900 bg-slate-200">
       
-      {/* CAPA DE FONDO (WALLPAPER) */}
+      {/* CAPA DE FONDO (WALLPAPER) CON ENCUADRE INTELIGENTE */}
       {backgroundImageUrl && (
         <div 
-          className="absolute inset-0 z-0 bg-cover bg-center bg-no-repeat transition-all duration-1000"
-          style={{ backgroundImage: `url(${backgroundImageUrl})` }}
+          className="absolute inset-0 z-0 bg-no-repeat transition-all duration-1000"
+          style={{ 
+            backgroundImage: `url(${backgroundImageUrl})`,
+            backgroundSize: 'cover',
+            backgroundPosition: 'center 15%' // <--- ESTO SUBE LA "CÁMARA" PARA VER LAS CARAS
+          }}
         >
-          {/* Capa de suavizado para que el texto sea legible */}
-          <div className="absolute inset-0 bg-white/60 backdrop-blur-[2px]"></div>
+          {/* Capa de suavizado para que el texto sea perfectamente legible */}
+          <div className="absolute inset-0 bg-white/70 backdrop-blur-[1px]"></div>
         </div>
       )}
 
       {/* HEADER */}
-      <header className="relative z-10 bg-white/80 backdrop-blur-md border-b border-slate-200 px-6 py-4 shadow-sm">
+      <header className="relative z-10 bg-white/90 backdrop-blur-md border-b border-slate-200 px-6 py-4 shadow-sm">
         <div className="max-w-3xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-3">
             {logoUrl ? <img src={logoUrl} className="w-10 h-10 object-contain rounded-lg shadow-sm" alt="Logo" /> : <div className="h-10 w-10 bg-indigo-600 rounded-xl flex items-center justify-center text-white text-xl">🤖</div>}
@@ -88,7 +92,11 @@ export default function ChatClient({ token, name, welcomeMessage, infoMessage, i
         <div className="max-w-3xl mx-auto space-y-6">
           {messages.map((msg, i) => (
             <div key={i} className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
-              <div className={`max-w-[85%] md:max-w-[75%] p-4 rounded-2xl shadow-sm ${msg.role === "user" ? "bg-indigo-600 text-white shadow-indigo-200" : "bg-white/90 border border-slate-200 text-slate-800"}`}>
+              <div className={`max-w-[85%] md:max-w-[75%] p-4 rounded-2xl shadow-md ${
+                msg.role === "user" 
+                  ? "bg-indigo-600 text-white shadow-indigo-200" 
+                  : "bg-white/95 border border-slate-200 text-slate-800"
+              }`}>
                 <div className="prose prose-slate max-w-none text-sm leading-relaxed">
                   <ReactMarkdown remarkPlugins={[remarkGfm]}>{msg.content}</ReactMarkdown>
                 </div>
@@ -100,9 +108,9 @@ export default function ChatClient({ token, name, welcomeMessage, infoMessage, i
       </main>
 
       {/* FOOTER */}
-      <footer className="relative z-10 bg-white/80 backdrop-blur-md border-t border-slate-200 p-4">
+      <footer className="relative z-10 bg-white/90 backdrop-blur-md border-t border-slate-200 p-4">
         <div className="max-w-3xl mx-auto">
-          <div className="flex items-end gap-3 bg-white p-3 rounded-2xl border-2 border-slate-200 focus-within:border-indigo-500 transition-all shadow-inner">
+          <div className="flex items-end gap-3 bg-white p-3 rounded-2xl border-2 border-slate-300 focus-within:border-indigo-500 transition-all shadow-inner">
             <textarea
               ref={textareaRef}
               rows={1}
@@ -115,6 +123,9 @@ export default function ChatClient({ token, name, welcomeMessage, infoMessage, i
             <button onClick={handleSubmit} disabled={loading || !input.trim()} className="bg-indigo-600 text-white p-3 rounded-xl shadow-lg hover:bg-indigo-700 transition-all disabled:opacity-30">
                {loading ? "..." : "🚀"}
             </button>
+          </div>
+          <div className="flex justify-center mt-3">
+             <Link href="/buzon/registro?type=SOPORTE_TECNICO" className="text-[9px] font-black uppercase text-slate-400 hover:text-red-500 transition-colors">⚠️ Reportar fallo técnico</Link>
           </div>
         </div>
       </footer>
