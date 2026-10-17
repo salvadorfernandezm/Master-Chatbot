@@ -25,10 +25,10 @@ function ChatbotCard({ bot, groups, knowledgeBases }: { bot: any, groups: any[],
     <div className={`bg-white border-2 rounded-3xl shadow-md overflow-hidden mb-6 ${!bot.isActive ? 'opacity-60 border-slate-200' : 'border-slate-500'}`}>
       <div className="p-6">
         <div className="flex justify-between items-start mb-4">
-          <div className="flex-1 text-left">
+          <div className="flex-1 text-left text-left">
             <h3 className="font-extrabold text-slate-800 text-xl">{bot.name}</h3>
             <div className="flex gap-2 mt-2">
-              <span className="bg-slate-100 px-3 py-1 rounded-lg text-xs font-bold text-slate-600">Base: {bot.knowledgeBase?.name || "Sin asignar"}</span>
+              <span className="bg-slate-100 px-3 py-1 rounded-lg text-xs font-bold text-slate-600 uppercase">Base: {bot.knowledgeBase?.name || "Sin asignar"}</span>
             </div>
           </div>
           <div className="flex gap-2">
@@ -38,15 +38,15 @@ function ChatbotCard({ bot, groups, knowledgeBases }: { bot: any, groups: any[],
             <button onClick={() => { if(confirm("¿Borrar este bot?")) deleteChatbot(bot.id) }} className="p-2.5 bg-slate-100 text-slate-400 rounded-2xl hover:bg-red-500 hover:text-white transition-all"><TrashIcon /></button>
           </div>
         </div>
-        <div className="mt-4 p-4 bg-slate-50 rounded-2xl border border-dashed border-slate-500 flex justify-between items-center">
+        <div className="mt-4 p-4 bg-slate-50 rounded-2xl border border-dashed border-slate-500 flex justify-between items-center text-left">
             <span className="text-xs font-black text-purple-600">/chat/{bot.token}</span>
-            <a href={`/chat/${bot.token}`} target="_blank" className="text-[10px] font-black uppercase bg-slate-900 text-white px-4 py-2 rounded-xl">Probar Chat</a>
+            <a href={`/chat/${bot.token}`} target="_blank" className="text-[10px] font-black uppercase bg-slate-900 text-white px-4 py-2 rounded-xl transition-all hover:bg-emerald-600">Probar Chat ↗</a>
         </div>
       </div>
 
       {editingId && (
-        <div className="p-6 bg-slate-50 border-t border-slate-500 text-left">
-          <form action={updateChatbot} onSubmit={() => setEditingId(false)} className="space-y-4">
+        <div className="p-6 bg-slate-50 border-t border-slate-500 text-left text-left">
+          <form action={updateChatbot} onSubmit={() => setEditingId(false)} className="space-y-6">
             <input type="hidden" name="id" value={bot.id} />
             
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -62,8 +62,9 @@ function ChatbotCard({ bot, groups, knowledgeBases }: { bot: any, groups: any[],
               </div>
             </div>
 
+            {/* SECCIÓN DE APARIENCIA Y CÁMARA */}
             <div className="p-4 bg-white rounded-2xl border border-slate-200 space-y-4 shadow-inner">
-               <p className="text-[10px] font-black uppercase text-purple-600 tracking-widest mb-2 text-center">Diseño y Enfoque de Cámara</p>
+               <p className="text-[10px] font-black uppercase text-purple-600 tracking-widest text-center mb-2">Diseño y Enfoque de Cámara</p>
                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-1">
                     <label className="text-[9px] font-bold text-slate-400 uppercase ml-2">URL Logo (Círculo)</label>
@@ -77,14 +78,31 @@ function ChatbotCard({ bot, groups, knowledgeBases }: { bot: any, groups: any[],
                
                <div className="grid grid-cols-2 gap-6 pt-2 border-t border-slate-50 mt-2">
                   <div className="space-y-1">
-                    <label className="text-[9px] font-black text-emerald-600 uppercase ml-1">Enfoque Celular: {bot.bgPositionMobile || 50}%</label>
+                    <label className="text-[9px] font-black text-emerald-600 uppercase ml-1">Cámara Celular: {bot.bgPositionMobile || 50}%</label>
                     <input type="range" name="bgPositionMobile" min="0" max="100" defaultValue={bot.bgPositionMobile || 50} className="w-full h-1.5 bg-slate-100 rounded-lg appearance-none cursor-pointer accent-emerald-500" />
                   </div>
                   <div className="space-y-1">
-                    <label className="text-[9px] font-black text-blue-600 uppercase ml-1">Enfoque PC: {bot.bgPositionDesktop || 50}%</label>
+                    <label className="text-[9px] font-black text-blue-600 uppercase ml-1">Cámara PC: {bot.bgPositionDesktop || 50}%</label>
                     <input type="range" name="bgPositionDesktop" min="0" max="100" defaultValue={bot.bgPositionDesktop || 50} className="w-full h-1.5 bg-slate-100 rounded-lg appearance-none cursor-pointer accent-blue-600" />
                   </div>
                </div>
+            </div>
+
+            {/* CAMPOS DE MENSAJERÍA RESTAURADOS */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-1">
+                <label className="text-[10px] font-bold text-slate-400 uppercase ml-2">Mensaje de Bienvenida</label>
+                <textarea name="welcomeMessage" defaultValue={bot.welcomeMessage || ""} rows={3} className="w-full p-3 rounded-xl border border-slate-200 outline-none text-sm" />
+              </div>
+              <div className="space-y-1">
+                <label className="text-[10px] font-bold text-slate-400 uppercase ml-2">Información del Bot (Botón i)</label>
+                <textarea name="infoMessage" defaultValue={bot.infoMessage || ""} rows={3} className="w-full p-3 rounded-xl border border-slate-200 outline-none text-sm" placeholder="Instrucciones para el usuario..." />
+              </div>
+            </div>
+
+            <div className="space-y-1">
+                <label className="text-[10px] font-bold text-slate-400 uppercase ml-2">Texto de entrada (Placeholder)</label>
+                <input name="inputPlaceholder" defaultValue={bot.inputPlaceholder || ""} placeholder="Escribe un mensaje..." className="w-full p-3 rounded-xl border border-slate-200 outline-none text-sm" />
             </div>
 
             <div className="space-y-1">
@@ -92,7 +110,7 @@ function ChatbotCard({ bot, groups, knowledgeBases }: { bot: any, groups: any[],
               <textarea name="systemInstructions" defaultValue={bot.systemInstructions || ""} rows={4} className="w-full p-3 rounded-xl border border-slate-200 outline-none font-mono text-[10px] bg-white" />
             </div>
 
-            <div className="flex justify-end gap-2 pt-2">
+            <div className="flex justify-end gap-2 pt-4 border-t border-slate-200">
               <button type="button" onClick={() => setEditingId(false)} className="text-sm font-bold text-slate-400 px-4 uppercase text-[10px]">Cancelar</button>
               <button type="submit" className="bg-purple-600 text-white px-8 py-3 rounded-2xl font-black text-[10px] uppercase shadow-xl hover:bg-purple-700 transition-all">Guardar Cambios</button>
             </div>
