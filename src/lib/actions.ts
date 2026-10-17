@@ -132,12 +132,20 @@ export async function createChatbot(formData: FormData) {
 export async function updateChatbot(formData: FormData) {
   const id = formData.get("id") as string;
   const updateData: any = {};
+  
+  // Campos de texto
   const fields = ["name", "welcomeMessage", "systemInstructions", "inputPlaceholder", "fallbackMessage", "infoMessage", "logoUrl", "knowledgeBaseId", "groupId", "backgroundImageUrl"];
   fields.forEach(f => {
     const v = formData.get(f); if (v !== null) updateData[f] = v as string;
   });
+
+  // Campos numéricos (Posiciones de fondo)
+  updateData.bgPositionMobile = parseInt(formData.get("bgPositionMobile") as string) || 50;
+  updateData.bgPositionDesktop = parseInt(formData.get("bgPositionDesktop") as string) || 50;
+
   const isActive = formData.get("isActive");
   if (isActive !== null) updateData.isActive = isActive === "true";
+
   await prisma.chatbot.update({ where: { id }, data: updateData });
   revalidatePath("/admin/chatbots");
 }

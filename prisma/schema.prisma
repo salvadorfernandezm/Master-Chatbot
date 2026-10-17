@@ -75,6 +75,8 @@ model Chatbot {
   group              Group         @relation(fields: [groupId], references: [id])
   knowledgeBase      KnowledgeBase @relation(fields: [knowledgeBaseId], references: [id])
    backgroundImageUrl String?  // <--- NUEVO CAMPO
+bgPositionMobile   Int? @default(50) // Valor de 0 a 100
+  bgPositionDesktop  Int? @default(50) // Valor de 0 a 100
 interactions       Interaction[]
 }
 

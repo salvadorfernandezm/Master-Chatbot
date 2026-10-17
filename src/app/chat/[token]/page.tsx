@@ -34,6 +34,8 @@ export default async function ChatPage({ params }: { params: any }) {
         logoUrl={chatbot.logoUrl}
         backgroundImageUrl={chatbot.backgroundImageUrl}
         orgName={settings?.organizationName || "Institución"}
+bgPositionMobile={chatbot.bgPositionMobile}
+bgPositionDesktop={chatbot.bgPositionDesktop}
       />
     );
   } catch (error: any) {
