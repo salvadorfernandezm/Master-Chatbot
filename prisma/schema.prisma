@@ -79,6 +79,8 @@ bgPositionMobile   Int? @default(50) // Valor de 0 a 100
   bgPositionDesktop  Int? @default(50) // Valor de 0 a 100
  bgPosXMobile       Int? @default(50)
   bgPosXDesktop      Int? @default(50)
+ showIntro          Boolean? @default(true)
+  introPos           Int?     @default(50)   // Posición vertical del cartel (0-100)
 interactions       Interaction[]
 }
 

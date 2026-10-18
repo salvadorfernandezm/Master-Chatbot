@@ -28,6 +28,8 @@ export default async function ChatPage({ params }: { params: any }) {
         bgPositionDesktop={chatbot.bgPositionDesktop}
         bgPosXMobile={chatbot.bgPosXMobile}
         bgPosXDesktop={chatbot.bgPosXDesktop}
+showIntro={chatbot.showIntro}
+introPos={chatbot.introPos}
         orgName={settings?.organizationName || "Institución"}
       />
     );
