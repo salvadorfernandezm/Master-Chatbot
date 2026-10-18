@@ -9,91 +9,128 @@ function ChatbotCard({ bot, groups, knowledgeBases }: { bot: any, groups: any[],
   const [editingId, setEditingId] = useState(false);
 
   return (
-    <div className={`bg-white border-2 rounded-3xl shadow-md overflow-hidden mb-6 ${!bot.isActive ? 'opacity-60 border-slate-200' : 'border-slate-500'}`}>
+    <div className={`bg-white border-2 rounded-[2.5rem] shadow-md overflow-hidden mb-6 ${!bot.isActive ? 'opacity-60 border-slate-200' : 'border-slate-300'}`}>
       <div className="p-6 text-left">
         <div className="flex justify-between items-start mb-4">
           <div className="flex-1">
             <h3 className="font-extrabold text-slate-800 text-xl">{bot.name}</h3>
-            <span className="text-[10px] font-bold bg-slate-100 px-2 py-1 rounded-lg uppercase">Base: {bot.knowledgeBase?.name || "Global"}</span>
+            <div className="flex gap-2 mt-2">
+              <span className="text-[9px] font-black bg-slate-100 px-2 py-1 rounded-lg uppercase text-slate-500 tracking-tighter">Base: {bot.knowledgeBase?.name || "Global"}</span>
+              <span className="text-[9px] font-black bg-purple-50 px-2 py-1 rounded-lg uppercase text-purple-600 tracking-tighter">{bot.group?.name}</span>
+            </div>
           </div>
           <div className="flex gap-2">
-            <button onClick={() => setEditingId(!editingId)} className="p-2 bg-slate-100 text-slate-600 rounded-xl hover:bg-purple-600 hover:text-white transition-all shadow-md"><PencilIcon /></button>
-            <button onClick={() => { if(confirm("¿Borrar este bot?")) deleteChatbot(bot.id) }} className="p-2 bg-slate-100 text-slate-400 rounded-xl hover:bg-red-500 hover:text-white transition-all"><TrashIcon /></button>
+            <button onClick={() => setEditingId(!editingId)} className="p-2.5 bg-slate-100 text-slate-600 rounded-2xl hover:bg-purple-600 hover:text-white transition-all shadow-sm"><PencilIcon /></button>
+            <button onClick={() => { if(confirm("¿Borrar bot?")) deleteChatbot(bot.id) }} className="p-2.5 bg-slate-100 text-slate-400 rounded-2xl hover:bg-red-500 hover:text-white transition-all"><TrashIcon /></button>
           </div>
         </div>
-
-        {/* --- RE-ESTABLECIDO: BLOQUE DE ACCESO CON TOKEN Y BOTÓN DE ABRIR --- */}
-        <div className="mt-4 p-4 bg-slate-50 rounded-2xl border border-dashed border-slate-500 flex justify-between items-center">
-            <div>
-              <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1">Token de Acceso</p>
-              <span className="text-xs font-black text-purple-600">{bot.token}</span>
+        
+        <div className="mt-4 p-4 bg-slate-50 rounded-2xl border border-dashed border-slate-300 flex justify-between items-center">
+            <div className="text-left">
+              <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1">Acceso Directo</p>
+              <span className="text-xs font-black text-purple-600">/chat/{bot.token}</span>
             </div>
-            <a href={`/chat/${bot.token}`} target="_blank" className="bg-slate-900 text-white px-5 py-2 rounded-xl text-[10px] font-black uppercase hover:bg-emerald-600 transition-all shadow-lg shadow-slate-200">
-               Probar Chat ↗
-            </a>
+            <a href={`/chat/${bot.token}`} target="_blank" className="bg-slate-900 text-white px-5 py-2 rounded-xl text-[10px] font-black uppercase hover:bg-emerald-600 transition-all">Probar ↗</a>
         </div>
       </div>
 
       {editingId && (
-        <div className="p-6 bg-slate-50 border-t border-slate-500 text-left animate-in slide-in-from-top-4 duration-300">
-          <form action={updateChatbot} onSubmit={() => setEditingId(false)} className="space-y-6">
+        <div className="p-8 bg-slate-50 border-t-2 border-slate-200 text-left animate-in slide-in-from-top-4 duration-300">
+          <form action={updateChatbot} onSubmit={() => setEditingId(false)} className="space-y-8">
             <input type="hidden" name="id" value={bot.id} />
             
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-1">
-                <label className="text-[10px] font-bold text-slate-400 uppercase ml-2">Nombre del Bot</label>
-                <input name="name" defaultValue={bot.name} required className="w-full p-3 rounded-xl border border-slate-200 outline-none focus:border-purple-500" />
-              </div>
-              <div className="space-y-1">
-                <label className="text-[10px] font-bold text-slate-400 uppercase ml-2">Base de Conocimiento</label>
-                <select name="knowledgeBaseId" defaultValue={bot.knowledgeBaseId} className="w-full p-3 rounded-xl border border-slate-200 outline-none bg-white">
-                  {knowledgeBases.map(kb => <option key={kb.id} value={kb.id}>{kb.name}</option>)}
-                </select>
+            {/* 1. SECCIÓN GENERAL */}
+            <div className="space-y-4">
+              <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest border-b pb-2">1. Configuración General</p>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-1">
+                  <label className="text-[10px] font-bold text-slate-500 uppercase ml-2">Nombre del Bot</label>
+                  <input name="name" defaultValue={bot.name} required className="w-full p-3 rounded-xl border border-slate-200 outline-none focus:border-purple-500 bg-white" />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-[10px] font-bold text-slate-500 uppercase ml-2">Base de Conocimiento</label>
+                  <select name="knowledgeBaseId" defaultValue={bot.knowledgeBaseId} className="w-full p-3 rounded-xl border border-slate-200 outline-none bg-white">
+                    {knowledgeBases.map(kb => <option key={kb.id} value={kb.id}>{kb.name}</option>)}
+                  </select>
+                </div>
               </div>
             </div>
 
-            {/* SECCIÓN DE ESTÉTICA E INMERSIÓN (JOYSTICK) */}
-            <div className="p-5 bg-white rounded-3xl border border-slate-200 space-y-6 shadow-inner">
-               <p className="text-[10px] font-black uppercase text-purple-600 text-center tracking-widest">Estética y Enfoque de Cámara</p>
-               
-               <div className="grid grid-cols-1 gap-4">
-                  <div>
-                    <label className="text-[9px] font-bold text-slate-400 uppercase ml-2">URL Fondo (Wallpaper)</label>
-                    <input name="backgroundImageUrl" defaultValue={bot.backgroundImageUrl || ""} placeholder="https://..." className="w-full p-3 rounded-xl border border-slate-100 outline-none text-xs" />
-                  </div>
-               </div>
+            {/* 2. SECCIÓN DE APARIENCIA Y CÁMARA */}
+            <div className="space-y-4">
+              <p className="text-[10px] font-black uppercase text-emerald-600 tracking-widest border-b pb-2 border-emerald-100">2. Diseño y Enfoque Visual</p>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-1">
+                  <label className="text-[10px] font-bold text-slate-500 uppercase ml-2">URL Logo (Círculo)</label>
+                  <input name="logoUrl" defaultValue={bot.logoUrl || ""} placeholder="https://..." className="w-full p-3 rounded-xl border border-slate-200 outline-none text-xs" />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-[10px] font-bold text-slate-500 uppercase ml-2">URL Fondo (Wallpaper)</label>
+                  <input name="backgroundImageUrl" defaultValue={bot.backgroundImageUrl || ""} placeholder="https://..." className="w-full p-3 rounded-xl border border-slate-200 outline-none text-xs" />
+                </div>
+              </div>
 
-               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 border-t pt-4">
+              <div className="bg-white p-6 rounded-[2rem] border border-slate-200 shadow-inner space-y-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div className="space-y-2">
-                    <label className="text-[10px] font-bold text-slate-400 uppercase ml-2">Portada de Bienvenida</label>
-                    <select name="showIntro" defaultValue={String(bot.showIntro ?? true)} className="w-full p-3 rounded-xl border border-slate-100 bg-slate-50 font-bold text-xs">
-                        <option value="true">🟢 Mostrar Portada</option>
+                    <label className="text-[10px] font-black text-slate-400 uppercase ml-2">Portada: {bot.showIntro ? 'ON' : 'OFF'}</label>
+                    <select name="showIntro" defaultValue={String(bot.showIntro ?? true)} className="w-full p-3 rounded-xl border border-slate-100 bg-slate-50 text-xs font-bold">
+                        <option value="true">🟢 Mostrar Bienvenida</option>
                         <option value="false">🔴 Ir directo al Chat</option>
                     </select>
                   </div>
                   <div className="space-y-2">
-                    <label className="text-[10px] font-bold text-slate-400 uppercase ml-2">Posición del Cartel: {bot.introPos || 50}%</label>
+                    <label className="text-[10px] font-black text-slate-400 uppercase ml-2">Altura del Cartel: {bot.introPos || 50}%</label>
                     <input type="range" name="introPos" min="0" max="100" defaultValue={bot.introPos || 50} className="w-full h-1.5 accent-purple-600 cursor-pointer" />
                   </div>
-               </div>
+                </div>
 
-               <div className="grid grid-cols-1 md:grid-cols-2 gap-8 border-t pt-4">
-                  <div className="space-y-3">
-                    <p className="text-[9px] font-black text-emerald-700 uppercase italic">📱 Cámara Móvil (X, Y)</p>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-8 pt-4 border-t border-slate-50">
+                  <div className="space-y-2">
+                    <p className="text-[9px] font-black text-emerald-600 uppercase">📱 Cámara Móvil (X, Y)</p>
                     <input type="range" name="bgPositionMobile" min="0" max="100" defaultValue={bot.bgPositionMobile || 50} className="w-full h-1 accent-emerald-500" />
                     <input type="range" name="bgPosXMobile" min="0" max="100" defaultValue={bot.bgPosXMobile || 50} className="w-full h-1 accent-emerald-500" />
                   </div>
-                  <div className="space-y-3">
-                    <p className="text-[9px] font-black text-blue-700 uppercase italic">💻 Cámara PC (X, Y)</p>
+                  <div className="space-y-2">
+                    <p className="text-[9px] font-black text-blue-600 uppercase">💻 Cámara PC (X, Y)</p>
                     <input type="range" name="bgPositionDesktop" min="0" max="100" defaultValue={bot.bgPositionDesktop || 50} className="w-full h-1 accent-blue-500" />
                     <input type="range" name="bgPosXDesktop" min="0" max="100" defaultValue={bot.bgPosXDesktop || 50} className="w-full h-1 accent-blue-500" />
                   </div>
-               </div>
+                </div>
+              </div>
             </div>
 
-            <div className="flex justify-end gap-2 pt-2 border-t border-slate-200">
-              <button type="button" onClick={() => setEditingId(false)} className="text-xs font-bold text-slate-400 px-4 uppercase">Cancelar</button>
-              <button type="submit" className="bg-purple-600 text-white px-8 py-3 rounded-2xl font-black text-xs uppercase shadow-xl hover:bg-emerald-600 transition-all">Guardar Cambios</button>
+            {/* 3. SECCIÓN DE MENSAJERÍA */}
+            <div className="space-y-4">
+              <p className="text-[10px] font-black uppercase text-blue-600 tracking-widest border-b pb-2 border-blue-100">3. Mensajes y Textos</p>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-1">
+                  <label className="text-[10px] font-bold text-slate-500 uppercase ml-2">Mensaje de Bienvenida</label>
+                  <textarea name="welcomeMessage" defaultValue={bot.welcomeMessage || ""} rows={3} className="w-full p-3 rounded-xl border border-slate-200 outline-none text-sm bg-white" />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-[10px] font-bold text-slate-500 uppercase ml-2">Información del Bot (Icono "i")</label>
+                  <textarea name="infoMessage" defaultValue={bot.infoMessage || ""} rows={3} className="w-full p-3 rounded-xl border border-slate-200 outline-none text-sm bg-white" placeholder="Instrucciones para el usuario..." />
+                </div>
+              </div>
+              <div className="space-y-1">
+                  <label className="text-[10px] font-bold text-slate-500 uppercase ml-2">Texto de entrada (Placeholder)</label>
+                  <input name="inputPlaceholder" defaultValue={bot.inputPlaceholder || ""} placeholder="Escribe un mensaje..." className="w-full p-3 rounded-xl border border-slate-200 outline-none text-sm bg-white" />
+              </div>
+            </div>
+
+            {/* 4. SECCIÓN DE LÓGICA IA */}
+            <div className="space-y-4">
+              <p className="text-[10px] font-black uppercase text-amber-600 tracking-widest border-b pb-2 border-amber-100">4. Instrucciones del Sistema (Prompt)</p>
+              <div className="space-y-1">
+                <label className="text-[10px] font-bold text-slate-500 uppercase ml-2">Directrices para la IA</label>
+                <textarea name="systemInstructions" defaultValue={bot.systemInstructions || ""} rows={5} className="w-full p-4 rounded-xl border border-slate-200 outline-none font-mono text-[11px] bg-slate-900 text-emerald-400" />
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-3 pt-6 border-t border-slate-200">
+              <button type="button" onClick={() => setEditingId(false)} className="text-xs font-bold text-slate-400 px-6 uppercase tracking-widest hover:text-slate-600 transition-colors">Cancelar</button>
+              <button type="submit" className="bg-slate-900 text-white px-10 py-4 rounded-2xl font-black text-xs uppercase shadow-xl hover:bg-emerald-600 transition-all active:scale-95">Guardar Cambios Maestros</button>
             </div>
           </form>
         </div>
