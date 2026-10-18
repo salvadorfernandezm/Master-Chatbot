@@ -13,27 +13,25 @@ export default async function ChatPage({ params }: { params: any }) {
     });
 
     if (!chatbot) return notFound();
-
     const settings = await prisma.settings.findFirst();
 
     return (
       <ChatClient 
         token={chatbot.token}
         name={chatbot.name}
-        welcomeMessage={chatbot.welcomeMessage || "¡Hola! ¿En qué puedo ayudarte?"}
+        welcomeMessage={chatbot.welcomeMessage || "¡Hola!"}
         infoMessage={chatbot.infoMessage}
-        inputPlaceholder={chatbot.inputPlaceholder || "Escribe un mensaje..."}
+        inputPlaceholder={chatbot.inputPlaceholder || "Escribe..."}
         logoUrl={chatbot.logoUrl}
         backgroundImageUrl={chatbot.backgroundImageUrl}
-        bgPositionMobile={chatbot.bgPositionMobile} // <--- PASAMOS EL VALOR
-        bgPositionDesktop={chatbot.bgPositionDesktop} // <--- PASAMOS EL VALOR
+        bgPositionMobile={chatbot.bgPositionMobile}
+        bgPositionDesktop={chatbot.bgPositionDesktop}
         bgPosXMobile={chatbot.bgPosXMobile}
-bgPosXDesktop={chatbot.bgPosXDesktop}
-orgName={settings?.organizationName || "Institución"}
+        bgPosXDesktop={chatbot.bgPosXDesktop}
+        orgName={settings?.organizationName || "Institución"}
       />
     );
   } catch (error: any) {
-    console.error("DETALLE TÉCNICO DEL FALLO:", error.message);
     throw new Error(`Error en el búnker: ${error.message}`);
   }
 }

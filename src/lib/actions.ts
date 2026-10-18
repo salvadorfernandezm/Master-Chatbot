@@ -138,7 +138,7 @@ export async function updateChatbot(formData: FormData) {
     const v = formData.get(f); if (v !== null) updateData[f] = v as string;
   });
 
-  // Capturamos los 4 ejes de la cámara
+  // Captura obligatoria de los 4 ejes
   updateData.bgPositionMobile = parseInt(formData.get("bgPositionMobile") as string) || 50;
   updateData.bgPositionDesktop = parseInt(formData.get("bgPositionDesktop") as string) || 50;
   updateData.bgPosXMobile = parseInt(formData.get("bgPosXMobile") as string) || 50;
