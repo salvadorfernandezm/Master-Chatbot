@@ -7,6 +7,7 @@ function TrashIcon() { return <svg xmlns="http://www.w3.org/2000/svg" fill="none
 
 function ChatbotCard({ bot, groups, knowledgeBases }: { bot: any, groups: any[], knowledgeBases: any[] }) {
   const [editingId, setEditingId] = useState(false);
+
   return (
     <div className={`bg-white border-2 rounded-3xl shadow-md overflow-hidden mb-6 ${!bot.isActive ? 'opacity-60 border-slate-200' : 'border-slate-500'}`}>
       <div className="p-6 text-left">
@@ -16,23 +17,55 @@ function ChatbotCard({ bot, groups, knowledgeBases }: { bot: any, groups: any[],
             <span className="text-[10px] font-bold bg-slate-100 px-2 py-1 rounded-lg uppercase">Base: {bot.knowledgeBase?.name || "Global"}</span>
           </div>
           <div className="flex gap-2">
-            <button onClick={() => setEditingId(!editingId)} className="p-2 bg-slate-100 rounded-xl hover:bg-purple-600 hover:text-white transition-all"><PencilIcon /></button>
-            <button onClick={() => deleteChatbot(bot.id)} className="p-2 bg-slate-100 rounded-xl hover:bg-red-500 hover:text-white transition-all"><TrashIcon /></button>
+            <button onClick={() => setEditingId(!editingId)} className="p-2 bg-slate-100 text-slate-600 rounded-xl hover:bg-purple-600 hover:text-white transition-all shadow-md"><PencilIcon /></button>
+            <button onClick={() => { if(confirm("¿Borrar este bot?")) deleteChatbot(bot.id) }} className="p-2 bg-slate-100 text-slate-400 rounded-xl hover:bg-red-500 hover:text-white transition-all"><TrashIcon /></button>
           </div>
+        </div>
+
+        {/* --- RE-ESTABLECIDO: BLOQUE DE ACCESO CON TOKEN Y BOTÓN DE ABRIR --- */}
+        <div className="mt-4 p-4 bg-slate-50 rounded-2xl border border-dashed border-slate-500 flex justify-between items-center">
+            <div>
+              <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1">Token de Acceso</p>
+              <span className="text-xs font-black text-purple-600">{bot.token}</span>
+            </div>
+            <a href={`/chat/${bot.token}`} target="_blank" className="bg-slate-900 text-white px-5 py-2 rounded-xl text-[10px] font-black uppercase hover:bg-emerald-600 transition-all shadow-lg shadow-slate-200">
+               Probar Chat ↗
+            </a>
         </div>
       </div>
 
       {editingId && (
-        <div className="p-6 bg-slate-50 border-t border-slate-500 text-left">
-          <form action={updateChatbot} onSubmit={() => setEditingId(false)} className="space-y-4">
+        <div className="p-6 bg-slate-50 border-t border-slate-500 text-left animate-in slide-in-from-top-4 duration-300">
+          <form action={updateChatbot} onSubmit={() => setEditingId(false)} className="space-y-6">
             <input type="hidden" name="id" value={bot.id} />
             
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-1">
+                <label className="text-[10px] font-bold text-slate-400 uppercase ml-2">Nombre del Bot</label>
+                <input name="name" defaultValue={bot.name} required className="w-full p-3 rounded-xl border border-slate-200 outline-none focus:border-purple-500" />
+              </div>
+              <div className="space-y-1">
+                <label className="text-[10px] font-bold text-slate-400 uppercase ml-2">Base de Conocimiento</label>
+                <select name="knowledgeBaseId" defaultValue={bot.knowledgeBaseId} className="w-full p-3 rounded-xl border border-slate-200 outline-none bg-white">
+                  {knowledgeBases.map(kb => <option key={kb.id} value={kb.id}>{kb.name}</option>)}
+                </select>
+              </div>
+            </div>
+
+            {/* SECCIÓN DE ESTÉTICA E INMERSIÓN (JOYSTICK) */}
             <div className="p-5 bg-white rounded-3xl border border-slate-200 space-y-6 shadow-inner">
-               <p className="text-[10px] font-black uppercase text-purple-600 text-center tracking-widest">Estética e Inmersión</p>
+               <p className="text-[10px] font-black uppercase text-purple-600 text-center tracking-widest">Estética y Enfoque de Cámara</p>
                
-               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+               <div className="grid grid-cols-1 gap-4">
+                  <div>
+                    <label className="text-[9px] font-bold text-slate-400 uppercase ml-2">URL Fondo (Wallpaper)</label>
+                    <input name="backgroundImageUrl" defaultValue={bot.backgroundImageUrl || ""} placeholder="https://..." className="w-full p-3 rounded-xl border border-slate-100 outline-none text-xs" />
+                  </div>
+               </div>
+
+               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 border-t pt-4">
                   <div className="space-y-2">
-                    <label className="text-[10px] font-bold text-slate-400 uppercase ml-2">Portada de Inmersión</label>
+                    <label className="text-[10px] font-bold text-slate-400 uppercase ml-2">Portada de Bienvenida</label>
                     <select name="showIntro" defaultValue={String(bot.showIntro ?? true)} className="w-full p-3 rounded-xl border border-slate-100 bg-slate-50 font-bold text-xs">
                         <option value="true">🟢 Mostrar Portada</option>
                         <option value="false">🔴 Ir directo al Chat</option>
@@ -46,21 +79,21 @@ function ChatbotCard({ bot, groups, knowledgeBases }: { bot: any, groups: any[],
 
                <div className="grid grid-cols-1 md:grid-cols-2 gap-8 border-t pt-4">
                   <div className="space-y-3">
-                    <p className="text-[9px] font-black text-emerald-700 uppercase italic">📱 Enfoque Móvil (X, Y)</p>
+                    <p className="text-[9px] font-black text-emerald-700 uppercase italic">📱 Cámara Móvil (X, Y)</p>
                     <input type="range" name="bgPositionMobile" min="0" max="100" defaultValue={bot.bgPositionMobile || 50} className="w-full h-1 accent-emerald-500" />
                     <input type="range" name="bgPosXMobile" min="0" max="100" defaultValue={bot.bgPosXMobile || 50} className="w-full h-1 accent-emerald-500" />
                   </div>
                   <div className="space-y-3">
-                    <p className="text-[9px] font-black text-blue-700 uppercase italic">💻 Enfoque PC (X, Y)</p>
+                    <p className="text-[9px] font-black text-blue-700 uppercase italic">💻 Cámara PC (X, Y)</p>
                     <input type="range" name="bgPositionDesktop" min="0" max="100" defaultValue={bot.bgPositionDesktop || 50} className="w-full h-1 accent-blue-500" />
                     <input type="range" name="bgPosXDesktop" min="0" max="100" defaultValue={bot.bgPosXDesktop || 50} className="w-full h-1 accent-blue-500" />
                   </div>
                </div>
             </div>
 
-            <div className="flex justify-end gap-2 pt-2">
-              <button type="button" onClick={() => setEditingId(false)} className="text-xs font-bold text-slate-400 px-4">CANCELAR</button>
-              <button type="submit" className="bg-slate-900 text-white px-8 py-3 rounded-2xl font-black text-xs uppercase shadow-xl hover:bg-emerald-600 transition-all">GUARDAR CAMBIOS</button>
+            <div className="flex justify-end gap-2 pt-2 border-t border-slate-200">
+              <button type="button" onClick={() => setEditingId(false)} className="text-xs font-bold text-slate-400 px-4 uppercase">Cancelar</button>
+              <button type="submit" className="bg-purple-600 text-white px-8 py-3 rounded-2xl font-black text-xs uppercase shadow-xl hover:bg-emerald-600 transition-all">Guardar Cambios</button>
             </div>
           </form>
         </div>
@@ -70,5 +103,12 @@ function ChatbotCard({ bot, groups, knowledgeBases }: { bot: any, groups: any[],
 }
 
 export function ChatbotList({ chatbots, groups, knowledgeBases }: { chatbots: any[], groups: any[], knowledgeBases: any[] }) {
-  return <div>{chatbots.map(bot => <ChatbotCard key={bot.id} bot={bot} groups={groups} knowledgeBases={knowledgeBases} />)}</div>;
+  if (chatbots.length === 0) return <div className="p-10 text-center text-slate-400 italic">No hay bots configurados.</div>;
+  return (
+    <div>
+      {chatbots.map(bot => (
+        <ChatbotCard key={bot.id} bot={bot} groups={groups} knowledgeBases={knowledgeBases} />
+      ))}
+    </div>
+  );
 }
