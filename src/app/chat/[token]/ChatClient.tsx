@@ -42,10 +42,10 @@ export default function ChatClient({ token, name, welcomeMessage, infoMessage, i
   return (
     <div className="relative flex flex-col h-screen overflow-hidden font-sans bg-slate-900 text-left">
       
-      {/* 1. FONDO PRINCIPAL (Capa base) */}
+      {/* 1. FONDO PRINCIPAL */}
       {backgroundImageUrl && (
         <div 
-          className="absolute inset-0 z-0 bg-no-repeat pointer-events-none" // pointer-events-none para que no bloquee clics
+          className="absolute inset-0 z-0 bg-no-repeat pointer-events-none"
           style={{ 
             backgroundImage: `url(${backgroundImageUrl})`,
             backgroundSize: 'cover',
@@ -56,50 +56,52 @@ export default function ChatClient({ token, name, welcomeMessage, infoMessage, i
         </div>
       )}
 
-      {/* 2. CABECERA (Franja superior - Ahora en z-50 para dominar) */}
+      {/* 2. PORTADA DE INMERSIÓN - AHORA CON RECORRIDO TOTAL (%) */}
+      {backgroundImageUrl && isIntroActive && (
+        <div className="absolute inset-0 z-40 flex flex-col p-6 bg-slate-950/20 backdrop-blur-[2px]">
+          <div 
+            className="absolute left-0 right-0 px-6 transition-all duration-700 ease-in-out"
+            style={{ 
+              top: `${introPos ?? 50}%`, // <--- USAMOS PORCENTAJE DIRECTO
+              transform: 'translateY(-50%)' // Para que el centro del cartel coincida con el %
+            }}
+          >
+            <div className="text-center space-y-8 max-w-sm mx-auto">
+                <div className="p-8 rounded-[3rem] border border-white/20 bg-white/5 backdrop-blur-md shadow-2xl">
+                    <h2 className="text-white text-4xl font-black uppercase tracking-tighter mb-2 drop-shadow-2xl">{name}</h2>
+                    <p className="text-emerald-400 text-[10px] font-black uppercase tracking-[0.4em]">{orgName}</p>
+                </div>
+                <button 
+                  onClick={() => setIsIntroActive(false)} 
+                  className="bg-emerald-500 hover:bg-white text-black px-12 py-5 rounded-2xl font-black uppercase tracking-widest transition-all shadow-2xl active:scale-95 cursor-pointer"
+                >
+                  Iniciar Diálogo
+                </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 3. CABECERA */}
       <header className="relative z-50 bg-white/90 backdrop-blur-md border-b border-slate-200 px-6 py-4 flex items-center justify-between shadow-md">
           <div className="flex items-center gap-3">
             {logoUrl ? <img src={logoUrl} className="w-10 h-10 object-contain rounded-lg" alt="Logo" /> : <div className="h-10 w-10 bg-indigo-600 rounded-xl flex items-center justify-center text-white text-xl">🤖</div>}
             <h1 className="font-bold text-slate-800 text-sm md:text-base">{name}</h1>
           </div>
           
-          {/* BOTÓN "i" CON MÁXIMA PRIORIDAD */}
           {infoMessage && (
             <button 
                 type="button"
-                onClick={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  setIsInfoOpen(true);
-                }}
-                className="h-10 w-10 rounded-full bg-emerald-500 text-white font-black shadow-lg hover:bg-emerald-600 transition-all flex items-center justify-center cursor-pointer active:scale-90 pointer-events-auto"
-                style={{ position: 'relative', zIndex: 60 }} // Refuerzo manual de capa
+                onClick={() => setIsInfoOpen(true)}
+                className="h-10 w-10 rounded-full bg-emerald-500 text-white font-black shadow-lg hover:bg-emerald-600 transition-all flex items-center justify-center cursor-pointer active:scale-90"
             >
                 i
             </button>
           )}
       </header>
 
-      {/* 3. PORTADA DE INMERSIÓN (z-40 para que el botón "i" del header quede encima) */}
-      {backgroundImageUrl && isIntroActive && (
-        <div className="absolute inset-0 z-40 flex flex-col items-center justify-center p-6 bg-slate-950/20 backdrop-blur-[2px]">
-          <div 
-            className="text-center space-y-8 max-w-sm mx-auto transition-all duration-500"
-            style={{ marginTop: `${introPos ? (introPos - 50) * 2 : 0}px` }} // Ajuste dinámico de posición
-          >
-            <div className="p-8 rounded-[3rem] border border-white/20 bg-white/5 backdrop-blur-md shadow-2xl">
-              <h2 className="text-white text-4xl font-black uppercase tracking-tighter mb-2 drop-shadow-2xl">{name}</h2>
-              <p className="text-emerald-400 text-[10px] font-black uppercase tracking-[0.4em]">{orgName}</p>
-            </div>
-            <button onClick={() => setIsIntroActive(false)} className="bg-emerald-500 hover:bg-white text-black px-12 py-5 rounded-2xl font-black uppercase tracking-widest transition-all shadow-2xl active:scale-95 cursor-pointer">
-                Iniciar Diálogo
-            </button>
-          </div>
-        </div>
-      )}
-
       {/* 4. ÁREA DE CHAT */}
-      <main className="relative z-10 flex-1 overflow-y-auto p-4 md:p-8 custom-scrollbar">
+      <main className="relative z-10 flex-1 overflow-y-auto p-4 md:p-8">
           <div className="max-w-3xl mx-auto space-y-6">
             {messages.map((msg, i) => (
               <div key={i} className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
@@ -120,7 +122,7 @@ export default function ChatClient({ token, name, welcomeMessage, infoMessage, i
           </div>
       </footer>
 
-      {/* 6. MODAL DE INFORMACIÓN (z-100 para estar sobre todo) */}
+      {/* 6. MODAL DE INFORMACIÓN */}
       {isInfoOpen && (
         <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-md z-[100] flex items-center justify-center p-6 animate-in fade-in duration-300">
           <div className="bg-white rounded-[3rem] p-10 max-w-lg w-full shadow-2xl border-t-8 border-emerald-500">
@@ -130,12 +132,7 @@ export default function ChatClient({ token, name, welcomeMessage, infoMessage, i
                 <ReactMarkdown remarkPlugins={[remarkGfm]}>{infoMessage}</ReactMarkdown>
               </div>
             </div>
-            <button 
-              onClick={() => setIsInfoOpen(false)} 
-              className="w-full bg-slate-900 text-white py-4 rounded-2xl font-bold uppercase text-xs tracking-widest hover:bg-black transition-all cursor-pointer"
-            >
-              Cerrar
-            </button>
+            <button onClick={() => setIsInfoOpen(false)} className="w-full bg-slate-900 text-white py-4 rounded-2xl font-bold uppercase text-xs tracking-widest hover:bg-black transition-all">Cerrar</button>
           </div>
         </div>
       )}
