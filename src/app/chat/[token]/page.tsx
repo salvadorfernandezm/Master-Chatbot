@@ -20,7 +20,7 @@ export default async function ChatPage({ params }: { params: any }) {
         token={chatbot.token}
         name={chatbot.name}
         welcomeMessage={chatbot.welcomeMessage || "¡Hola!"}
-        infoMessage={chatbot.infoMessage}
+        infoMessage={chatbot.infoMessage} // <--- ESTO ENVÍA EL MENSAJE
         inputPlaceholder={chatbot.inputPlaceholder || "Escribe..."}
         logoUrl={chatbot.logoUrl}
         backgroundImageUrl={chatbot.backgroundImageUrl}
@@ -28,8 +28,8 @@ export default async function ChatPage({ params }: { params: any }) {
         bgPositionDesktop={chatbot.bgPositionDesktop}
         bgPosXMobile={chatbot.bgPosXMobile}
         bgPosXDesktop={chatbot.bgPosXDesktop}
-showIntro={chatbot.showIntro}
-introPos={chatbot.introPos}
+        showIntro={chatbot.showIntro}
+        introPos={chatbot.introPos}
         orgName={settings?.organizationName || "Institución"}
       />
     );
