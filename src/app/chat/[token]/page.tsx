@@ -27,7 +27,9 @@ export default async function ChatPage({ params }: { params: any }) {
         backgroundImageUrl={chatbot.backgroundImageUrl}
         bgPositionMobile={chatbot.bgPositionMobile} // <--- PASAMOS EL VALOR
         bgPositionDesktop={chatbot.bgPositionDesktop} // <--- PASAMOS EL VALOR
-        orgName={settings?.organizationName || "Institución"}
+        bgPosXMobile={chatbot.bgPosXMobile}
+bgPosXDesktop={chatbot.bgPosXDesktop}
+orgName={settings?.organizationName || "Institución"}
       />
     );
   } catch (error: any) {

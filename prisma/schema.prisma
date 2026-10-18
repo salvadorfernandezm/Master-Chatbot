@@ -77,6 +77,8 @@ model Chatbot {
    backgroundImageUrl String?  // <--- NUEVO CAMPO
 bgPositionMobile   Int? @default(50) // Valor de 0 a 100
   bgPositionDesktop  Int? @default(50) // Valor de 0 a 100
+ bgPosXMobile       Int? @default(50)
+  bgPosXDesktop      Int? @default(50)
 interactions       Interaction[]
 }
 
