@@ -41,9 +41,8 @@ export default function ChatClient({ token, name, welcomeMessage, infoMessage, i
           message: userMsg, 
           token, 
           history: messages.map(m => ({ role: m.role, text: m.content })),
-          // ENVIAMOS LOS DATOS AL TAQUÍGRAFO
           studentName: studentData.name,
-          studentEmail: studentData.email,
+          studentEmail: studentEmailFix(studentData.email),
           studentGroup: studentData.group
         }) 
       });
@@ -52,16 +51,21 @@ export default function ChatClient({ token, name, welcomeMessage, infoMessage, i
     } catch (e) { console.error(e); } finally { setLoading(false); }
   };
 
+  // Función auxiliar para evitar errores de envío
+  function studentEmailFix(email: string) {
+    return email.trim() === "" ? "anonimo@ujed.mx" : email;
+  }
+
   const posX = isMobile ? (bgPosXMobile ?? 50) : (bgPosXDesktop ?? 50);
   const posY = isMobile ? (bgPositionMobile ?? 50) : (bgPositionDesktop ?? 50);
 
-  // Convertimos las opciones de grupo en un array
-  const groups = groupOptions ? groupOptions.split(',').map((g: string) => g.trim()) : [];
+  // Convertimos las opciones de grupo en un array de strings
+  const groups: string[] = groupOptions ? groupOptions.split(',').map((g: string) => g.trim()) : [];
 
   return (
     <div className="relative flex flex-col h-screen overflow-hidden font-sans bg-slate-900 text-left">
       
-      {/* FONDO PRINCIPAL */}
+      {/* 1. FONDO PRINCIPAL */}
       {backgroundImageUrl && (
         <div 
           className="absolute inset-0 z-0 bg-no-repeat pointer-events-none"
@@ -75,12 +79,12 @@ export default function ChatClient({ token, name, welcomeMessage, infoMessage, i
         </div>
       )}
 
-      {/* PORTADA DE INMERSIÓN / REGISTRO */}
+      {/* 2. PORTADA DE INMERSIÓN / REGISTRO */}
       {backgroundImageUrl && isIntroActive && (
         <div className="absolute inset-0 z-[100] flex flex-col items-center justify-center p-6 bg-slate-950/20 backdrop-blur-[2px]">
           <div 
             className="text-center space-y-6 max-w-sm w-full mx-auto transition-all duration-700"
-            style={!showRegForm ? { top: `${introPos ?? 50}%`, transform: 'translateY(-50%)', position: 'absolute', left: 0, right: 0, padding: '0 24px' } : {}}
+            style={!showRegForm ? { top: `${introPos ?? 50}%`, transform: 'translateY(-50%)', position: 'absolute' } : {}}
           >
             {!showRegForm ? (
               <>
@@ -97,31 +101,33 @@ export default function ChatClient({ token, name, welcomeMessage, infoMessage, i
               </>
             ) : (
               <div className="bg-white p-8 rounded-[3rem] shadow-2xl space-y-5 animate-in zoom-in duration-300">
-                <div className="text-left">
+                <div className="text-left border-l-4 border-emerald-500 pl-4">
                   <p className="text-[10px] font-black text-emerald-600 uppercase tracking-widest mb-1">Registro Académico</p>
-                  <h3 className="text-lg font-black text-slate-800 uppercase leading-none">Identifícate para comenzar</h3>
+                  <h3 className="text-lg font-black text-slate-800 uppercase leading-none">Identifícate</h3>
                 </div>
                 
                 <div className="space-y-3">
                   <input 
                     type="text" 
                     placeholder="Nombre Completo" 
-                    className="w-full p-4 bg-slate-100 rounded-2xl outline-none text-sm border-2 border-transparent focus:border-emerald-500 transition-all"
+                    className="w-full p-4 bg-slate-100 rounded-2xl outline-none text-sm border-2 border-transparent focus:border-emerald-500 transition-all text-slate-900"
                     onChange={(e) => setStudentData({...studentData, name: e.target.value})}
                   />
                   <input 
                     type="email" 
                     placeholder="Correo Institucional" 
-                    className="w-full p-4 bg-slate-100 rounded-2xl outline-none text-sm border-2 border-transparent focus:border-emerald-500 transition-all"
+                    className="w-full p-4 bg-slate-100 rounded-2xl outline-none text-sm border-2 border-transparent focus:border-emerald-500 transition-all text-slate-900"
                     onChange={(e) => setStudentData({...studentData, email: e.target.value})}
                   />
                   {groups.length > 0 && (
                     <select 
-                      className="w-full p-4 bg-slate-100 rounded-2xl outline-none text-sm border-2 border-transparent focus:border-emerald-500 transition-all"
+                      className="w-full p-4 bg-slate-100 rounded-2xl outline-none text-sm border-2 border-transparent focus:border-emerald-500 transition-all text-slate-900"
                       onChange={(e) => setStudentData({...studentData, group: e.target.value})}
                     >
-                      <option value="">Selecciona tu Grupo / Profesor</option>
-                      {groups.map((g, i) => <option key={i} value={g}>{g}</option>)}
+                      <option value="">Selecciona tu Profesor</option>
+                      {groups.map((g: string, i: number) => ( // <--- AQUÍ CORREGIMOS EL ERROR DE TIPO
+                        <option key={i} value={g}>{g}</option>
+                      ))}
                     </select>
                   )}
                 </div>
@@ -156,7 +162,7 @@ export default function ChatClient({ token, name, welcomeMessage, infoMessage, i
           <div className="max-w-3xl mx-auto space-y-6">
             {messages.map((msg, i) => (
               <div key={i} className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
-                <div className={`max-w-[85%] p-4 rounded-2xl shadow-lg ${msg.role === "user" ? "bg-indigo-600 text-white" : "bg-white/95 border border-slate-200 text-slate-800"}`}>
+                <div className={`max-w-[85%] p-4 rounded-2xl shadow-lg ${msg.role === "user" ? "bg-indigo-600 text-white" : "bg-white/95 border border-slate-200 text-slate-800 shadow-sm"}`}>
                   <div className="prose prose-slate max-w-none text-sm leading-relaxed"><ReactMarkdown remarkPlugins={[remarkGfm]}>{msg.content}</ReactMarkdown></div>
                 </div>
               </div>
