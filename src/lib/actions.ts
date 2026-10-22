@@ -133,23 +133,35 @@ export async function updateChatbot(formData: FormData) {
   const id = formData.get("id") as string;
   const updateData: any = {};
   
-  const fields = ["name", "welcomeMessage", "systemInstructions", "inputPlaceholder", "fallbackMessage", "infoMessage", "logoUrl", "knowledgeBaseId", "groupId", "backgroundImageUrl","collectData", "groupOptions"];
+  // 1. LISTA DE CAMPOS DE TEXTO (Añadimos groupOptions)
+  const fields = [
+    "name", "welcomeMessage", "systemInstructions", "inputPlaceholder", 
+    "fallbackMessage", "infoMessage", "logoUrl", "knowledgeBaseId", 
+    "groupId", "backgroundImageUrl", "groupOptions" // <--- AGREGADO
+  ];
+
   fields.forEach(f => {
-    const v = formData.get(f); if (v !== null) updateData[f] = v as string;
+    const v = formData.get(f); 
+    if (v !== null) updateData[f] = v as string;
   });
 
-  // Capturamos posiciones de cámara y del cartel
+  // 2. CAMPOS NUMÉRICOS (CÁMARA Y POSICIÓN)
   updateData.bgPositionMobile = parseInt(formData.get("bgPositionMobile") as string) || 50;
   updateData.bgPositionDesktop = parseInt(formData.get("bgPositionDesktop") as string) || 50;
   updateData.bgPosXMobile = parseInt(formData.get("bgPosXMobile") as string) || 50;
   updateData.bgPosXDesktop = parseInt(formData.get("bgPosXDesktop") as string) || 50;
-  
-  // NUEVOS: Interruptor y Posición del Cartel
-  updateData.showIntro = formData.get("showIntro") === "true";
   updateData.introPos = parseInt(formData.get("introPos") as string) || 50;
 
+  // 3. CAMPOS BOOLEANOS (INTERRUPTORES)
   const isActive = formData.get("isActive");
   if (isActive !== null) updateData.isActive = isActive === "true";
+
+  const showIntro = formData.get("showIntro");
+  if (showIntro !== null) updateData.showIntro = showIntro === "true";
+
+  // --- EL CANDADO QUE FALTABA PARA LA INVESTIGACIÓN ---
+  const collectData = formData.get("collectData");
+  if (collectData !== null) updateData.collectData = collectData === "true";
 
   await prisma.chatbot.update({ where: { id }, data: updateData });
   revalidatePath("/admin/chatbots");
