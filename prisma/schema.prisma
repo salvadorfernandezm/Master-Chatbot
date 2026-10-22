@@ -81,6 +81,8 @@ bgPositionMobile   Int? @default(50) // Valor de 0 a 100
   bgPosXDesktop      Int? @default(50)
  showIntro          Boolean? @default(true)
   introPos           Int?     @default(50)   // Posición vertical del cartel (0-100)
+ collectData    Boolean? @default(false) // ¿Pide nombre/grupo?
+  groupOptions   String?  @default("")    // Lista: "Patricia Martínez, Salvador Fernández"
 interactions       Interaction[]
 }
 
@@ -91,6 +93,9 @@ model Interaction {
   response  String   @db.Text
   createdAt DateTime @default(now())
   chatbot   Chatbot  @relation(fields: [chatbotId], references: [id], onDelete: Cascade)
+ studentName    String?
+  studentEmail   String?
+  studentGroup   String?
 }
 
 model Ticket {

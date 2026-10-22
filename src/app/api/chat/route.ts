@@ -12,7 +12,7 @@ export async function POST(req: Request) {
   try {
     const body = await req.json();
     // Ahora recibimos 'history' además del mensaje y el token
-    const { message, token, history = [] } = body;
+    const { message, token, history, studentName, studentEmail, studentGroup } = body;
 
     if (!process.env.OPENAI_API_KEY) {
       return NextResponse.json({ reply: "Error: Configuración de IA ausente." });
@@ -71,6 +71,17 @@ export async function POST(req: Request) {
     prisma.interaction.create({
       data: { chatbotId: chatbot.id, query: message.substring(0, 500), response: reply.substring(0, 2000) }
     }).catch(e => console.error("Error analíticas:", e));
+
+await prisma.interaction.create({
+  data: { 
+    chatbotId: chatbot.id, 
+    query: message.substring(0, 1000), 
+    response: reply.substring(0, 3000),
+    studentName, 
+    studentEmail, 
+    studentGroup 
+  }
+});
 
     return NextResponse.json({ reply });
 

@@ -133,7 +133,7 @@ export async function updateChatbot(formData: FormData) {
   const id = formData.get("id") as string;
   const updateData: any = {};
   
-  const fields = ["name", "welcomeMessage", "systemInstructions", "inputPlaceholder", "fallbackMessage", "infoMessage", "logoUrl", "knowledgeBaseId", "groupId", "backgroundImageUrl"];
+  const fields = ["name", "welcomeMessage", "systemInstructions", "inputPlaceholder", "fallbackMessage", "infoMessage", "logoUrl", "knowledgeBaseId", "groupId", "backgroundImageUrl","collectData", "groupOptions"];
   fields.forEach(f => {
     const v = formData.get(f); if (v !== null) updateData[f] = v as string;
   });
@@ -269,4 +269,25 @@ export async function updateProposalStatus(id: string, status: string) {
     await prisma.proposal.update({ where: { id }, data: { status } });
     revalidatePath("/admin/gestion-propuestas"); revalidatePath("/excelencia/mural"); return { success: true };
   } catch (error) { return { success: false }; }
+}
+
+export async function downloadChatInteractions(chatbotId: string) {
+  try {
+    const data = await prisma.interaction.findMany({
+      where: { chatbotId },
+      orderBy: { createdAt: 'desc' }
+    });
+
+    const headers = ["Fecha", "Grupo", "Estudiante", "Pregunta", "Respuesta de IA"];
+    const rows = data.map(i => [
+      i.createdAt.toLocaleDateString(),
+      i.studentGroup || "N/A",
+      i.studentName || "Anónimo",
+      `"${i.query.replace(/"/g, '""')}"`,
+      `"${i.response.replace(/"/g, '""')}"`
+    ]);
+
+    const csvContent = "\ufeff" + [headers, ...rows].map(e => e.join(",")).join("\n");
+    return { success: true, data: csvContent };
+  } catch (error) { return { success: false, data: "" }; }
 }
