@@ -30,8 +30,8 @@ function ChatbotCard({ bot, groups, knowledgeBases }: { bot: any, groups: any[],
           <div className="flex-1">
             <h3 className="font-extrabold text-slate-800 text-xl">{bot.name}</h3>
             <div className="flex gap-2 mt-2">
-              <span className="text-[9px] font-black bg-slate-100 px-2 py-1 rounded-lg uppercase text-slate-500">Base: {bot.knowledgeBase?.name || "Global"}</span>
-              {bot.nameMode !== "HIDDEN" && <span className="text-[9px] font-black bg-indigo-100 px-2 py-1 rounded-lg uppercase text-indigo-600">📊 Investigación</span>}
+              <span className="text-[9px] font-black bg-slate-100 px-2 py-1 rounded-lg uppercase text-slate-500 tracking-tighter">Base: {bot.knowledgeBase?.name || "Global"}</span>
+              {bot.nameMode !== "HIDDEN" && <span className="text-[9px] font-black bg-indigo-100 px-2 py-1 rounded-lg uppercase text-indigo-600 tracking-tighter">📊 Investigación</span>}
             </div>
           </div>
           <div className="flex gap-2">
@@ -42,7 +42,7 @@ function ChatbotCard({ bot, groups, knowledgeBases }: { bot: any, groups: any[],
         </div>
         <div className="mt-4 p-4 bg-slate-50 rounded-2xl border border-dashed border-slate-300 flex justify-between items-center text-left">
             <span className="text-xs font-black text-purple-600">/chat/{bot.token}</span>
-            <a href={`/chat/${bot.token}`} target="_blank" className="bg-slate-900 text-white px-5 py-2 rounded-xl text-[10px] font-black uppercase hover:bg-emerald-600 transition-all shadow-lg">Probar ↗</a>
+            <a href={`/chat/${bot.token}`} target="_blank" className="bg-slate-900 text-white px-5 py-2 rounded-xl text-[10px] font-black uppercase hover:bg-emerald-600 transition-all">Probar ↗</a>
         </div>
       </div>
 
@@ -56,9 +56,9 @@ function ChatbotCard({ bot, groups, knowledgeBases }: { bot: any, groups: any[],
                   {knowledgeBases.map(kb => <option key={kb.id} value={kb.id}>{kb.name}</option>)}
                 </select>
             </div>
-            <div className="space-y-4">
-              <p className="text-[10px] font-black uppercase text-indigo-600 tracking-widest border-b pb-2 border-indigo-100">Configuración de Investigación</p>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            
+            {/* SECCIÓN INVESTIGACIÓN */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <select name="nameMode" defaultValue={bot.nameMode || "HIDDEN"} className="p-3 rounded-xl border bg-white text-xs">
                     <option value="HIDDEN">🚫 Nombre Oculto</option>
                     <option value="OPTIONAL">💡 Nombre Opcional</option>
@@ -74,12 +74,18 @@ function ChatbotCard({ bot, groups, knowledgeBases }: { bot: any, groups: any[],
                     <option value="OPTIONAL">💡 Grupo Opcional</option>
                     <option value="REQUIRED">🔒 Grupo Obligatorio</option>
                 </select>
-              </div>
-              <input name="groupOptions" defaultValue={bot.groupOptions || ""} placeholder="Profesores separados por coma..." className="w-full p-3 rounded-xl border border-slate-200 bg-white text-xs" />
             </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 bg-white rounded-2xl border border-slate-200">
+                <input name="backgroundImageUrl" defaultValue={bot.backgroundImageUrl || ""} placeholder="URL Fondo" className="p-3 rounded-xl border border-slate-100 outline-none text-xs" />
+                <input name="logoUrl" defaultValue={bot.logoUrl || ""} placeholder="URL Logo" className="p-3 rounded-xl border border-slate-100 outline-none text-xs" />
+            </div>
+
+            <textarea name="systemInstructions" defaultValue={bot.systemInstructions || ""} rows={4} className="w-full p-4 rounded-2xl bg-slate-900 text-emerald-400 font-mono text-[10px]" />
+
             <div className="flex justify-end gap-3 pt-6 border-t border-slate-200">
               <button type="button" onClick={() => setEditingId(false)} className="text-xs font-bold text-slate-400 px-6 uppercase">Cancelar</button>
-              <button type="submit" className="bg-slate-900 text-white px-10 py-4 rounded-2xl font-black text-xs uppercase shadow-xl hover:bg-emerald-600 transition-all">Guardar</button>
+              <button type="submit" className="bg-slate-900 text-white px-10 py-4 rounded-2xl font-black text-xs uppercase shadow-xl hover:bg-emerald-600 transition-all">Guardar Cambios</button>
             </div>
           </form>
         </div>
@@ -89,6 +95,6 @@ function ChatbotCard({ bot, groups, knowledgeBases }: { bot: any, groups: any[],
 }
 
 export function ChatbotList({ chatbots, groups, knowledgeBases }: { chatbots: any[], groups: any[], knowledgeBases: any[] }) {
-  if (chatbots.length === 0) return <div className="p-10 text-center text-slate-400 italic">No hay bots configurados.</div>;
+  if (chatbots.length === 0) return <div className="p-10 text-center text-slate-400 italic text-left">No hay bots configurados.</div>;
   return <div>{chatbots.map(bot => (<ChatbotCard key={bot.id} bot={bot} groups={groups} knowledgeBases={knowledgeBases} />))}</div>;
 }
