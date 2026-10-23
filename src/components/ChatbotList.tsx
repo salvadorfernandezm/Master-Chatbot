@@ -9,102 +9,110 @@ function ChatbotCard({ bot, groups, knowledgeBases }: { bot: any, groups: any[],
   const [editingId, setEditingId] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
 
-  const handleExport = async () => {
-    setIsExporting(true);
-    const res = await downloadChatInteractions(bot.id);
-    if (res.success) {
-      const blob = new Blob([res.data], { type: 'text/csv;charset=utf-8;' });
-      const url = window.URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.setAttribute('href', url);
-      link.setAttribute('download', `Dialogos_${bot.name}.csv`);
-      link.click();
-    }
-    setIsExporting(false);
-  };
-
   return (
     <div className={`bg-white border-2 rounded-[2.5rem] shadow-md overflow-hidden mb-6 ${!bot.isActive ? 'opacity-60 border-slate-200' : 'border-slate-300'}`}>
-      <div className="p-6 text-left text-left">
+      <div className="p-6 text-left">
         <div className="flex justify-between items-start mb-4">
           <div className="flex-1">
             <h3 className="font-extrabold text-slate-800 text-xl">{bot.name}</h3>
             <div className="flex gap-2 mt-2">
               <span className="text-[9px] font-black bg-slate-100 px-2 py-1 rounded-lg uppercase text-slate-500">Base: {bot.knowledgeBase?.name || "Global"}</span>
-              {(bot.nameMode !== "HIDDEN" || bot.groupMode !== "HIDDEN") && <span className="text-[9px] font-black bg-indigo-100 px-2 py-1 rounded-lg uppercase text-indigo-600">📊 Modo Investigación</span>}
+              {bot.nameMode !== "HIDDEN" && <span className="text-[9px] font-black bg-indigo-100 px-2 py-1 rounded-lg uppercase text-indigo-600">📊 Investigación Activa</span>}
             </div>
           </div>
           <div className="flex gap-2">
-            <button onClick={handleExport} disabled={isExporting} title="Bajar Diálogos" className="p-2.5 bg-blue-50 text-blue-600 rounded-2xl hover:bg-blue-600 hover:text-white transition-all shadow-sm">{isExporting ? "..." : "📥"}</button>
             <button onClick={() => setEditingId(!editingId)} className="p-2.5 bg-slate-100 text-slate-600 rounded-2xl hover:bg-purple-600 hover:text-white transition-all shadow-sm"><PencilIcon /></button>
             <button onClick={() => { if(confirm("¿Borrar bot?")) deleteChatbot(bot.id) }} className="p-2.5 bg-slate-100 text-slate-400 rounded-2xl hover:bg-red-500 hover:text-white transition-all"><TrashIcon /></button>
           </div>
         </div>
-        <div className="mt-4 p-4 bg-slate-50 rounded-2xl border border-dashed border-slate-300 flex justify-between items-center text-left text-left">
-            <span className="text-xs font-black text-purple-600">/chat/{bot.token}</span>
-            <a href={`/chat/${bot.token}`} target="_blank" className="bg-slate-900 text-white px-5 py-2 rounded-xl text-[10px] font-black uppercase hover:bg-emerald-600 transition-all">Probar ↗</a>
-        </div>
       </div>
 
       {editingId && (
-        <div className="p-8 bg-slate-50 border-t-2 border-slate-200 text-left animate-in slide-in-from-top-4 duration-300 text-left">
-          <form action={updateChatbot} onSubmit={() => setEditingId(false)} className="space-y-8">
+        <div className="p-8 bg-slate-50 border-t-2 border-slate-200 text-left animate-in slide-in-from-top-4 duration-300">
+          <form action={updateChatbot} onSubmit={() => setEditingId(false)} className="space-y-10">
             <input type="hidden" name="id" value={bot.id} />
             
-            {/* 1. SECCIÓN GENERAL */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-1"><label className="text-[10px] font-bold text-slate-500 uppercase ml-2">Nombre</label>
-                <input name="name" defaultValue={bot.name} required className="w-full p-3 rounded-xl border border-slate-200 bg-white" /></div>
-                <div className="space-y-1"><label className="text-[10px] font-bold text-slate-500 uppercase ml-2">Base de Conocimiento</label>
+            {/* SECCIÓN 1: GENERAL */}
+            <div className="space-y-4">
+              <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest border-b pb-2">1. Configuración Principal</p>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <input name="name" defaultValue={bot.name} required placeholder="Nombre del Bot" className="w-full p-3 rounded-xl border border-slate-200 bg-white outline-none focus:border-purple-500" />
                 <select name="knowledgeBaseId" defaultValue={bot.knowledgeBaseId} className="w-full p-3 rounded-xl border border-slate-200 bg-white">
                   {knowledgeBases.map(kb => <option key={kb.id} value={kb.id}>{kb.name}</option>)}
-                </select></div>
+                </select>
+              </div>
             </div>
 
-            {/* 3. INVESTIGACIÓN Y RECOLECCIÓN DE DATOS (NUEVA ESTRUCTURA 3 ESTADOS) */}
+            {/* SECCIÓN 2: DISEÑO Y CÁMARA */}
             <div className="space-y-4">
-              <p className="text-[10px] font-black uppercase text-indigo-600 tracking-widest border-b pb-2 border-indigo-100">3. Investigación y Datos del Alumno</p>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div className="space-y-1">
-                  <label className="text-[9px] font-bold text-slate-400 uppercase ml-1">Nombre</label>
-                  <select name="nameMode" defaultValue={bot.nameMode || "HIDDEN"} className="w-full p-2.5 rounded-xl border border-slate-200 bg-white text-xs">
-                    <option value="HIDDEN">🚫 Oculto</option>
-                    <option value="OPTIONAL">💡 Voluntario</option>
-                    <option value="REQUIRED">🔒 Obligatorio</option>
-                  </select>
-                </div>
-                <div className="space-y-1">
-                  <label className="text-[9px] font-bold text-slate-400 uppercase ml-1">Correo</label>
-                  <select name="emailMode" defaultValue={bot.emailMode || "HIDDEN"} className="w-full p-2.5 rounded-xl border border-slate-200 bg-white text-xs">
-                    <option value="HIDDEN">🚫 Oculto</option>
-                    <option value="OPTIONAL">💡 Voluntario</option>
-                    <option value="REQUIRED">🔒 Obligatorio</option>
-                  </select>
-                </div>
-                <div className="space-y-1">
-                  <label className="text-[9px] font-bold text-slate-400 uppercase ml-1">Grupo</label>
-                  <select name="groupMode" defaultValue={bot.groupMode || "HIDDEN"} className="w-full p-2.5 rounded-xl border border-slate-200 bg-white text-xs">
-                    <option value="HIDDEN">🚫 Oculto</option>
-                    <option value="OPTIONAL">💡 Voluntario</option>
-                    <option value="REQUIRED">🔒 Obligatorio</option>
-                  </select>
-                </div>
+              <p className="text-[10px] font-black uppercase text-emerald-600 tracking-widest border-b pb-2 border-emerald-100">2. Apariencia y Cámara</p>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <input name="logoUrl" defaultValue={bot.logoUrl || ""} placeholder="URL Logo (Círculo)" className="w-full p-3 rounded-xl border border-slate-200 bg-white text-xs" />
+                <input name="backgroundImageUrl" defaultValue={bot.backgroundImageUrl || ""} placeholder="URL Fondo (Wallpaper)" className="w-full p-3 rounded-xl border border-slate-200 bg-white text-xs" />
               </div>
-              <div className="space-y-1">
-                <label className="text-[10px] font-bold text-slate-400 uppercase ml-2">Opciones de Grupo (separar por coma)</label>
-                <input name="groupOptions" defaultValue={bot.groupOptions || ""} placeholder="Patricia Martínez, Salvador Fernández" className="w-full p-3 rounded-xl border border-slate-200 bg-white text-xs" />
+              <div className="bg-white p-6 rounded-3xl border border-slate-200 grid grid-cols-1 md:grid-cols-2 gap-6 shadow-inner">
+                <div className="space-y-2">
+                    <label className="text-[9px] font-black text-slate-400 uppercase">Posición Cartel: {bot.introPos}%</label>
+                    <input type="range" name="introPos" min="0" max="100" defaultValue={bot.introPos || 50} className="w-full h-1.5 accent-purple-600" />
+                </div>
+                <div className="space-y-2">
+                    <label className="text-[9px] font-black text-slate-400 uppercase">Portada: {bot.showIntro ? 'SI' : 'NO'}</label>
+                    <select name="showIntro" defaultValue={String(bot.showIntro ?? true)} className="w-full p-2 rounded-lg border bg-slate-50 text-[10px] font-bold">
+                        <option value="true">🟢 Mostrar Portada</option>
+                        <option value="false">🔴 Salto directo al Chat</option>
+                    </select>
+                </div>
               </div>
             </div>
 
-            {/* SECCIÓN DE APARIENCIA Y LÓGICA (Simplificada para no alargar) */}
-            <div className="p-4 bg-white rounded-2xl border border-slate-200 grid grid-cols-1 md:grid-cols-2 gap-4">
-                <input name="backgroundImageUrl" defaultValue={bot.backgroundImageUrl || ""} placeholder="URL Fondo" className="p-3 rounded-xl border border-slate-100 text-xs" />
-                <input name="logoUrl" defaultValue={bot.logoUrl || ""} placeholder="URL Logo" className="p-3 rounded-xl border border-slate-100 text-xs" />
+            {/* SECCIÓN 3: INVESTIGACIÓN */}
+            <div className="space-y-4">
+              <p className="text-[10px] font-black uppercase text-indigo-600 tracking-widest border-b pb-2 border-indigo-100">3. Identidad y Grupos</p>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <select name="nameMode" defaultValue={bot.nameMode || "HIDDEN"} className="p-3 rounded-xl border bg-white text-xs">
+                    <option value="HIDDEN">🚫 Nombre Oculto</option>
+                    <option value="OPTIONAL">💡 Nombre Opcional</option>
+                    <option value="REQUIRED">🔒 Nombre Obligatorio</option>
+                </select>
+                <select name="emailMode" defaultValue={bot.emailMode || "HIDDEN"} className="p-3 rounded-xl border bg-white text-xs">
+                    <option value="HIDDEN">🚫 Correo Oculto</option>
+                    <option value="OPTIONAL">💡 Correo Opcional</option>
+                    <option value="REQUIRED">🔒 Correo Obligatorio</option>
+                </select>
+                <select name="groupMode" defaultValue={bot.groupMode || "HIDDEN"} className="p-3 rounded-xl border bg-white text-xs">
+                    <option value="HIDDEN">🚫 Grupo Oculto</option>
+                    <option value="OPTIONAL">💡 Grupo Opcional</option>
+                    <option value="REQUIRED">🔒 Grupo Obligatorio</option>
+                </select>
+              </div>
+              <input name="groupOptions" defaultValue={bot.groupOptions || ""} placeholder="Profesores separados por coma..." className="w-full p-3 rounded-xl border border-slate-200 bg-white text-xs" />
+            </div>
+
+            {/* SECCIÓN 4: MENSAJERÍA (RECUPERADA) */}
+            <div className="space-y-4">
+              <p className="text-[10px] font-black uppercase text-blue-600 tracking-widest border-b pb-2 border-blue-100">4. Mensajes y Textos</p>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-1">
+                  <label className="text-[10px] font-bold text-slate-400 uppercase ml-2">Mensaje de Bienvenida</label>
+                  <textarea name="welcomeMessage" defaultValue={bot.welcomeMessage || ""} rows={3} className="w-full p-3 rounded-xl border border-slate-200 bg-white text-sm" />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-[10px] font-bold text-slate-400 uppercase ml-2">Información (Botón "i")</label>
+                  <textarea name="infoMessage" defaultValue={bot.infoMessage || ""} rows={3} className="w-full p-3 rounded-xl border border-slate-200 bg-white text-sm" />
+                </div>
+              </div>
+              <input name="inputPlaceholder" defaultValue={bot.inputPlaceholder || ""} placeholder="Texto en la caja de escribir..." className="w-full p-3 rounded-xl border border-slate-200 bg-white text-sm" />
+            </div>
+
+            {/* SECCIÓN 5: INTELIGENCIA */}
+            <div className="space-y-4">
+              <p className="text-[10px] font-black uppercase text-amber-600 tracking-widest border-b pb-2 border-amber-100">5. Instrucciones de la IA (Prompt)</p>
+              <textarea name="systemInstructions" defaultValue={bot.systemInstructions || ""} rows={6} className="w-full p-4 rounded-2xl border-none outline-none font-mono text-[11px] bg-slate-900 text-emerald-400 shadow-inner" />
             </div>
 
             <div className="flex justify-end gap-3 pt-6 border-t border-slate-200">
-              <button type="button" onClick={() => setEditingId(false)} className="text-xs font-bold text-slate-400 px-6 uppercase tracking-widest">Cancelar</button>
-              <button type="submit" className="bg-slate-900 text-white px-10 py-4 rounded-2xl font-black text-xs uppercase shadow-xl hover:bg-emerald-600 transition-all">Guardar Cambios</button>
+              <button type="button" onClick={() => setEditingId(false)} className="text-xs font-bold text-slate-400 px-6 uppercase">Cancelar</button>
+              <button type="submit" className="bg-slate-900 text-white px-10 py-4 rounded-2xl font-black text-xs uppercase shadow-xl hover:bg-emerald-600 transition-all">Guardar Cambios Maestros</button>
             </div>
           </form>
         </div>
@@ -114,6 +122,6 @@ function ChatbotCard({ bot, groups, knowledgeBases }: { bot: any, groups: any[],
 }
 
 export function ChatbotList({ chatbots, groups, knowledgeBases }: { chatbots: any[], groups: any[], knowledgeBases: any[] }) {
-  if (chatbots.length === 0) return <div className="p-10 text-center text-slate-400 italic text-left">No hay bots configurados.</div>;
+  if (chatbots.length === 0) return <div className="p-10 text-center text-slate-400 italic">No hay bots configurados.</div>;
   return <div>{chatbots.map(bot => (<ChatbotCard key={bot.id} bot={bot} groups={groups} knowledgeBases={knowledgeBases} />))}</div>;
 }
