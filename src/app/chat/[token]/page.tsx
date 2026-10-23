@@ -32,6 +32,10 @@ export default async function ChatPage({ params }: { params: any }) {
         introPos={chatbot.introPos}
         collectData={chatbot.collectData} // <--- NUEVO
         groupOptions={chatbot.groupOptions} // <--- NUEVO
+nameMode={chatbot.nameMode}
+emailMode={chatbot.emailMode}
+groupMode={chatbot.groupMode}
+
         orgName={settings?.organizationName || "Institución"}
       />
     );

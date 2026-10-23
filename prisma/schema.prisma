@@ -84,6 +84,9 @@ bgPositionMobile   Int? @default(50) // Valor de 0 a 100
  collectData    Boolean? @default(false) // ¿Pide nombre/grupo?
   groupOptions   String?  @default("")    // Lista: "Patricia Martínez, Salvador Fernández"
 interactions       Interaction[]
+  nameMode     String?  @default("HIDDEN")   // REQUIRED, OPTIONAL, HIDDEN
+  emailMode    String?  @default("HIDDEN")   // REQUIRED, OPTIONAL, HIDDEN
+  groupMode    String?  @default("HIDDEN")   // REQUIRED, OPTIONAL, HIDDEN
 }
 
 model Interaction {

@@ -137,7 +137,8 @@ export async function updateChatbot(formData: FormData) {
   const fields = [
     "name", "welcomeMessage", "systemInstructions", "inputPlaceholder", 
     "fallbackMessage", "infoMessage", "logoUrl", "knowledgeBaseId", 
-    "groupId", "backgroundImageUrl", "groupOptions" // <--- AGREGADO
+    "groupId", "backgroundImageUrl", "groupOptions",
+    "nameMode", "emailMode", "groupMode" // <--- AGREGADO
   ];
 
   fields.forEach(f => {
