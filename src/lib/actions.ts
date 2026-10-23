@@ -12,6 +12,9 @@ const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "";
 const supabase = (supabaseUrl && supabaseKey) ? createClient(supabaseUrl, supabaseKey) : null;
 
+// NOTA: maxDuration no se exporta para evitar errores en Vercel
+const maxDuration = 60;
+
 // ==========================================
 // 1. SEGURIDAD Y ACCESO
 // ==========================================
@@ -36,7 +39,30 @@ export async function runEscalationLogic() {
 }
 
 // ==========================================
-// 2. GESTIÓN DE CHATBOTS
+// 2. GESTIÓN DE GRUPOS (LO QUE FALLABA)
+// ==========================================
+export async function createGroup(formData: FormData) {
+  const name = formData.get("name") as string;
+  const description = formData.get("description") as string || "";
+  await prisma.group.create({ data: { name, description } });
+  revalidatePath("/admin/groups");
+}
+
+export async function updateGroup(formData: FormData) {
+  const id = formData.get("id") as string;
+  const name = formData.get("name") as string;
+  const description = formData.get("description") as string || "";
+  await prisma.group.update({ where: { id }, data: { name, description } });
+  revalidatePath("/admin/groups");
+}
+
+export async function deleteGroup(id: string) {
+  await prisma.group.delete({ where: { id } });
+  revalidatePath("/admin/groups");
+}
+
+// ==========================================
+// 3. GESTIÓN DE CHATBOTS
 // ==========================================
 export async function createChatbot(formData: FormData) {
   const name = formData.get("name") as string;
@@ -51,16 +77,20 @@ export async function updateChatbot(formData: FormData) {
   const id = formData.get("id") as string;
   const updateData: any = {};
   const fields = ["name", "welcomeMessage", "systemInstructions", "inputPlaceholder", "fallbackMessage", "infoMessage", "logoUrl", "knowledgeBaseId", "groupId", "backgroundImageUrl", "groupOptions", "nameMode", "emailMode", "groupMode"];
+  
   fields.forEach(f => {
     const v = formData.get(f); if (v !== null) updateData[f] = v as string;
   });
+
   updateData.bgPositionMobile = parseInt(formData.get("bgPositionMobile") as string) || 50;
   updateData.bgPositionDesktop = parseInt(formData.get("bgPositionDesktop") as string) || 50;
   updateData.bgPosXMobile = parseInt(formData.get("bgPosXMobile") as string) || 50;
   updateData.bgPosXDesktop = parseInt(formData.get("bgPosXDesktop") as string) || 50;
   updateData.introPos = parseInt(formData.get("introPos") as string) || 50;
+
   const isActive = formData.get("isActive"); if (isActive !== null) updateData.isActive = isActive === "true";
   const showIntro = formData.get("showIntro"); if (showIntro !== null) updateData.showIntro = showIntro === "true";
+
   await prisma.chatbot.update({ where: { id }, data: updateData });
   revalidatePath("/admin/chatbots");
 }
@@ -71,18 +101,20 @@ export async function deleteChatbot(id: string) {
 }
 
 // ==========================================
-// 3. MOTOR DEL BUZÓN
+// 4. MOTOR DEL BUZÓN Y PROPUESTAS
 // ==========================================
 export async function createTicket(formData: FormData): Promise<{ success: boolean; folio: string }> {
   const type = formData.get("type") as string || "DENUNCIA";
   const category = formData.get("category") as string || "GENERAL";
   const academicProgram = formData.get("academicProgram") as string || "Psicología";
   const modality = formData.get("modality") as string || "Presencial";
-  const content = formData.get("content") as string || "";
-  const studentName = formData.get("studentName") as string || "Anónimo";
-  const studentEmail = formData.get("studentEmail") as string || "sin-correo@ujed.mx";
-  if (!content) return { success: false, folio: "" };
+  const content = formData.get("content") as string;
+  const studentName = formData.get("studentName") as string;
+  const studentEmail = formData.get("studentEmail") as string;
+
+  if (!content || !studentName || !studentEmail) return { success: false, folio: "" };
   const folio = `ETH-${Math.random().toString(36).substring(2, 7).toUpperCase()}`;
+
   try {
     const ticket = await prisma.ticket.create({
       data: { folio, type, category, content, studentName, studentEmail, academicProgram, modality, status: "PENDIENTE" },
@@ -97,7 +129,7 @@ export async function submitAppeal(id: string, reason: string) {
     const currentTicket = await prisma.ticket.findUnique({ where: { id } });
     const newHistory = `[RESPUESTA]: ${currentTicket?.authorityResponse}\n\n[APELACIÓN]: ${reason}`;
     await prisma.ticket.update({ where: { id }, data: { status: "APELADO", authorityResponse: newHistory } });
-    revalidatePath("/seguimiento"); return { success: true };
+    revalidatePath("/seguimiento"); revalidatePath("/admin/buzon"); return { success: true };
   } catch (error) { return { success: false }; }
 }
 
@@ -123,9 +155,6 @@ export async function setStudentSatisfaction(id: string, satisfied: boolean) {
   } catch (error) { return { success: false }; }
 }
 
-// ==========================================
-// 4. INICIATIVA DE EXCELENCIA
-// ==========================================
 export async function createProposal(formData: FormData) {
   try {
     const proposal = await prisma.proposal.create({
@@ -154,12 +183,12 @@ export async function voteProposal(id: string) {
 export async function updateProposalStatus(id: string, status: string) {
   try {
     await prisma.proposal.update({ where: { id }, data: { status } });
-    revalidatePath("/admin/gestion-propuestas"); return { success: true };
+    revalidatePath("/admin/gestion-propuestas"); revalidatePath("/excelencia/mural"); return { success: true };
   } catch (error) { return { success: false }; }
 }
 
 // ==========================================
-// 5. CONOCIMIENTO Y CONFIGURACIÓN
+// 5. CONOCIMIENTO (KNOWLEDGE BASE)
 // ==========================================
 export async function createKnowledgeBase(formData: FormData) {
   const name = formData.get("name") as string;
@@ -202,6 +231,9 @@ export async function addUrlDocument(formData: FormData) {
   revalidatePath(`/admin/knowledge/${kbId}`);
 }
 
+// ==========================================
+// 6. CONFIGURACIÓN Y EXPORTACIÓN
+// ==========================================
 export async function updateSettings(formData: FormData) {
   const data = {
     organizationName: formData.get("organizationName") as string,
@@ -219,13 +251,13 @@ export async function updateSettings(formData: FormData) {
   revalidatePath("/admin/settings"); revalidatePath("/buzon");
 }
 
-// ==========================================
-// 6. EXPORTACIÓN Y BACKUP
-// ==========================================
 export async function downloadFullHistory() {
   try {
-    const [tickets, proposals] = await Promise.all([prisma.ticket.findMany(), prisma.proposal.findMany()]);
-    let csv = "\ufeffFolio,Fecha,Autor,Estatus\n";
+    const [tickets, proposals] = await Promise.all([
+      prisma.ticket.findMany({ include: { attachments: true }, orderBy: { createdAt: 'desc' } }),
+      prisma.proposal.findMany({ orderBy: { createdAt: 'desc' } })
+    ]);
+    let csv = "\ufeff--- REPORTE DE BUZÓN ---\nFolio,Fecha,Autor,Estatus\n";
     tickets.forEach(t => { csv += `${t.folio},${t.createdAt.toLocaleDateString()},${t.studentName},${t.status}\n`; });
     return { success: true, data: csv };
   } catch (error) { return { success: false, data: "" }; }
@@ -234,8 +266,8 @@ export async function downloadFullHistory() {
 export async function downloadChatInteractions(chatbotId: string) {
   try {
     const data = await prisma.interaction.findMany({ where: { chatbotId }, orderBy: { createdAt: 'desc' } });
-    const headers = ["Fecha", "Grupo", "Estudiante", "Pregunta", "Respuesta"];
-    const rows = data.map(i => [i.createdAt.toLocaleDateString(), i.studentGroup || "N/A", i.studentName || "Anónimo", `"${i.query.replace(/"/g, '""')}"`, `"${i.response.replace(/"/g, '""')}"`]);
+    const headers = ["Fecha", "Estudiante", "Pregunta", "Respuesta"];
+    const rows = data.map(i => [i.createdAt.toLocaleDateString(), i.studentName || "Anónimo", `"${i.query.replace(/"/g, '""')}"`, `"${i.response.replace(/"/g, '""')}"`]);
     const csv = "\ufeff" + [headers, ...rows].map(e => e.join(",")).join("\n");
     return { success: true, data: csv };
   } catch (error) { return { success: false, data: "" }; }
