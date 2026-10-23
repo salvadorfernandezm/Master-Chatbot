@@ -76,20 +76,32 @@ export async function createChatbot(formData: FormData) {
 export async function updateChatbot(formData: FormData) {
   const id = formData.get("id") as string;
   const updateData: any = {};
-  const fields = ["name", "welcomeMessage", "systemInstructions", "inputPlaceholder", "fallbackMessage", "infoMessage", "logoUrl", "knowledgeBaseId", "groupId", "backgroundImageUrl", "groupOptions", "nameMode", "emailMode", "groupMode"];
   
+  // 1. LISTA COMPLETA DE CAMPOS DE TEXTO
+  const fields = [
+    "name", "welcomeMessage", "systemInstructions", "inputPlaceholder", 
+    "fallbackMessage", "infoMessage", "logoUrl", "backgroundImageUrl", 
+    "groupOptions", "nameMode", "emailMode", "groupMode", "knowledgeBaseId", "groupId"
+  ];
+
   fields.forEach(f => {
-    const v = formData.get(f); if (v !== null) updateData[f] = v as string;
+    const v = formData.get(f);
+    if (v !== null) updateData[f] = v as string;
   });
 
+  // 2. CAMPOS NUMÉRICOS
   updateData.bgPositionMobile = parseInt(formData.get("bgPositionMobile") as string) || 50;
   updateData.bgPositionDesktop = parseInt(formData.get("bgPositionDesktop") as string) || 50;
   updateData.bgPosXMobile = parseInt(formData.get("bgPosXMobile") as string) || 50;
   updateData.bgPosXDesktop = parseInt(formData.get("bgPosXDesktop") as string) || 50;
   updateData.introPos = parseInt(formData.get("introPos") as string) || 50;
 
-  const isActive = formData.get("isActive"); if (isActive !== null) updateData.isActive = isActive === "true";
-  const showIntro = formData.get("showIntro"); if (showIntro !== null) updateData.showIntro = showIntro === "true";
+  // 3. CAMPOS BOOLEANOS (INTERRUPTORES)
+  const isActive = formData.get("isActive");
+  if (isActive !== null) updateData.isActive = isActive === "true";
+
+  const showIntro = formData.get("showIntro");
+  if (showIntro !== null) updateData.showIntro = showIntro === "true";
 
   await prisma.chatbot.update({ where: { id }, data: updateData });
   revalidatePath("/admin/chatbots");
